@@ -321,7 +321,13 @@ impl<'a> TElement for &'a ElementSlot<'a> {
     }
 
     fn mutate_data(&self) -> Option<ElementDataMut<'_>> {
-        Some(ElementSlot::ensure_data(self))
+        // R23 同族（mutate 侧）：无有效主样式 ⇒ `None`（与 has_data/borrow_data 一致，
+        // 免 stylo 无守卫路径 `invalidation/stylesheets.rs` 命中 `primary().unwrap()` on None）。
+        if ElementSlot::has_styles(self) {
+            Some(ElementSlot::ensure_data(self))
+        } else {
+            None
+        }
     }
 
     fn skip_item_display_fixup(&self) -> bool {

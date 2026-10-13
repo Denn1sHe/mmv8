@@ -350,6 +350,45 @@ mod tests {
     }
 
     #[test]
+    fn rule_change_recompute_no_panic() {
+        // R23 同族：rule-change 族（移除 + force_stylesheet_origins_dirty + flush）重算不 panic；
+        // 观测位 = width（判别性：50px -> auto）。
+        use crate::stylo_host::{StyloHost, build_slots};
+        use web_dom::tree::NodeTree;
+
+        let mut system = StyleSystem::new(Size::new(800.0, 600.0));
+        let handle = system
+            .add_stylesheet(SheetOrigin::Author, "div { width: 50px; }")
+            .expect("author");
+        system.flush();
+
+        let mut tree = NodeTree::new();
+        let root = tree.root();
+        let div = tree.create_element("div", "html", vec![]);
+        tree.append_child(root, div);
+        let slots = build_slots(&tree, system.shared_lock());
+        let host = StyloHost::new(slots);
+
+        let before = system
+            .resolve_element_style(host.node(div).expect("div"), 0.0)
+            .expect("cascade");
+        assert_eq!(
+            crate::serialize::serialize_computed(&before, "width").expect("width"),
+            "50px"
+        );
+
+        system.remove_stylesheet(handle).expect("remove");
+        let after = system
+            .resolve_element_style(host.node(div).expect("div"), 0.0)
+            .expect("rule-change 族重算不应 panic");
+        assert_eq!(
+            crate::serialize::serialize_computed(&after, "width").expect("width"),
+            "auto",
+            "移除后应回落 auto"
+        );
+    }
+
+    #[test]
     fn style_invalidation_changes_computed() {
         use crate::stylo_host::{StyloHost, build_slots};
         use web_dom::tree::NodeTree;
