@@ -49,7 +49,7 @@ impl From<NodeId> for u64 {
     }
 }
 
-/// 节点种类（G2 不做 `DocumentFragment` / Shadow tree / `Attr` 节点对象）。
+/// 节点种类（G2 不做 `DocumentFragment`；G3 增 `ShadowRoot`）。
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum NodeKind {
     /// 文档根。
@@ -62,13 +62,47 @@ pub enum NodeKind {
     Text,
     /// 注释节点。
     Comment,
+    /// **影子根**（G3 D6：**不是** Element；影子树链**独立于** light DOM）。
+    ShadowRoot,
 }
 
-/// 元素特有数据（最小面；Shadow DOM / 自定义元素属 G3）。
+/// 影子根模式（`ShadowRoot.mode`，§1.2）。
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum ShadowMode {
+    /// `"open"`（`element.shadowRoot` 可见）。
+    Open,
+    /// `"closed"`（`element.shadowRoot` 返回 `null`）。
+    Closed,
+}
+
+impl ShadowMode {
+    /// `mode` 字符串（JS 面用；`"open"` / `"closed"`）。
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Open => "open",
+            Self::Closed => "closed",
+        }
+    }
+}
+
+/// 影子根节点载荷（仅 [`NodeKind::ShadowRoot`] 有值，§1.2）。
+///
+/// **mode 语义定死（G3-B13）**：`attach_shadow` 对已存在影子根——
+/// 同 `mode` ⇒ 幂等返回既有根；不同 `mode` ⇒ `Err(DomErrorKind::NotSupported)`。
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub struct ShadowRootData {
+    /// 影子根模式。
+    pub mode: ShadowMode,
+    /// 宿主元素（light DOM 中的 Element）。
+    pub host: NodeId,
+}
+
+/// 元素特有数据（最小面；Shadow 支撑见下）。
 ///
 /// ⚠️ ADR-0016·D6：**不设** `class_list` 字段（消除 `attrs`/`class_list` 双真相源）；
 /// `class_list` 由 `attrs`（`class` 属性）**惰性派生**（[`ElementData::class_list`]）。
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct ElementData {
     /// 标签名（小写规范名）。
     pub name: String,
@@ -78,10 +112,31 @@ pub struct ElementData {
     pub attrs: AttributeMap,
     /// 内联样式（仅声明值；级联属 G3）。
     pub style: InlineStyle,
+    /// 影子根（`NodeKind::ShadowRoot` 节点的 id；无则 `None`）。
+    ///
+    /// **clone 注记（G3-B15）**：本字段**不随克隆复制**（见下 [`Clone`] 实现）。
+    pub shadow: Option<NodeId>,
+}
+
+impl Clone for ElementData {
+    /// **clone 注记（G3-B15，S2 落定）**：`shadow` **置 `None`**，其余字段深拷贝。
+    ///
+    /// 理由：`shadow: Option<NodeId>` 指向宿主元素的影子根；若克隆 host 会得到**两个节点
+    /// 指向同一影子根**（第二真相源，违反 D6「影子根唯一」）。故约定 = **克隆时置 `None`**：
+    /// 克隆体不带影子根关联（`shadow_root(clone) == None`）。
+    fn clone(&self) -> Self {
+        Self {
+            name: self.name.clone(),
+            namespace: self.namespace.clone(),
+            attrs: self.attrs.clone(),
+            style: self.style.clone(),
+            shadow: None,
+        }
+    }
 }
 
 impl ElementData {
-    /// 建一个空元素数据（无属性、空内联样式）。
+    /// 建一个空元素数据（无属性、空内联样式、无影子根）。
     #[must_use]
     pub fn new(name: &str, namespace: &str) -> Self {
         Self {
@@ -89,6 +144,7 @@ impl ElementData {
             namespace: namespace.to_owned(),
             attrs: AttributeMap::new(),
             style: InlineStyle::new(),
+            shadow: None,
         }
     }
 
@@ -119,6 +175,8 @@ pub struct NodeData {
     pub next_sibling: Option<NodeId>,
     /// 仅 [`NodeKind::Element`] 有值。
     pub element: Option<ElementData>,
+    /// 仅 [`NodeKind::ShadowRoot`] 有值（影子根载荷：mode + 宿主）。
+    pub shadow_root: Option<ShadowRootData>,
     /// `Text` / `Comment` / `DocumentType` 的文本。
     pub text: Option<String>,
 }
@@ -135,6 +193,7 @@ impl NodeData {
             prev_sibling: None,
             next_sibling: None,
             element: None,
+            shadow_root: None,
             text: None,
         }
     }
@@ -143,6 +202,12 @@ impl NodeData {
     #[must_use]
     pub fn is_element(&self) -> bool {
         self.kind == NodeKind::Element
+    }
+
+    /// 该节点是否影子根。
+    #[must_use]
+    pub fn is_shadow_root(&self) -> bool {
+        self.kind == NodeKind::ShadowRoot
     }
 }
 
@@ -173,5 +238,18 @@ mod tests {
         );
         el.attrs.set("class", "a  b\tc");
         assert_eq!(el.class_list(), vec!["a", "b", "c"]);
+    }
+
+    #[test]
+    fn element_clone_drops_shadow() {
+        // G3-B15：clone 注记 —— 克隆体不复制 shadow（避免两指针指向同一影子根）。
+        let mut el = ElementData::new("div", "html");
+        el.attrs.set("id", "host");
+        el.shadow = Some(NodeId::new(3, 0));
+        let cloned = el.clone();
+        assert_eq!(cloned.name, el.name);
+        assert_eq!(cloned.attrs.get("id"), Some("host"));
+        assert_eq!(cloned.shadow, None, "克隆体不得复制 shadow（G3-B15）");
+        assert_eq!(el.shadow, Some(NodeId::new(3, 0)), "原节点 shadow 不受影响");
     }
 }

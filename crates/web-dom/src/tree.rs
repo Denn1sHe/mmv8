@@ -7,7 +7,8 @@
 //! 才回收槽（入 free list + **generation bump**），使 [`NodeId`] 复用防呆生效
 //! （`nodeid_generation_reuse`）。
 
-use crate::node::{ElementData, NodeData, NodeId, NodeKind};
+use crate::error::DomError;
+use crate::node::{ElementData, NodeData, NodeId, NodeKind, ShadowMode, ShadowRootData};
 
 /// 节点树：**单线程 arena**（`Vec<Option<NodeData>>` + free list）。
 #[derive(Debug)]
@@ -368,12 +369,204 @@ impl NodeTree {
     pub fn is_empty(&self) -> bool {
         self.len == 0
     }
+
+    // ================= G3 D6：Shadow DOM 最小面（S2，§1.2） =================
+
+    /// 取 `host` 的影子根 id（若有；不过滤 `mode`）。
+    #[must_use]
+    pub fn element_shadow(&self, host: NodeId) -> Option<NodeId> {
+        self.node_ref(host)
+            .and_then(|node| node.element.as_ref())
+            .and_then(|element| element.shadow)
+    }
+
+    /// 给 `host`（Element）挂影子根。**mode 语义定死（G3-B13）**：
+    ///
+    /// - 已存在且 **mode 相同** ⇒ **幂等**返回既有根（**不新建**节点）；
+    /// - 已存在且 **mode 不同** ⇒ `Err(DomErrorKind::NotSupported)`（对齐规范 `NotSupportedError`）；
+    /// - `host` 不是本树有效节点 ⇒ `Err(InvalidNode)`；不是元素 ⇒ `Err(NotAnElement)`。
+    ///
+    /// 影子根是**独立节点**（`NodeKind::ShadowRoot`），**不进入** host 的 light 子链
+    /// ⇒ light 遍历天然不含影子内容（作用域隔离，G3-B8）。
+    ///
+    /// # Errors
+    /// - `host` 不是本树有效节点 ⇒ [`DomErrorKind::InvalidNode`](crate::error::DomErrorKind::InvalidNode)；
+    /// - `host` 不是元素（含文本 / 文档根 / 影子根本身）⇒
+    ///   [`DomErrorKind::NotAnElement`](crate::error::DomErrorKind::NotAnElement)；
+    /// - `host` 已存在**不同 mode** 的影子根 ⇒
+    ///   [`DomErrorKind::NotSupported`](crate::error::DomErrorKind::NotSupported)。
+    pub fn attach_shadow(&mut self, host: NodeId, mode: ShadowMode) -> Result<NodeId, DomError> {
+        let Some(node) = self.node_ref(host) else {
+            return Err(DomError::invalid_node(
+                "attach_shadow: host 不是本树的有效节点",
+            ));
+        };
+        if node.kind != NodeKind::Element {
+            return Err(DomError::not_an_element(
+                "attach_shadow: host 必须是元素（ShadowRoot 不是 Element）",
+            ));
+        }
+        if let Some(existing) = node.element.as_ref().and_then(|element| element.shadow) {
+            let existing_mode = self
+                .node_ref(existing)
+                .and_then(|root| root.shadow_root)
+                .map(|data| data.mode);
+            return match existing_mode {
+                Some(m) if m == mode => Ok(existing),
+                _ => Err(DomError::not_supported(
+                    "attach_shadow: host 已存在不同 mode 的影子根",
+                )),
+            };
+        }
+        let mut data = NodeData::new(NodeKind::ShadowRoot);
+        data.shadow_root = Some(ShadowRootData { mode, host });
+        let root = self.alloc(data);
+        if let Some(element) = self.node_mut(host).and_then(|node| node.element.as_mut()) {
+            element.shadow = Some(root);
+        }
+        Ok(root)
+    }
+
+    /// 影子根（**Rust 面返回 `(NodeId, ShadowMode)`**；JS 层按 `open` 过滤 —— G3-B14）。
+    #[must_use]
+    pub fn shadow_root(&self, host: NodeId) -> Option<(NodeId, ShadowMode)> {
+        let root = self.element_shadow(host)?;
+        let mode = self
+            .node_ref(root)
+            .and_then(|node| node.shadow_root)
+            .map(|data| data.mode)?;
+        Some((root, mode))
+    }
+
+    /// 影子根的宿主元素（`root` 非影子根 ⇒ `None`）。
+    #[must_use]
+    pub fn shadow_host(&self, root: NodeId) -> Option<NodeId> {
+        self.node_ref(root)
+            .and_then(|node| node.shadow_root)
+            .map(|data| data.host)
+    }
+
+    /// 该节点是否影子根。
+    #[must_use]
+    pub fn is_shadow_root(&self, id: NodeId) -> bool {
+        self.node_ref(id)
+            .is_some_and(|node| node.kind == NodeKind::ShadowRoot)
+    }
+
+    /// 沿父链上溯，返回 `node` 所在的**影子根**（无则 `None`）。
+    #[must_use]
+    pub fn containing_shadow_root(&self, node: NodeId) -> Option<NodeId> {
+        let mut current = Some(node);
+        while let Some(id) = current {
+            if self.is_shadow_root(id) {
+                return Some(id);
+            }
+            current = self.parent(id);
+        }
+        None
+    }
+
+    /// `slot` 的**被分配节点**（默认 + 具名简单匹配；**按需计算，无持久表** —— D6/R10）。
+    ///
+    /// - `slot` 非 `<slot>` 元素、或不在影子树内 ⇒ 空。
+    /// - 默认 slot（`name` 缺省/空）收**无 `slot` 属性**（含空值与文本节点）的 host light 子；
+    ///   具名 slot（`name="x"`）收 `slot="x"` 的 host light 子。
+    #[must_use]
+    pub fn assigned_nodes(&self, slot: NodeId) -> Vec<NodeId> {
+        let Some(slot_name) = self.slot_name(slot) else {
+            return Vec::new();
+        };
+        let Some(root) = self.containing_shadow_root(slot) else {
+            return Vec::new();
+        };
+        let Some(host) = self.shadow_host(root) else {
+            return Vec::new();
+        };
+        let default_slot = slot_name.is_empty();
+        let mut out = Vec::new();
+        for child in self.children(host).collect::<Vec<_>>() {
+            let assigned = match self.light_slot_attr(child).as_deref() {
+                // 无 `slot` 属性（含文本节点）或空值 ⇒ 仅默认 slot 收。
+                None | Some("") => default_slot,
+                // 具名 `slot` 属性 ⇒ 精确匹配具名 slot。
+                Some(name) => !default_slot && name == slot_name,
+            };
+            if assigned {
+                out.push(child);
+            }
+        }
+        out
+    }
+
+    /// **composed/flattened 遍历**（跨 shadow 边界）供布局使用。
+    ///
+    /// - `node` 为影子根 ⇒ 其子节点（slot 展开）；
+    /// - `node` 为有影子根的元素 ⇒ 影子根的子节点（slot 展开）；
+    /// - 否则 ⇒ light 子节点。
+    ///
+    /// slot 展开：`<slot>` ⇒ 其被分配节点；无被分配节点 ⇒ slot **回退内容**（其自身 light 子）。
+    #[must_use]
+    pub fn flattened_children(&self, node: NodeId) -> Vec<NodeId> {
+        if self.is_shadow_root(node) {
+            return self.expand_slots(self.children(node).collect());
+        }
+        if let Some(root) = self.element_shadow(node) {
+            if self.is_valid(root) {
+                return self.expand_slots(self.children(root).collect());
+            }
+        }
+        self.children(node).collect()
+    }
+
+    /// `<slot>` 元素的 `name` 属性（缺省空串）。非 `<slot>` 元素 ⇒ `None`。
+    #[must_use]
+    fn slot_name(&self, slot: NodeId) -> Option<String> {
+        let element = self.node_ref(slot)?.element.as_ref()?;
+        if element.name != "slot" {
+            return None;
+        }
+        Some(element.attrs.get("name").unwrap_or("").to_owned())
+    }
+
+    /// 节点是否 `<slot>` 元素。
+    #[must_use]
+    fn is_slot_element(&self, node: NodeId) -> bool {
+        self.node_ref(node)
+            .and_then(|data| data.element.as_ref())
+            .is_some_and(|element| element.name == "slot")
+    }
+
+    /// 节点的 `slot` 属性（元素；非元素 ⇒ `None` ≡ 无该属性）。
+    #[must_use]
+    fn light_slot_attr(&self, node: NodeId) -> Option<String> {
+        let element = self.node_ref(node)?.element.as_ref()?;
+        Some(element.attrs.get("slot").unwrap_or("").to_owned())
+    }
+
+    /// 对一组子节点做 slot 展开（slot ⇒ 被分配节点，或回退内容）。
+    fn expand_slots(&self, children: Vec<NodeId>) -> Vec<NodeId> {
+        let mut out = Vec::new();
+        for child in children {
+            if self.is_slot_element(child) {
+                let assigned = self.assigned_nodes(child);
+                if assigned.is_empty() {
+                    out.extend(self.children(child));
+                } else {
+                    out.extend(assigned);
+                }
+            } else {
+                out.push(child);
+            }
+        }
+        out
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::NodeTree;
-    use crate::node::NodeKind;
+    use crate::error::DomErrorKind;
+    use crate::node::{NodeId, NodeKind, ShadowMode};
     use proptest::prelude::*;
 
     fn tree_with_siblings() -> (NodeTree, [crate::node::NodeId; 3]) {
@@ -473,6 +666,149 @@ mod tests {
         // 自挂亦 no-op。
         tree.append_child(parent, parent);
         assert_eq!(tree.parent(parent), Some(root));
+    }
+
+    #[test]
+    fn attach_shadow_mode_semantics() {
+        // §3.5 / G3-B13：同 mode 幂等返回既有根；不同 mode ⇒ Err(NotSupported)。
+        let mut tree = NodeTree::new();
+        let root = tree.root();
+        let host = tree.create_element("div", "html", vec![]);
+        tree.append_child(root, host);
+
+        let r1 = tree.attach_shadow(host, ShadowMode::Open).unwrap();
+        assert!(tree.is_shadow_root(r1), "影子根应为 NodeKind::ShadowRoot");
+        assert_eq!(tree.shadow_root(host), Some((r1, ShadowMode::Open)));
+        assert_eq!(tree.shadow_host(r1), Some(host));
+        let len_after_first = tree.len();
+
+        // 同 mode 重复 ⇒ 幂等返回既有根，**不新建**节点。
+        let r2 = tree.attach_shadow(host, ShadowMode::Open).unwrap();
+        assert_eq!(r2, r1, "同 mode 重复应幂等返回既有根");
+        assert_eq!(tree.len(), len_after_first, "幂等不得新建节点");
+
+        // 不同 mode ⇒ Err(NotSupported)，且不得改动既有根。
+        let err = tree.attach_shadow(host, ShadowMode::Closed).unwrap_err();
+        assert_eq!(err.kind(), DomErrorKind::NotSupported);
+        assert_eq!(
+            tree.shadow_root(host),
+            Some((r1, ShadowMode::Open)),
+            "失败不得改动既有根"
+        );
+
+        // 非元素 host ⇒ Err(NotAnElement)；非法节点 ⇒ Err(InvalidNode)。
+        let text = tree.create_text("x");
+        tree.append_child(host, text);
+        assert_eq!(
+            tree.attach_shadow(text, ShadowMode::Open)
+                .unwrap_err()
+                .kind(),
+            DomErrorKind::NotAnElement
+        );
+        assert_eq!(
+            tree.attach_shadow(NodeId::new(9999, 0), ShadowMode::Open)
+                .unwrap_err()
+                .kind(),
+            DomErrorKind::InvalidNode
+        );
+        // 文档根也不是元素。
+        assert_eq!(
+            tree.attach_shadow(root, ShadowMode::Open)
+                .unwrap_err()
+                .kind(),
+            DomErrorKind::NotAnElement
+        );
+    }
+
+    #[test]
+    fn assigned_nodes_default_and_named() {
+        // §3.5：默认 + 具名简单匹配；按需计算、无持久表。
+        let mut tree = NodeTree::new();
+        let root = tree.root();
+        let host = tree.create_element("x-host", "html", vec![]);
+        tree.append_child(root, host);
+        let div = tree.create_element("div", "html", vec![]);
+        let span = tree.create_element("span", "html", vec![("slot".to_owned(), "x".to_owned())]);
+        let bold = tree.create_element("b", "html", vec![("slot".to_owned(), "y".to_owned())]);
+        let text = tree.create_text("t");
+        for child in [div, span, bold, text] {
+            tree.append_child(host, child);
+        }
+
+        let shadow = tree.attach_shadow(host, ShadowMode::Open).unwrap();
+        let default_slot = tree.create_element("slot", "html", vec![]);
+        let named_slot =
+            tree.create_element("slot", "html", vec![("name".to_owned(), "x".to_owned())]);
+        tree.append_child(shadow, default_slot);
+        tree.append_child(shadow, named_slot);
+
+        assert_eq!(
+            tree.assigned_nodes(default_slot),
+            vec![div, text],
+            "默认 slot 收无 slot 属性者（含文本）"
+        );
+        assert_eq!(
+            tree.assigned_nodes(named_slot),
+            vec![span],
+            "具名 slot x 收 slot=x"
+        );
+        // 非 `<slot>` 元素 / 不在影子树 ⇒ 空。
+        assert!(tree.assigned_nodes(div).is_empty(), "非 slot 元素应为空");
+        assert!(tree.assigned_nodes(bold).is_empty(), "不在影子树应为空");
+        assert!(tree.assigned_nodes(root).is_empty());
+    }
+
+    #[test]
+    fn flattened_children_crosses_shadow() {
+        // §4：flattened 跨 shadow 边界 + slot 展开；light 不含影子内容。
+        let mut tree = NodeTree::new();
+        let root = tree.root();
+        let host = tree.create_element("x-host", "html", vec![]);
+        tree.append_child(root, host);
+        let span = tree.create_element("span", "html", vec![]);
+        tree.append_child(host, span);
+
+        let shadow = tree.attach_shadow(host, ShadowMode::Open).unwrap();
+        let inner = tree.create_element("div", "html", vec![]);
+        let slot = tree.create_element("slot", "html", vec![]);
+        tree.append_child(shadow, inner);
+        tree.append_child(shadow, slot);
+
+        // light 遍历：仅 host 自身 light 子（不含影子内容）。
+        assert_eq!(tree.children(host).collect::<Vec<_>>(), vec![span]);
+        // flattened：影子根子节点（slot 展开为被分配 light 子）⇒ 跨 shadow。
+        assert_eq!(
+            tree.flattened_children(host),
+            vec![inner, span],
+            "flattened 应跨 shadow 且展开 slot"
+        );
+        // 影子根自身的 flattened 亦然。
+        assert_eq!(tree.flattened_children(shadow), vec![inner, span]);
+        // 普通元素（无影子）flattened == children。
+        assert_eq!(tree.flattened_children(inner), Vec::new());
+        assert_eq!(tree.flattened_children(root), vec![host]);
+    }
+
+    #[test]
+    fn shadow_node_hidden_from_light_traversal() {
+        // §3.5 判别力核心（G3-B8）：light 遍历不含影子内容；影子根为独立节点。
+        let mut tree = NodeTree::new();
+        let root = tree.root();
+        let host = tree.create_element("div", "html", vec![]);
+        tree.append_child(root, host);
+        let shadow = tree.attach_shadow(host, ShadowMode::Open).unwrap();
+        let secret = tree.create_element("p", "html", vec![]);
+        tree.append_child(shadow, secret);
+
+        assert_eq!(tree.child_count(host), 0, "影子内容不得进入 light 子链");
+        assert!(
+            tree.children(host).all(|child| child != secret),
+            "light 遍历不得含影子节点"
+        );
+        assert_eq!(tree.parent(secret), Some(shadow), "影子内容父为影子根");
+        assert_eq!(tree.parent(shadow), None, "影子根独立于 light 树（无父）");
+        // 但 flattened 可见（参与布局）。
+        assert_eq!(tree.flattened_children(host), vec![secret]);
     }
 
     proptest! {

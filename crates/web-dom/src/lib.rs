@@ -9,8 +9,15 @@
 //!   DOM 侧**不持任何** `JsHandle`/`Global`。
 //! - `class_list` 由 `attrs` **惰性派生**（ADR-0016·D6，无第二写点）。
 //!
-//! G2 **不做**：`DocumentFragment`、Shadow tree、`Attr` 节点对象、Range、完整 `HTMLCollection`
-//! （均属 G3）。
+//! G2 **不做**：`DocumentFragment`、`Attr` 节点对象、Range、完整 `HTMLCollection`。
+//!
+//! # G3 S2 增量：Shadow DOM **数据模型最小面**（D6 / 施工图 §1.2；**不含 JS 面**）
+//! - `NodeKind::ShadowRoot`（**独立节点**，不是 Element）+ [`node::ShadowMode`] / [`node::ShadowRootData`]；
+//! - [`tree::NodeTree::attach_shadow`]（**mode 语义定死**：同 mode 幂等；不同 mode ⇒ `Err(NotSupported)`）
+//!   / `shadow_root` / `assigned_nodes`（slot 分发，**按需计算**）/ `flattened_children`（跨 shadow）；
+//! - 影子树链**独立于** light DOM ⇒ light 遍历天然不含影子内容（作用域隔离）。
+//!
+//! JS 面（`attachShadow`/`shadowRoot`）与 `querySelector`/事件 retargeting 属后续步（S10 / G4）。
 
 pub mod attr;
 pub mod collection;

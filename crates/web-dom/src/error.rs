@@ -11,6 +11,9 @@ pub enum DomErrorKind {
     NotAnElement,
     /// 结构性借用冲突（`try_borrow` / `try_borrow_mut` 失败 —— ADR-0016·D2）。
     BorrowConflict,
+    /// 操作在当前状态下不受支持（对齐规范 `NotSupportedError`；如 `attach_shadow`
+    /// 对已存在**不同 mode** 影子根的宿主 —— G3-B13）。
+    NotSupported,
     /// 内部不变量被破坏。
     Internal,
 }
@@ -29,6 +32,21 @@ impl DomError {
             kind,
             message: message.into(),
         }
+    }
+
+    /// 构造 `NotSupported` 错误（`attach_shadow` mode 冲突等）。
+    pub fn not_supported(message: impl Into<String>) -> Self {
+        Self::new(DomErrorKind::NotSupported, message)
+    }
+
+    /// 构造 `NotAnElement` 错误。
+    pub fn not_an_element(message: impl Into<String>) -> Self {
+        Self::new(DomErrorKind::NotAnElement, message)
+    }
+
+    /// 构造 `InvalidNode` 错误。
+    pub fn invalid_node(message: impl Into<String>) -> Self {
+        Self::new(DomErrorKind::InvalidNode, message)
     }
 
     /// 错误类别。
