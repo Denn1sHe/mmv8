@@ -41,6 +41,11 @@ ssh ubuntu@124.221.1.78 'export PATH=$HOME/.cargo/bin:$PATH; cd ~/mmv8 && cargo 
 
 # Python 侧（一律 uv 管理，pytest 测试）
 uv venv && uv pip install -r requirements.txt && uv run pytest
+
+# ⚠️ sdk-python（含原生扩展 `iv8*.so`）：**plain `uv run pytest` 禁用**（uv sync 会用缓存解包
+#    回滚 .so，覆盖 maturin develop 成果——见踩坑 #9）。正确 recipe = maturin develop + --no-sync + hasattr 实证：
+cd crates/sdk-python && maturin develop && uv run --no-sync pytest
+python -c "import iv8; C=iv8.iv8.Context; print(hasattr(C,'page'),hasattr(C,'network'),hasattr(C,'input'))"  # 须三 True
 ```
 
 ## 镜像源配置（两机已配置）
@@ -103,6 +108,15 @@ registry = "sparse+https://rsproxy.cn/index/"
      （如 `clippy::double_must_use`，G1-K-2；QA-R1「D1」为**又一实例**）⇒ **仅远程触发、本地绿**。
      **对策**：门禁**两端都跑**（本地 + 远程 `cargo clippy --all-targets --all-features -- -D warnings`）。
      归入 `TASKS.md` **K-14（工具链漂移）**。
+9. **⚠️⚠️ 幽灵 `.so` 陷阱（2026-10-13 实踩；陈旧陷阱家族第 4 例，首次给机制）**：本仓 `uv run pytest`
+   **默认带 sync**，会用 uv 缓存里的 wheel **解包覆盖** `site-packages/iv8/`，把 `maturin develop`
+   刚装好的 `.so` **打回旧版（mtime 也随之还原）** ⇒ 表现为 API 缺失（`AttributeError: ...'page'`）。
+   **决定性现场**：带 sync 的 `uv run pytest` 一跑，`site-packages/iv8/iv8*.so` 即被打回
+   `59MB / 01:42` 旧件（**mtime 还原 = uv 缓存解包覆盖**）；干净重建后 `iv8.iv8.Context` 全 14 属性在位。
+   - **正确 recipe（sdk-python 专用）**：`maturin develop` → **`uv run --no-sync pytest`** → **`hasattr(新 API)` 实证**。
+   - **plain `uv run pytest` 对本 crate 禁用**；**时间戳 / 大小 / `EXIT=0` 均不可信**（幽灵产物可时间戳新、
+     `EXIT=0`、实为空壳）——**只信 `hasattr` 实证**。
+   - **硬化脚本**：`scripts/check-sdk-python-env.sh`（`hasattr` 实证 + recipe 打印）。
 
 ## 内存注意事项（远程 3.6 GB）
 
