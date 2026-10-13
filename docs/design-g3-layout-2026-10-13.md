@@ -121,7 +121,7 @@
 > `NodeRef<'a>{tree,id}`（≥24B）违反。**裁决 = A-3**：`ElementSlot<'a> = {tree, id, data, flags, atoms}`（**不持 slice**；
 > **(A)-直译 / A-1（leak）/ A-2（新 unsafe）均排除**）。
 > **✅ 已解（`88351d6`）**：`NodeRef<'a> = &'a ElementSlot<'a>`（**8B**）+ **`SlotCore`+`OnceCell` 两阶段背引用（零 unsafe）⇒ 父 / 子 / 兄弟全导航一次到位** ⇒ **`S7-nav` 消解**（升级线**未触发**）。
-> **句柄 as-built 暂缓定稿**：leak → `SlotCore`（**零泄漏**）**限时试行中**（成功 = 零泄漏 as-built / 失败 = leak as-built + 「零泄漏优化」G5 前登记）。**opaque 锚点 = 槽地址（P-4 兼容）**。
+> **句柄 as-built 终稿（2026-10-13）= leak 版**：「零泄漏 `SlotCore`」被借检**实证拒绝**（`E0515`：cannot return value referencing local variable `core`/`slots`；`E0505`：cannot move out of `slots` because it is borrowed）⇒ **零泄漏在安全 Rust 下不可构造**。**裁决：维持 leak 版为 as-built**（两阶段 `Vec → Box::leak → Cell 回填`；**泄漏口径 = 每次 `build_slots`（host 重建）一次、非每 resolve**）；**辩论关闭**，「零泄漏优化」转入 **G5 内存优化批**（§7）。**opaque 锚点 = 槽地址（P-4 兼容）**。
 >
 > **导航依赖核验（§3.3~§3.7 + S11，2026-10-13）**：
 > ① **light 组合器**（` ` `>` `+` `~`）才调 `parent_element`/兄弟（`selectors-0.40.0/matching.rs:827-843`）——
@@ -812,7 +812,7 @@ shadow 隔离**必须有负对照**；`layout-backend` 目标 **≥80% lines**�
 | **R15** | **resolve 无增量 ⇒ 每次全量 restyle** | 未实现 restyle root | 性能/内存面 | **restyle root**（§2.2）；若退化为全树 ⇒ **具名登记**（ADR-0017 as-built 范式） | 工程师 |
 | **R16** | **stylo prefs/`servo` feature 初始化时机** | 无 GUI 环境下 prefs 初始化 | 启动失败 | **P-11 探针**（无 GUI 可运行性）；**S1 实测 PASS**；落 S4 | 工程师 |
 | **R17** ✅ | **`TElement` 5 个必需 `unsafe fn` vs 全仓 `forbid(unsafe_code)`**（P-1b 已定形：**5 声明 + 0 腔体**，见 §7 P-1b） | 实现 `TElement`（Stylo 级联必备） | 承载 crate 不能零 unsafe | **已落 = 「E′+R」**（**ADR-0024**；白名单形态 = 尾斜杠目录条目 `crates/layout-backend/src/stylo_host/` + Rust 门禁 a/b/c/d）；**守卫数据行已落地**（维护者 2026-10-13 18:10 批准）；**S6 门已解** | 架构师+主理人 |
-| **R18** ✅ | **`TElement` 句柄 `E` 必须 8 字节**（stylo `SharingCache<E>` 不变量；实测违反即 panic）→ 落地曾遇自引用障碍 | `ThreadLocalStyleContext::new()` **无条件**构造共享缓存（`stylo/sharing/mod.rs:605` 断言 `size/align`）；(A) 直译要求 slot 持**自身 slice 引用**（安全 Rust 不可构造） | **级联 panic ⇒ S7-b③ / S6 受阻** | **已解 = A-3 + 全导航**：`88351d6` 落地 `NodeRef<'a> = &'a ElementSlot<'a>`（**8B**；`SlotCore`+`OnceCell` **两阶段背引用、零 unsafe**；**父/子/兄弟全到位**）⇒ **S7-nav 消解**。**句柄 as-built 暂缓定稿**（leak → `SlotCore` **零泄漏限时试行中**：成功 = 零泄漏 as-built / 失败 = leak as-built + 「零泄漏优化」G5 前登记）。**排除**：(A)直译 / A-1（leak）/ A-2（新 unsafe）/ **blitz 直借（依赖 unsafe）**。**opaque 锚点 = 槽地址（P-4 兼容）** | 架构师+工程师 |
+| **R18** ✅ | **`TElement` 句柄 `E` 必须 8 字节**（stylo `SharingCache<E>` 不变量；实测违反即 panic）→ 落地曾遇自引用障碍 | `ThreadLocalStyleContext::new()` **无条件**构造共享缓存（`stylo/sharing/mod.rs:605` 断言 `size/align`）；(A) 直译要求 slot 持**自身 slice 引用**（安全 Rust 不可构造） | **级联 panic ⇒ S7-b③ / S6 受阻** | **已解 = A-3 + 全导航**（`88351d6`：`NodeRef<'a> = &'a ElementSlot<'a>` **8B**；父/子/兄弟全到位）⇒ **S7-nav 消解**。**句柄 as-built 终稿 = leak 版**（两阶段 `Vec → Box::leak → Cell 回填`）；**「零泄漏在安全 Rust 下不可构造」——借检实证 `E0515`（cannot return value referencing local variable core/slots）+ `E0505`（cannot move out of slots because it is borrowed）**；**泄漏口径 = 每次 `build_slots`（host 重建）一次、非每 resolve**；**「零泄漏优化」入 G5 内存优化批（§7）**。**排除**：(A)直译 / A-1 / A-2 / blitz 直借（依赖 unsafe）。**opaque 锚点 = 槽地址（P-4 兼容）** | 架构师+工程师 |
 
 ---
 
@@ -835,6 +835,11 @@ shadow 隔离**必须有负对照**；`layout-backend` 目标 **≥80% lines**�
 > **导航（已解，2026-10-13）**：`88351d6` 落地**完整导航**（父 / 子 / 兄弟；`SlotCore`+`OnceCell` 两阶段背引用，**零 unsafe**）
 > ⇒ **`S7-nav` 消解**；原「父链必需 / 兄弟组合器可延后」**不确定点移除**（升级线未触发；辩论草案 `18c7405` 作废）。
 > **导航依赖核验结论**（哪些测试依赖 nav）见 §0.1.3。
+>
+> **G5 内存优化批（新登记项，2026-10-13）**：句柄内存形态 **as-built = leak 版**（两阶段 `Vec → Box::leak → Cell 回填`；
+> 泄漏口径 = **每次 `build_slots`（host 重建）一次**）；**「零泄漏在安全 Rust 下不可构造」—— 借检实证 `E0515`/`E0505`**。
+> **候选（`unsafe` 保持封）**：① **arena 池复用**（尺寸档位 + `tree`/`slots` 经 `Cell` 可重指 —— 评估为**首选无-dep 路径**）；
+> ② `self_cell`；③ `ouroboros`（②③ 带**测量权衡**）。**触发** = G5 排期；**换型须重走 R18 硬边界**（`E` 8B / 零本仓 `unsafe` / P-4 兼容）。
 
 #### 探针清单（**修订版 P-1~P-11**，逐条 = 假设 + 最小实验 + 判定标准）
 

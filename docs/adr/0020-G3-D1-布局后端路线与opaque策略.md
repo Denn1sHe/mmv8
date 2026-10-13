@@ -203,8 +203,12 @@ will enable rehydration」，`blitz-dom/src/stylo.rs:316-325`）。故：
 - **S6 门**：**已随维护者批准守卫数据行解冻**（ADR-0024 决策 2 已落地）。**P-4 已 PASS ⇒ R1 解除**。
 - **实现期不变量（S7-b③，2026-10-13）**：`TElement` 句柄 `E` **必须 8 字节**（stylo 样式共享缓存
   `SharingCache<E>` vs `TypelessSharingCache` 等尺寸断言，`stylo-0.20.0/sharing/mod.rs:605`；
-  `ThreadLocalStyleContext::new()` 无条件构造 ⇒ 违反 panic）⇒ **`NodeRef<'a> = &'a ElementSlot<'a>`（主理人裁 (A)，与 blitz `&'a Node` 同构）**；
-  **(B)**（`usize` + 线程局部）**否决**（叠加全局态）。施工图 §1.2.1/§2.1/§6 R18。
+  `ThreadLocalStyleContext::new()` 无条件构造 ⇒ 违反 panic）⇒ **as-built = `NodeRef<'a> = &'a ElementSlot<'a>`（8B）
+  + 父 / 子 / 兄弟全导航（`88351d6`）**；**(B)**（`usize` + 线程局部）**否决**。
+  **句柄内存形态终稿 = leak 版**（两阶段 `Vec → Box::leak → Cell 回填`）；**「零泄漏在安全 Rust 下不可构造」——
+  借检实证 `E0515`（cannot return value referencing local variable `core`/`slots`）+ `E0505`（cannot move out of `slots`
+  because it is borrowed）**；**泄漏口径 = 每次 `build_slots`（host 重建）一次、非每 resolve**；
+  **「零泄漏优化」入 G5 内存优化批**。施工图 §1.2.1 / §2.1 / §6 R18 / §7。
 
 ## 交叉引用
 - 锁版 → **ADR-0021**；工具链/MSRV → **ADR-0022**；排程 → **ADR-0023**
