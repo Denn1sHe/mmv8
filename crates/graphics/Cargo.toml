@@ -1,0 +1,13 @@
+[package]
+name = "graphics"
+description = "Canvas/图形适配（Skia 后端，可选 WebGL/WebGPU 后端）"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]

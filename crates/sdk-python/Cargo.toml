@@ -1,0 +1,46 @@
+[package]
+name = "sdk-python"
+description = "PyO3 Python 接口层：iv8 兼容层与原生控制层"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+
+# 继承全仓 lints（含 `unsafe_code = "forbid"`）。U-1 已实证：`forbid` 下 PyO3 宏
+# （`pyclass`/`pymethods`/`pymodule`）编译通过；手工 `unsafe` 则确凿报错。
+# 证据：`.workbuddy/refs/pyo3-lint-probe-evidence/{p1b_forbid,p1c_armed,p1d_final}.txt`。
+[lints]
+workspace = true
+
+[lib]
+# 模块名 = Python 包名（`import iv8`）。rlib 供 `cargo test`；cdylib 供 maturin 出 wheel。
+name = "iv8"
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+# ⚠️ F1（实证）: `default-features = false` 会连同 `macros` 一起关掉（pyo3 的
+#    `default = ["macros"]`）⇒ 非测试构建下 `#[pyclass]`/`#[pymodule]` 全部「找不到」。
+#    故必须**显式** `features = ["macros"]`。
+# 版本：0.29（RUSTSEC-2026-0177 要求 >=0.29.0；RUSTSEC-2025-0020 要求 >=0.24.1）。
+pyo3 = { version = "0.29", default-features = false, features = ["macros"] }
+# 必须带 `version`（否则 `cargo deny` 报 `wildcard`）。与 engine-v8 的
+# `version.workspace = true`（= 0.0.0）保持一致。
+engine-v8 = { path = "../engine-v8", version = "0.0.0" }
+# G2 页面控制面（ADR-0018·D5）：`PyContext`/`PyPage`/`PyNetwork`/`PyInput` 持 `BrowsingContext`。
+navigation = { path = "../navigation", version = "0.0.0" }
+# 网络语义最小值面（`NetworkService` / `Response` / `RequestId` / `NetLogEntry`）。
+network = { path = "../network", version = "0.0.0" }
+# 有界推进预算（`RunBudget` / `RunOutcome`）。
+scheduler = { path = "../scheduler", version = "0.0.0" }
+
+[features]
+default = []
+# maturin 出 wheel 时启用：不链接 libpython（符号由宿主 Python 进程解析）。
+# 与 dev-dependencies 的 `auto-initialize` 是**两条互斥路径**（feature 分离，不混用）。
+extension-module = ["pyo3/extension-module"]
+
+[dev-dependencies]
+# 仅测试期启用 `auto-initialize`：让 `cargo test` 能自己把解释器拉起来。
+# 注：dev 侧不写 `default-features = false` ⇒ 默认带 macros，与主依赖合并后仍含 macros。
+pyo3 = { version = "0.29", features = ["auto-initialize"] }

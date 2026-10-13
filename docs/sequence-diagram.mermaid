@@ -1,0 +1,94 @@
+%% G1 引擎纵向验证 —— 时序图（关键调用流）
+%% 覆盖：初始化 / eval+原生回调 / 微任务显式管理 / GC 弱句柄 / Python 回调派发 / 控制入口隔离
+%% 注意：`v8::*` 为 engine-v8 内部步骤，跨 crate 边界只传 RealmId/JsHandle/HostValue。
+
+sequenceDiagram
+    autonumber
+    participant Py as Python (sdk-python)
+    participant SDK as PyContext
+    participant R as Realm
+    participant AR as AgentRuntime
+    participant HT as HandleTable
+    participant V8 as V8 Isolate/Context
+    participant CB as NativeFn/Py 回调
+
+    Note over Py,V8: (0) 进程级初始化 —— 一次性
+
+    Py->>SDK: PyContext(mode, time_mode)
+    SDK->>AR: EngineHost::init_once()
+    AR->>V8: V8::initialize_platform + V8::initialize
+    AR->>V8: Isolate::new(CreateParams)
+    AR->>R: create_realm()
+    R->>V8: Context::new(scope)
+    R-->>SDK: Realm
+    SDK-->>Py: PyContext
+
+    Note over Py,V8: (1) eval + 原生回调 + 微任务显式管理
+
+    Py->>SDK: ctx.eval("__t.add(2,3)")
+    SDK->>R: eval(src)
+    R->>V8: scope! + Script::compile + run
+    V8->>CB: 调用注入的 __t.add(2,3)
+    CB->>R: NativeFn(&mut Realm, args) [已在外层 scope]
+    R-->>CB: Ok(HostValue::Number(5))
+    CB-->>V8: 设 rv = 5
+    V8-->>R: 结果 5
+    R->>HT: alloc(result) -> JsHandle
+    R-->>SDK: HostValue::Number(5)
+    SDK-->>Py: 5
+
+    Py->>SDK: ctx.eval("Promise.resolve().then(()=>{flag=1})")
+    SDK->>R: eval(src)
+    R->>V8: run ( Explicit 策略: 微任务入队不执行 )
+    R-->>SDK: HostValue
+    SDK-->>Py: (flag 仍为 undefined)
+    Py->>SDK: ctx.perform_checkpoint()
+    SDK->>R: perform_checkpoint()
+    R->>V8: perform_microtask_checkpoint ( 受 MicrotaskBudget 约束 )
+    V8-->>R: 跑掉 N 条微任务
+    R-->>SDK: Ok(N)
+    SDK-->>Py: N
+
+    Note over Py,V8: (2) GC 循环 —— 弱句柄（证明 C-1：JsHandle 不是根）
+
+    R->>HT: weak(h) -> WeakJsHandle
+    R->>V8: 销毁 HandleScope + request_gc
+    V8-->>HT: 若无线下强引用则回收
+    HT-->>R: WeakJsHandle::is_empty() == true
+    Note right of R: 显式 root(h) 返回 HandleLease 才保证存活；<br/>drop(lease) 后同样可回收。
+
+    Note over Py,V8: (3) Python 回调派发 —— 严守 ADR-0012（不在此同步 with_gil 等待）
+
+    Py->>SDK: ctx.expose("pyAdd", fn)
+    SDK->>R: new_function("pyAdd", 2, py_callback)
+    R->>V8: FunctionTemplate + install
+    Py->>SDK: ctx.eval("pyAdd(2,3)")
+    SDK->>R: eval(src)  [本线程已持 GIL]
+    R->>V8: Script::run
+    V8->>CB: pyAdd(2,3)
+    CB->>CB: 直接调用 Py<PyAny>（不 with_gil，线程已持锁）
+    CB-->>V8: 返回 5
+    V8-->>R: 5
+    R->>R: 若回调内再次 eval 同一 Context ⇒ ReentrantEval（禁令，ADR-0012 D5）
+    R-->>SDK: HostValue
+    SDK-->>Py: 5
+
+    Note over Py,V8: (4) 控制入口隔离
+
+    Py->>SDK: ctx.control_eval("typeof __iv8__")
+    SDK->>R: ControlPlane::eval_control
+    R-->>SDK: "object"
+    Py->>SDK: ctx.eval("typeof __iv8__")
+    SDK->>R: ControlPlane::with_page_script
+    R->>R: revoked = true ( RAII )
+    R-->>SDK: "undefined"
+    R->>R: 退出时 revoked = false（含 panic 路径）
+
+    Note over Py,V8: (5) 关闭 —— 幂等
+
+    Py->>SDK: ctx.close()
+    SDK->>R: close()
+    R->>HT: drain()  (释放全部 Global/句柄)
+    R->>V8: 释放 Context
+    R-->>SDK: Ok(())
+    SDK-->>Py: None

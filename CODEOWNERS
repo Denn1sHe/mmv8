@@ -1,0 +1,32 @@
+# ⚠️ AI 起草初稿 · 待维护者批准后方视为生效
+#
+# 依据 AGENTS.md 铁律 7（AI 永远不得修改 CODEOWNERS）与质量方案 §3.3
+# （高风险面的 AI 产出只是初稿），本文件处于「起草态」。
+#
+# TODO(维护者)：确认下方账号句柄。现按 ADR-0001 的决策人「dennis」占位，
+# 句柄错误会导致保护静默失效（GitHub 只会给一条 warning，不会报错）。
+
+# 默认：全仓库需要评审
+*                                   @dennis
+
+# ---- 铁律 6 的高风险面：AI 生成只是初稿，且必须走决策上报协议 ----
+# engine-v8：全部 unsafe 块与 GC 桥（内存安全、悬垂指针）
+/crates/engine-v8/                  @dennis
+# crypto：原语封装与随机数（指纹可信度、常量时间）
+/crates/crypto/                     @dennis
+# scheduler：事件循环、消息泵、暂停恢复（死锁、公平性、时序正确性）
+/crates/scheduler/                  @dennis
+# sdk-python：PyO3 回调边界（GIL 获取/释放、死锁）
+/crates/sdk-python/                 @dennis
+
+# ---- 铁律 7 的「AI 不得自行修改」文件：防止 AI 自己拆掉门禁 ----
+/.github/workflows/                 @dennis
+/CODEOWNERS                         @dennis
+/deny.toml                          @dennis
+/AGENTS.md                          @dennis
+/scripts/check-unsafe-whitelist.sh  @dennis
+
+# ---- 契约与基线：铁律 2（golden 只许独立 PR 改） ----
+# 目录就位后启用（T1 交付）：
+# /compat-manifest.json             @dennis
+# /tests/golden/                    @dennis

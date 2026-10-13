@@ -1,0 +1,12 @@
+# 工具链固定入口。本地与远程（Linux x86_64 目标平台验证机）共用同一 channel。
+#
+# 说明：
+# - 只固定 channel 与组件，不固定精确补丁版本；可重复构建由 Cargo.lock +
+#   V8/绑定 revision + IDL/WPT 快照 + SBOM 保证（技术方案 §19）。
+# - `components` 必须包含 rustfmt 与 clippy：两者是合并门禁工具（AGENTS.md 自检命令）。
+# - 远程曾因 rustup `minimal` profile 缺组件导致门禁不可用，故此处显式声明。
+[toolchain]
+channel = "stable"
+profile = "default"
+components = ["rustfmt", "clippy"]
+targets = []

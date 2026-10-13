@@ -1,0 +1,35 @@
+[workspace]
+
+[package]
+name = "blitzprobe"
+version = "0.0.0"
+edition = "2021"
+# 探针不参与分发（与 crates/* 的 `publish = false` 一致）。
+# 写上 `publish = false` 后，根目录 deny.toml 的 `private = { ignore = true }`
+# 才会跳过本包，`cargo deny check licenses` 才不会被自己的「未授权」条目卡住。
+publish = false
+license = "MIT OR Apache-2.0"
+description = "T2.4 probe: blitz-dom dynamic DOM / style invalidation / NodeId map / Shadow DOM"
+
+# T2.4 探针依赖（严格按 docs/design-remaining-tasks-2026-10-12.md §2.2）
+#
+# - `default-features = false` 是**硬要求**（技术方案 §3「不整包依赖 GUI」/ 判据 C2）。
+#   blitz-dom 的 default features 含 `custom-widget` → 拖入 `anyrender`。
+# - 版本用 `=` 精确锁 beta（beta 的 semver 不保证 API 稳定）。
+# - `blitz-traits` 不写 `default-features = false`：其 Cargo.toml 无 `[features]` 段。
+# - **不引入 `blitz` 顶层 / `blitz-html` / `blitz-shell` / `blitz-paint`**。
+# - **不引入 `html5ever`**（架构师决策 Q-3：markup5ever 0.12 与 0.39 源码级不兼容，
+#   T2.4 不与 html5ever 联调，先只验 blitz-dom 自身能力）。
+#   `markup5ever = "0.39"` 只用于构造 `QualName`（blitz-dom 依赖的同一条线）。
+# - 额外的三个 stylo/selectors 依赖只用于**只读**计算样式与直接触发
+#   `TShadowRoot` / `selectors::Element` 的 shadow 相关方法
+#   （判据 C9 要求「必须真去尝试」，不能因为源码写了 `todo!()` 就跳过）。
+#   它们都已在 `blitz-dom` 的依赖树里且版本逐一对齐，**不新增任何传递包**
+#   （EXP0 会在 Cargo.lock 上核对这一点）。
+[dependencies]
+blitz-dom = { version = "=0.3.0-beta.2", default-features = false }
+blitz-traits = "=0.3.0-beta.2"
+markup5ever = "0.39"
+selectors = "=0.40.0"
+style = { version = "=0.20.0", package = "stylo" }
+style_traits = { version = "=0.20.0", package = "stylo_traits" }

@@ -1,0 +1,871 @@
+//! 手写最小 JS `document` / 元素桥（`navigation::binding`，S11；ADR-0016·D3 / ADR-0019·D1）。
+//!
+//! G3 将由 `bindings-webidl` 的生成物取代；本模块是**非生成物**（不触铁律 7）。
+//!
+//! # 形态（说明为什么是「手写 JS 桥 + 原生原语」）
+//!
+//! `engine-v8` 的安全类型面**不提供**「定义属性访问器」的 API（只提供 `new_object`/`set_prop`/
+//! `new_function`/`call` 等），而 `el.className` / `el.style.color` 需要 **JS 访问器**。故本模块：
+//! 1. 注册**原生原语**（`__iv8_dom_*` / `__iv8_ev_*`，经 `Realm::new_function`+`set_global`）；
+//! 2. `eval` 一段**手写 JS shim**：以 `Object.defineProperty` 在节点 wrapper 上安装
+//!    `className`/`style` 等访问器与方法，随后**删除**原语全局（收窄页面可见面）。
+//!
+//! # 弱引用纪律（C-2）
+//!
+//! 节点 ↔ wrapper 复用由 [`engine_v8::node_map::NodeMap`]（**只存弱句柄**）承担：同一 node
+//! 两次取回 ⇒ 同一 wrapper（`node_wrapper_identity_stable`）；弱句柄被回收 ⇒ **重建** wrapper
+//! （复用前 `resolve_weak` 存活性校验，ADR-0016·D3）。DOM 侧**不持任何强句柄**。
+
+use std::cell::{Cell, RefCell};
+use std::rc::Rc;
+
+use engine_v8::error::{JsError, JsErrorKind};
+use engine_v8::native_fn::NativeFn;
+use engine_v8::node_map::NodeMap;
+use engine_v8::realm::Realm;
+use engine_v8::{HostValue, JsHandle};
+
+use web_dom::mutation::{MutationBuffer, MutationRecord};
+use web_dom::node::NodeId;
+use web_dom::tree::NodeTree;
+use web_events::{ListenerOptions, ListenerRegistry, UserActivation};
+
+use crate::input::{self, DispatchDeps, InputKind};
+
+/// wrapper 对象上存放「node 原始 `u64`」的隐藏属性名（原生原语据此反查 `NodeId`）。
+const NODE_KEY: &str = "__iv8_node";
+
+/// 构造「共享单元借用冲突」可判定错误（ADR-0016·D2：`try_borrow` ⇒ 可判定错误，非 panic）。
+pub(crate) fn refcell_conflict(what: &str) -> JsError {
+    JsError::new(
+        JsErrorKind::Internal,
+        format!("RefCell 重入：{what} 已被借用（ADR-0016·D2，可判定错误）"),
+    )
+}
+
+/// 建 `PageBinding` 所需的共享子单元（**均由 `BrowsingContext` 持有、克隆共享**）。
+#[derive(Debug, Clone)]
+pub struct BindingInputs {
+    /// 节点树（与 parser 共享）。
+    pub tree: Rc<RefCell<NodeTree>>,
+    /// 变更记录缓冲（DOM 操作写入）。
+    pub mutations: Rc<RefCell<MutationBuffer>>,
+    /// 单一 `document.write` 写缓冲。
+    pub writes: Rc<RefCell<Vec<String>>>,
+    /// 监听器注册表。
+    pub registry: Rc<RefCell<ListenerRegistry>>,
+    /// user activation 状态。
+    pub activation: Rc<RefCell<UserActivation>>,
+    /// `document.activeElement` 最小态。
+    pub active_element: Rc<Cell<Option<NodeId>>>,
+    /// parser 是否活跃（`readyState == Loading`）；`document.write` post-load 据此呈具名错误。
+    pub parser_active: Rc<Cell<bool>>,
+}
+
+/// 手写最小 JS `document` / 元素桥。
+#[derive(Debug)]
+pub struct PageBinding {
+    inputs: BindingInputs,
+    node_map: Rc<RefCell<NodeMap>>,
+}
+
+impl PageBinding {
+    /// 安装原生原语 + JS shim；返回可复用的绑定句柄。
+    ///
+    /// # Errors
+    /// 注册原生函数 / 求值 shim 失败时报 [`JsError`]。
+    #[allow(clippy::too_many_lines)] // 逐条注册 13 个原生原语 + shim，属同一「安装」关注点。
+    pub fn install(realm: &mut Realm, inputs: BindingInputs) -> Result<Self, JsError> {
+        let node_map = Rc::new(RefCell::new(NodeMap::new()));
+
+        // —— 原生原语：DOM ——
+        {
+            let tree = Rc::clone(&inputs.tree);
+            let node_map = Rc::clone(&node_map);
+            install_global_fn(
+                realm,
+                "__iv8_dom_create",
+                1,
+                Box::new(move |realm, args| {
+                    let tag = arg_str(args, 0).unwrap_or_else(|| "div".to_owned());
+                    let node = tree
+                        .try_borrow_mut()
+                        .map_err(|_| refcell_conflict("NodeTree"))?
+                        .create_element(&tag, "html", Vec::new());
+                    wrapper_for_impl(realm, &node_map, node)
+                }),
+            )?;
+        }
+        {
+            let tree = Rc::clone(&inputs.tree);
+            let mutations = Rc::clone(&inputs.mutations);
+            install_global_fn(
+                realm,
+                "__iv8_dom_append",
+                2,
+                Box::new(move |realm, args| {
+                    let parent = node_of(realm, args.first())?;
+                    let child = node_of(realm, args.get(1))?;
+                    if let (Some(parent), Some(child)) = (parent, child) {
+                        let valid = {
+                            let tree = tree
+                                .try_borrow()
+                                .map_err(|_| refcell_conflict("NodeTree"))?;
+                            tree.is_valid(parent) && tree.is_valid(child)
+                        };
+                        if valid {
+                            tree.try_borrow_mut()
+                                .map_err(|_| refcell_conflict("NodeTree"))?
+                                .append_child(parent, child);
+                            mutations
+                                .try_borrow_mut()
+                                .map_err(|_| refcell_conflict("MutationBuffer"))?
+                                .record(MutationRecord::child_list(
+                                    parent,
+                                    vec![child],
+                                    Vec::new(),
+                                ));
+                        }
+                    }
+                    Ok(HostValue::Undefined)
+                }),
+            )?;
+        }
+        {
+            let tree = Rc::clone(&inputs.tree);
+            let node_map = Rc::clone(&node_map);
+            install_global_fn(
+                realm,
+                "__iv8_dom_get_by_id",
+                1,
+                Box::new(move |realm, args| {
+                    let id = arg_str(args, 0).unwrap_or_default();
+                    let found = {
+                        let tree = tree
+                            .try_borrow()
+                            .map_err(|_| refcell_conflict("NodeTree"))?;
+                        find_by_attr(&tree, tree.root(), "id", &id)
+                    };
+                    match found {
+                        Some(node) => wrapper_for_impl(realm, &node_map, node),
+                        None => Ok(HostValue::Null),
+                    }
+                }),
+            )?;
+        }
+        {
+            let tree = Rc::clone(&inputs.tree);
+            let node_map = Rc::clone(&node_map);
+            install_global_fn(
+                realm,
+                "__iv8_dom_document",
+                0,
+                Box::new(move |realm, _args| {
+                    let root = tree
+                        .try_borrow()
+                        .map_err(|_| refcell_conflict("NodeTree"))?
+                        .root();
+                    wrapper_for_impl(realm, &node_map, root)
+                }),
+            )?;
+        }
+        {
+            let tree = Rc::clone(&inputs.tree);
+            let node_map = Rc::clone(&node_map);
+            install_global_fn(
+                realm,
+                "__iv8_dom_body",
+                0,
+                Box::new(move |realm, _args| {
+                    let found = {
+                        let tree = tree
+                            .try_borrow()
+                            .map_err(|_| refcell_conflict("NodeTree"))?;
+                        find_by_tag(&tree, tree.root(), "body")
+                    };
+                    match found {
+                        Some(node) => wrapper_for_impl(realm, &node_map, node),
+                        None => Ok(HostValue::Null),
+                    }
+                }),
+            )?;
+        }
+        {
+            let tree = Rc::clone(&inputs.tree);
+            install_global_fn(
+                realm,
+                "__iv8_dom_get_attr",
+                2,
+                Box::new(move |realm, args| {
+                    let node = node_of(realm, args.first())?;
+                    let name = arg_str(args, 1).unwrap_or_default();
+                    let value = if let Some(node) = node {
+                        tree.try_borrow()
+                            .map_err(|_| refcell_conflict("NodeTree"))?
+                            .get_attribute(node, &name)
+                            .map(str::to_owned)
+                    } else {
+                        None
+                    };
+                    Ok(value.map_or(HostValue::Null, HostValue::Str))
+                }),
+            )?;
+        }
+        {
+            let tree = Rc::clone(&inputs.tree);
+            let mutations = Rc::clone(&inputs.mutations);
+            install_global_fn(
+                realm,
+                "__iv8_dom_set_attr",
+                3,
+                Box::new(move |realm, args| {
+                    let node = node_of(realm, args.first())?;
+                    let name = arg_str(args, 1);
+                    let value = arg_str(args, 2).unwrap_or_default();
+                    if let (Some(node), Some(name)) = (node, name) {
+                        if tree
+                            .try_borrow()
+                            .map_err(|_| refcell_conflict("NodeTree"))?
+                            .is_valid(node)
+                        {
+                            tree.try_borrow_mut()
+                                .map_err(|_| refcell_conflict("NodeTree"))?
+                                .set_attribute(node, &name, &value);
+                            mutations
+                                .try_borrow_mut()
+                                .map_err(|_| refcell_conflict("MutationBuffer"))?
+                                .record(MutationRecord::attributes(node, &name, None));
+                        }
+                    }
+                    Ok(HostValue::Undefined)
+                }),
+            )?;
+        }
+        {
+            let tree = Rc::clone(&inputs.tree);
+            install_global_fn(
+                realm,
+                "__iv8_dom_get_style",
+                2,
+                Box::new(move |realm, args| {
+                    let node = node_of(realm, args.first())?;
+                    let prop = arg_str(args, 1).unwrap_or_default();
+                    let value = if let Some(node) = node {
+                        tree.try_borrow()
+                            .map_err(|_| refcell_conflict("NodeTree"))?
+                            .get(node)
+                            .and_then(|data| data.element.as_ref())
+                            .and_then(|element| element.style.get_property(&prop))
+                            .map(str::to_owned)
+                    } else {
+                        None
+                    };
+                    Ok(value.map_or(HostValue::Null, HostValue::Str))
+                }),
+            )?;
+        }
+        {
+            let tree = Rc::clone(&inputs.tree);
+            install_global_fn(
+                realm,
+                "__iv8_dom_set_style",
+                3,
+                Box::new(move |realm, args| {
+                    let node = node_of(realm, args.first())?;
+                    let prop = arg_str(args, 1).unwrap_or_default();
+                    let value = arg_str(args, 2).unwrap_or_default();
+                    if let Some(node) = node {
+                        let mut tree = tree
+                            .try_borrow_mut()
+                            .map_err(|_| refcell_conflict("NodeTree"))?;
+                        if let Some(element) =
+                            tree.get_mut(node).and_then(|data| data.element.as_mut())
+                        {
+                            element.style.set_property(&prop, &value);
+                        }
+                    }
+                    Ok(HostValue::Undefined)
+                }),
+            )?;
+        }
+        {
+            let writes = Rc::clone(&inputs.writes);
+            let parser_active = Rc::clone(&inputs.parser_active);
+            install_global_fn(
+                realm,
+                "__iv8_dom_write",
+                1,
+                Box::new(move |_realm, args| {
+                    if !parser_active.get() {
+                        // ADR-0017·D4：post-load `write` ⇒ 具名错误（消息前缀即错误名，便于契约断言）。
+                        return Err(JsError::new(
+                            engine_v8::error::JsErrorKind::Internal,
+                            "DocumentWriteAfterLoad: load 完成后 document.write 被拒（ADR-0017·D4）",
+                        ));
+                    }
+                    if let Some(text) = arg_str(args, 0) {
+                        writes
+                            .try_borrow_mut()
+                            .map_err(|_| refcell_conflict("writes"))?
+                            .push(text);
+                    }
+                    Ok(HostValue::Undefined)
+                }),
+            )?;
+        }
+
+        // —— 原生原语：事件 ——
+        {
+            let registry = Rc::clone(&inputs.registry);
+            install_global_fn(
+                realm,
+                "__iv8_ev_add",
+                5,
+                Box::new(move |realm, args| {
+                    let node = node_of(realm, args.first())?;
+                    let type_ = arg_str(args, 1).unwrap_or_default();
+                    let callback = arg_handle(args.get(2));
+                    let capture = matches!(args.get(3), Some(HostValue::Bool(true)));
+                    let once = matches!(args.get(4), Some(HostValue::Bool(true)));
+                    if let (Some(node), Some(callback)) = (node, callback) {
+                        let weak = realm.weak_handle(callback)?;
+                        registry
+                            .try_borrow_mut()
+                            .map_err(|_| refcell_conflict("ListenerRegistry"))?
+                            .add(
+                                node,
+                                &type_,
+                                weak,
+                                ListenerOptions {
+                                    capture,
+                                    passive: false,
+                                    once,
+                                },
+                            );
+                    }
+                    Ok(HostValue::Undefined)
+                }),
+            )?;
+        }
+        {
+            let registry = Rc::clone(&inputs.registry);
+            install_global_fn(
+                realm,
+                "__iv8_ev_remove",
+                4,
+                Box::new(move |realm, args| {
+                    let node = node_of(realm, args.first())?;
+                    let type_ = arg_str(args, 1).unwrap_or_default();
+                    let callback = arg_handle(args.get(2));
+                    let capture = matches!(args.get(3), Some(HostValue::Bool(true)));
+                    if let (Some(node), Some(callback)) = (node, callback) {
+                        let weak = realm.weak_handle(callback)?;
+                        registry
+                            .try_borrow_mut()
+                            .map_err(|_| refcell_conflict("ListenerRegistry"))?
+                            .remove(node, &type_, weak, capture);
+                    }
+                    Ok(HostValue::Undefined)
+                }),
+            )?;
+        }
+        {
+            let deps = dispatch_deps(&inputs, &node_map);
+            install_global_fn(
+                realm,
+                "__iv8_ev_click",
+                1,
+                Box::new(move |realm, args| {
+                    let node = node_of(realm, args.first())?;
+                    if let Some(node) = node {
+                        let _ = input::dispatch_trusted(realm, &deps, node, InputKind::Click);
+                    }
+                    Ok(HostValue::Undefined)
+                }),
+            )?;
+        }
+        {
+            let deps = dispatch_deps(&inputs, &node_map);
+            install_global_fn(
+                realm,
+                "__iv8_ev_dispatch",
+                2,
+                Box::new(move |realm, args| {
+                    let node = node_of(realm, args.first())?;
+                    let type_ = arg_str(args, 1).unwrap_or_default();
+                    if let Some(node) = node {
+                        let _ = input::dispatch_named(realm, &deps, node, &type_, false);
+                    }
+                    Ok(HostValue::Undefined)
+                }),
+            )?;
+        }
+
+        realm.eval(SHIM)?;
+        Ok(Self { inputs, node_map })
+    }
+
+    /// 节点 → wrapper（复用前存活性校验；`Collected` ⇒ 重建并覆盖绑定）。
+    ///
+    /// # Errors
+    /// 建对象 / 登记句柄失败时报 [`JsError`]。
+    pub fn wrapper_for(&mut self, realm: &mut Realm, node: NodeId) -> Result<HostValue, JsError> {
+        wrapper_for_impl(realm, &self.node_map, node)
+    }
+
+    /// 供分派编排使用的共享依赖（克隆各 `Rc`）。
+    #[must_use]
+    pub fn deps(&self) -> DispatchDeps {
+        dispatch_deps(&self.inputs, &self.node_map)
+    }
+}
+
+/// 由 `BindingInputs` + `node_map` 组装分派依赖。
+fn dispatch_deps(inputs: &BindingInputs, node_map: &Rc<RefCell<NodeMap>>) -> DispatchDeps {
+    DispatchDeps {
+        tree: Rc::clone(&inputs.tree),
+        node_map: Rc::clone(node_map),
+        registry: Rc::clone(&inputs.registry),
+        activation: Rc::clone(&inputs.activation),
+        active_element: Rc::clone(&inputs.active_element),
+    }
+}
+
+/// 节点 → wrapper 的落点实现（原生原语与 `wrapper_for` 共用）。
+///
+/// **存活性校验（ADR-0016·D3）**：`node_map` 命中后先 `resolve_weak`；已回收 ⇒ `unbind` 后重建。
+pub(crate) fn wrapper_for_impl(
+    realm: &mut Realm,
+    node_map: &Rc<RefCell<NodeMap>>,
+    node: NodeId,
+) -> Result<HostValue, JsError> {
+    let key = node.raw();
+    let existing = node_map
+        .try_borrow()
+        .map_err(|_| refcell_conflict("NodeMap"))?
+        .handle_for(key);
+    if let Some(weak) = existing {
+        if let Ok(Some(value)) = realm.resolve_weak(weak) {
+            return Ok(value);
+        }
+        node_map
+            .try_borrow_mut()
+            .map_err(|_| refcell_conflict("NodeMap"))?
+            .unbind(key);
+    }
+    let handle = realm.new_object()?;
+    let _lease = realm.root(handle)?;
+    realm.set_prop(handle, NODE_KEY, HostValue::Str(node.raw().to_string()))?;
+    let weak = realm.weak_handle(handle)?;
+    node_map
+        .try_borrow_mut()
+        .map_err(|_| refcell_conflict("NodeMap"))?
+        .bind_force(key, weak);
+    Ok(HostValue::Object {
+        realm: realm.id(),
+        handle,
+    })
+}
+
+/// 注册一个原生函数到全局（`FunctionTemplate` 路径）。
+fn install_global_fn(
+    realm: &mut Realm,
+    name: &str,
+    length: u32,
+    f: NativeFn,
+) -> Result<(), JsError> {
+    let id = realm.id();
+    let handle = realm.new_function(name, length, f)?;
+    realm.set_global(name, HostValue::Function { realm: id, handle })
+}
+
+/// 取字符串参数（数字/布尔转字符串；其余 ⇒ `None`）。
+fn arg_str(args: &[HostValue], index: usize) -> Option<String> {
+    match args.get(index) {
+        Some(HostValue::Str(text)) => Some(text.clone()),
+        Some(HostValue::Number(number)) => Some(number.to_string()),
+        Some(HostValue::Bool(flag)) => Some(flag.to_string()),
+        _ => None,
+    }
+}
+
+/// 取函数参数对应的句柄。
+fn arg_handle(value: Option<&HostValue>) -> Option<JsHandle> {
+    match value {
+        Some(HostValue::Function { handle, .. } | HostValue::Object { handle, .. }) => {
+            Some(*handle)
+        }
+        _ => None,
+    }
+}
+
+/// 从 wrapper 反查 `NodeId`（读隐藏属性 `__iv8_node`）。
+fn node_of(realm: &mut Realm, value: Option<&HostValue>) -> Result<Option<NodeId>, JsError> {
+    let Some(HostValue::Object { handle, .. }) = value else {
+        return Ok(None);
+    };
+    match realm.get_prop(*handle, NODE_KEY)? {
+        HostValue::Str(raw) => Ok(raw.parse::<u64>().ok().map(raw_to_node)),
+        _ => Ok(None),
+    }
+}
+
+/// `u64`（高 32 = generation，低 32 = index）→ `NodeId`。
+fn raw_to_node(raw: u64) -> NodeId {
+    let index = u32::try_from(raw & u64::from(u32::MAX)).unwrap_or(u32::MAX);
+    let generation = u32::try_from(raw >> 32).unwrap_or(u32::MAX);
+    NodeId::new(index, generation)
+}
+
+/// 深度优先查找首个具 `attr == value` 的元素。
+fn find_by_attr(tree: &NodeTree, root: NodeId, attr: &str, value: &str) -> Option<NodeId> {
+    for child in tree.children(root) {
+        if tree.get_attribute(child, attr) == Some(value) {
+            return Some(child);
+        }
+        if let Some(found) = find_by_attr(tree, child, attr, value) {
+            return Some(found);
+        }
+    }
+    None
+}
+
+/// 深度优先查找首个标签名为 `tag` 的元素。
+fn find_by_tag(tree: &NodeTree, root: NodeId, tag: &str) -> Option<NodeId> {
+    for child in tree.children(root) {
+        if tree
+            .get(child)
+            .and_then(|node| node.element.as_ref())
+            .is_some_and(|element| element.name == tag)
+        {
+            return Some(child);
+        }
+        if let Some(found) = find_by_tag(tree, child, tag) {
+            return Some(found);
+        }
+    }
+    None
+}
+
+/// 手写 JS shim：安装 `document` / 元素访问器与方法，随即删除原生原语全局。
+const SHIM: &str = r"
+(function () {
+  'use strict';
+  var g = globalThis;
+  var nCreate = g.__iv8_dom_create;
+  var nAppend = g.__iv8_dom_append;
+  var nGetById = g.__iv8_dom_get_by_id;
+  var nDocument = g.__iv8_dom_document;
+  var nBody = g.__iv8_dom_body;
+  var nGetAttr = g.__iv8_dom_get_attr;
+  var nSetAttr = g.__iv8_dom_set_attr;
+  var nGetStyle = g.__iv8_dom_get_style;
+  var nSetStyle = g.__iv8_dom_set_style;
+  var nWrite = g.__iv8_dom_write;
+  var nEvAdd = g.__iv8_ev_add;
+  var nEvRemove = g.__iv8_ev_remove;
+  var nEvClick = g.__iv8_ev_click;
+  var nEvDispatch = g.__iv8_ev_dispatch;
+  delete g.__iv8_dom_create;
+  delete g.__iv8_dom_append;
+  delete g.__iv8_dom_get_by_id;
+  delete g.__iv8_dom_document;
+  delete g.__iv8_dom_body;
+  delete g.__iv8_dom_get_attr;
+  delete g.__iv8_dom_set_attr;
+  delete g.__iv8_dom_get_style;
+  delete g.__iv8_dom_set_style;
+  delete g.__iv8_dom_write;
+  delete g.__iv8_ev_add;
+  delete g.__iv8_ev_remove;
+  delete g.__iv8_ev_click;
+  delete g.__iv8_ev_dispatch;
+
+  function decorate(node) {
+    if (node === null || typeof node !== 'object') { return node; }
+    Object.defineProperty(node, 'className', {
+      configurable: true, enumerable: true,
+      get: function () { var v = nGetAttr(this, 'class'); return v === null ? '' : v; },
+      set: function (v) { nSetAttr(this, 'class', String(v)); }
+    });
+    Object.defineProperty(node, 'id', {
+      configurable: true, enumerable: true,
+      get: function () { var v = nGetAttr(this, 'id'); return v === null ? '' : v; },
+      set: function (v) { nSetAttr(this, 'id', String(v)); }
+    });
+    Object.defineProperty(node, 'style', {
+      configurable: true, enumerable: true,
+      get: function () {
+        var self = this;
+        var proxy = new Proxy({}, {
+          get: function (_t, prop) {
+            if (typeof prop !== 'string') { return undefined; }
+            var v = nGetStyle(self, prop);
+            return v === null ? '' : v;
+          },
+          set: function (_t, prop, val) {
+            if (typeof prop === 'string') { nSetStyle(self, prop, String(val)); }
+            return true;
+          }
+        });
+        Object.defineProperty(this, 'style', { configurable: true, enumerable: true, value: proxy });
+        return proxy;
+      }
+    });
+    node.appendChild = function (child) { nAppend(this, child); return child; };
+    node.setAttribute = function (name, value) { nSetAttr(this, String(name), String(value)); };
+    node.getAttribute = function (name) { return nGetAttr(this, String(name)); };
+    node.addEventListener = function (type, cb, opts) {
+      var isObj = (opts && typeof opts === 'object');
+      var cap = isObj ? !!opts.capture : !!opts;
+      var once = isObj ? !!opts.once : false;
+      nEvAdd(this, String(type), cb, cap, once);
+    };
+    node.removeEventListener = function (type, cb, opts) {
+      var cap = (opts && typeof opts === 'object') ? !!opts.capture : !!opts;
+      nEvRemove(this, String(type), cb, cap);
+    };
+    node.click = function () { nEvClick(this); };
+    node.dispatchEvent = function (ev) {
+      if (ev && typeof ev.type === 'string') { nEvDispatch(this, ev.type); }
+      return true;
+    };
+    // 几何口径 G2 = stub（§2.2 / R1）：确定值 0 / 空 rect，capabilities.geometry == 'stub'。
+    Object.defineProperty(node, 'offsetWidth', { configurable: true, enumerable: true, value: 0 });
+    Object.defineProperty(node, 'offsetHeight', { configurable: true, enumerable: true, value: 0 });
+    Object.defineProperty(node, 'clientWidth', { configurable: true, enumerable: true, value: 0 });
+    Object.defineProperty(node, 'clientHeight', { configurable: true, enumerable: true, value: 0 });
+    node.getBoundingClientRect = function () {
+      return { x: 0, y: 0, width: 0, height: 0, top: 0, right: 0, bottom: 0, left: 0 };
+    };
+    return node;
+  }
+
+  var doc = decorate(nDocument());
+  doc.createElement = function (tag) { return decorate(nCreate(String(tag))); };
+  doc.getElementById = function (id) {
+    var node = nGetById(String(id));
+    return node === null ? null : decorate(node);
+  };
+  doc.write = function (text) { nWrite(String(text)); };
+  Object.defineProperty(doc, 'body', {
+    configurable: true, enumerable: true,
+    get: function () { var b = nBody(); return b === null ? null : decorate(b); }
+  });
+  g.document = doc;
+
+  g.Event = function Event(type, init) {
+    this.type = String(type);
+    this.bubbles = !!(init && init.bubbles);
+    this.cancelable = !!(init && init.cancelable);
+    this.isTrusted = false;
+    this.defaultPrevented = false;
+    this.currentTarget = null;
+    this.target = null;
+  };
+})();
+";
+
+#[cfg(test)]
+mod tests {
+    use super::{BindingInputs, PageBinding};
+    use engine_v8::HostValue;
+    use engine_v8::isolate::AgentRuntime;
+    use engine_v8::realm::Realm;
+    use std::cell::{Cell, RefCell};
+    use std::rc::Rc;
+    use web_dom::mutation::MutationBuffer;
+    use web_dom::node::{NodeId, NodeKind};
+    use web_dom::tree::NodeTree;
+    use web_events::{ListenerRegistry, UserActivation};
+
+    /// 建 Realm + binding（含空树）。
+    fn setup() -> (Realm, PageBinding, Rc<RefCell<NodeTree>>) {
+        let mut realm = AgentRuntime::new()
+            .expect("runtime")
+            .create_realm()
+            .expect("realm");
+        let tree = Rc::new(RefCell::new(NodeTree::new()));
+        let inputs = BindingInputs {
+            tree: Rc::clone(&tree),
+            mutations: Rc::new(RefCell::new(MutationBuffer::new())),
+            writes: Rc::new(RefCell::new(Vec::new())),
+            registry: Rc::new(RefCell::new(ListenerRegistry::new())),
+            activation: Rc::new(RefCell::new(UserActivation::default())),
+            active_element: Rc::new(Cell::new(None)),
+            parser_active: Rc::new(Cell::new(true)),
+        };
+        let binding = PageBinding::install(&mut realm, inputs).expect("install");
+        (realm, binding, tree)
+    }
+
+    fn find_by_tag(tree: &NodeTree, root: NodeId, tag: &str) -> Option<NodeId> {
+        for child in tree.children(root) {
+            if let Some(element) = tree.get(child).and_then(|node| node.element.as_ref()) {
+                if element.name == tag {
+                    return Some(child);
+                }
+            }
+            if let Some(found) = find_by_tag(tree, child, tag) {
+                return Some(found);
+            }
+        }
+        None
+    }
+
+    #[test]
+    fn js_create_element_and_append() {
+        // §3.7：document.createElement/appendChild 反映到 NodeTree。
+        let (mut realm, _binding, tree) = setup();
+        realm
+            .eval("var d = document.createElement('div'); d.id = 'made'; document.appendChild(d);")
+            .expect("eval");
+        let tree = tree.borrow();
+        let div = find_by_tag(&tree, tree.root(), "div").expect("应建出 <div>");
+        assert_eq!(tree.get_attribute(div, "id"), Some("made"));
+        assert_eq!(tree.parent(div), Some(tree.root()), "应挂到文档根");
+    }
+
+    #[test]
+    fn js_set_classname_and_style() {
+        // §3.7：el.className / el.style.color 反映到属性 / 内联声明。
+        let (mut realm, _binding, tree) = setup();
+        realm
+            .eval(
+                "var e = document.createElement('div'); e.className = 'a b'; e.style.color = 'red'; document.appendChild(e);",
+            )
+            .expect("eval");
+        let tree = tree.borrow();
+        let div = find_by_tag(&tree, tree.root(), "div").expect("应有 div");
+        assert_eq!(
+            tree.get_attribute(div, "class"),
+            Some("a b"),
+            "className 应写入 class 属性"
+        );
+        let element = tree
+            .get(div)
+            .and_then(|node| node.element.as_ref())
+            .unwrap();
+        assert_eq!(
+            element.style.get_property("color"),
+            Some("red"),
+            "style.color 应写入内联声明"
+        );
+    }
+
+    #[test]
+    fn js_get_element_by_id() {
+        // §3.7：document.getElementById 命中正确节点。
+        let (mut realm, _binding, tree) = setup();
+        realm
+            .eval(
+                "var e = document.createElement('span'); e.id = 'tgt'; document.appendChild(e); globalThis.__found = document.getElementById('tgt');",
+            )
+            .expect("eval");
+        assert_eq!(
+            realm.eval("globalThis.__found === e").unwrap(),
+            HostValue::Bool(true),
+            "getElementById 应返回同一 wrapper"
+        );
+        let tree = tree.borrow();
+        let span = find_by_tag(&tree, tree.root(), "span").expect("应有 span");
+        assert_eq!(
+            tree.get(span).map(|node| node.kind),
+            Some(NodeKind::Element)
+        );
+    }
+
+    #[test]
+    fn node_wrapper_identity_stable() {
+        // §3.7：同一节点两次取回（不强制 GC）⇒ 同一 wrapper（node_map 复用）。
+        let (mut realm, _binding, _tree) = setup();
+        realm
+            .eval(
+                "var e = document.createElement('p'); e.id = 'same'; document.appendChild(e); globalThis.__a = document.getElementById('same'); globalThis.__b = document.getElementById('same');",
+            )
+            .expect("eval");
+        assert_eq!(
+            realm.eval("globalThis.__a === globalThis.__b").unwrap(),
+            HostValue::Bool(true),
+            "同一 node 两次取回应为同一 wrapper"
+        );
+    }
+
+    #[test]
+    fn node_wrapper_recreated_after_collection() {
+        // §3.7 / ADR-0016·D3：wrapper 被回收后，同节点再次取回应**重建**（新 wrapper）。
+        let (mut realm, mut binding, tree) = setup();
+        let node = tree.borrow_mut().create_element("div", "html", Vec::new());
+        let first = binding.wrapper_for(&mut realm, node).expect("first");
+        let first_handle = match first {
+            HostValue::Object { handle, .. } => handle,
+            other => panic!("期望 Object，得到 {other:?}"),
+        };
+        // 宿主侧只持弱句柄 ⇒ 切断可达后 GC 回收 wrapper。
+        realm.collect_garbage_for_testing().expect("gc");
+        let second = binding.wrapper_for(&mut realm, node).expect("second");
+        let second_handle = match second {
+            HostValue::Object { handle, .. } => handle,
+            other => panic!("期望 Object，得到 {other:?}"),
+        };
+        assert_ne!(
+            first_handle, second_handle,
+            "回收后同节点取回应重建 wrapper（新句柄）"
+        );
+    }
+
+    #[test]
+    fn refcell_reentry_is_error_not_panic() {
+        // ADR-0016·D2 / §3.7：native fn 借树期间再借同树 ⇒ **可判定错误**（非 `RefCell` panic）。
+        // 构造「native fn A 持 NodeTree 借用 → JS 触发 native fn B（createElement）再借树」：
+        // 由测试持住树借用以模拟 A；native B 经 `try_borrow_mut` 失败 ⇒ 抛出可捕获错误（含 message）。
+        let (mut realm, _binding, tree) = setup();
+        let held = tree.borrow_mut();
+        let message = match realm
+            .eval(
+                "(function () { try { document.createElement('div'); return 'no-error'; } catch (e) { return e.message; } })()",
+            )
+            .expect("eval 应返回（不 panic）")
+        {
+            HostValue::Str(text) => text,
+            other => panic!("期望 Str，得到 {other:?}"),
+        };
+        drop(held);
+        assert!(
+            message.contains("RefCell 重入"),
+            "重入借树应返回可判定错误，实得 {message:?}"
+        );
+    }
+
+    #[test]
+    fn dom_wrapper_not_a_cycle_leak() {
+        // §3.7：只走弱引用路径 ⇒ 宿主侧不持强引用，切断 JS 可达后 GC 可回收（t2_1 形状）。
+        let (mut realm, binding, _tree) = setup();
+        realm
+            .eval("globalThis.__node = document.createElement('section');")
+            .expect("eval");
+        let weak = match realm.eval("globalThis.__node").unwrap() {
+            HostValue::Object { handle, .. } => {
+                // 经 binding 的 node_map 反查该 node 的弱句柄。
+                let raw = match realm.get_prop(handle, super::NODE_KEY).unwrap() {
+                    HostValue::Str(raw) => raw.parse::<u64>().unwrap(),
+                    other => panic!("期望 Str，得到 {other:?}"),
+                };
+                let node = super::raw_to_node(raw);
+                binding
+                    .node_map
+                    .borrow()
+                    .handle_for(node.raw())
+                    .expect("node_map 应有弱绑定")
+            }
+            other => panic!("期望 Object，得到 {other:?}"),
+        };
+        // 宿主侧只持弱句柄 ⇒ 切断 JS 可达后应可回收（无强引用钉住）。
+        realm.eval("delete globalThis.__node;").unwrap();
+        realm.collect_garbage_for_testing().expect("gc");
+        assert!(
+            matches!(realm.resolve_weak(weak), Ok(None) | Err(_)),
+            "弱引用路径不应钉住 wrapper（应已回收）"
+        );
+    }
+}

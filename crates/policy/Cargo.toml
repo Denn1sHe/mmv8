@@ -1,0 +1,15 @@
+[package]
+name = "policy"
+description = "origin、权限、安全上下文与 CSP 等策略状态"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+# origin 解析与规范化（ADR-0018·D6：default-port 折叠 / 大小写 / query+fragment 剥离）。
+url = "2"

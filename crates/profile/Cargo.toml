@@ -1,0 +1,13 @@
+[package]
+name = "profile"
+description = "环境画像：版本化契约，serde 校验，未知路径默认报错"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]

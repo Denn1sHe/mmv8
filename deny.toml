@@ -1,0 +1,71 @@
+# ⚠️ AI 起草初稿 · 待维护者批准后方视为生效
+#
+# 依据 AGENTS.md 铁律 7（AI 永远不得修改 deny.toml）与质量方案 §3.3，本文件处于
+# 「起草态」；批准前只作参考，不作为发布门禁。
+#
+# 对应质量方案 §1：`cargo deny check`（licenses / bans / advisories / sources）
+# 一次解决许可合规（MPL 边界）与依赖安全公告，直接对应技术方案 §19 发布工程要求。
+# 配置格式针对 cargo-deny 0.20.x 校验通过。
+
+# ---------------------------------------------------------------- 依赖图范围
+[graph]
+# 只检查默认特性，避免 optional 重型后端（Skia / ANGLE 等）污染门禁口径。
+# CI 的 cargo-deny 调用**不得**加 --all-features，否则 CLI 会覆盖本行（见 ci.yml）。
+all-features = false
+# 明确列出目标平台，避免「只在 mac 上通过」的漏检（跨平台纪律）
+targets = [
+  { triple = "aarch64-apple-darwin" },
+  { triple = "x86_64-apple-darwin" },
+  { triple = "x86_64-unknown-linux-gnu" },
+]
+
+# ---------------------------------------------------------------- 安全公告
+[advisories]
+# 已确认不适用 / 暂不可修的公告逐条登记在此，并写明理由（禁止批量忽略）
+ignore = []
+
+# 未被维护的依赖：只对本 workspace 的直接依赖告警（可选值 all / workspace /
+# transitive / none）。社区版允许存在模拟型依赖，但每一处豁免都应在 PR 描述中说明。
+unmaintained = "workspace"
+
+# ---------------------------------------------------------------- 许可证
+[licenses]
+# 参考技术方案 §19：MPL 组件（Stylo 等）只要保留清晰文件边界即可纳入，
+# 因此不排斥 MPL-2.0。新增许可类别必须先核对通知要求，不允许静默扩充。
+allow = [
+  "MIT",
+  "Apache-2.0",
+  "Apache-2.0 WITH LLVM-exception",
+  "BSD-2-Clause",
+  "BSD-3-Clause",
+  "ISC",
+  "Unicode-3.0",
+  "Unicode-DFS-2016",
+  "Zlib",
+  "MPL-2.0",
+  "CC0-1.0",
+  "0BSD",
+  "BSL-1.0",
+  "OpenSSL",
+  "NCSA",
+]
+# 本 workspace 的成员均 `publish = false`（私有 crate），不参与分发，
+# 因此不受许可证白名单约束。仓库自身许可证尚未拍板（TASKS.md D-02）。
+private = { ignore = true }
+# 白名单是「预先声明可接受的许可类别」，当前依赖树尚未覆盖全部条目属正常。
+# 仍保留 warn（而非 allow）：否则陈旧 / 写错的条目永远不会被告警，白名单会腐化。
+unused-allowed-license = "warn"
+
+# ---------------------------------------------------------------- 禁止项
+[bans]
+# 同一 crate 多版本共存先告警（依赖树留档），避免误伤传递依赖
+multiple-versions = "warn"
+# 禁止通配符版本：可重复构建的前提（技术方案 §19）
+wildcards = "deny"
+deny = []
+
+# ---------------------------------------------------------------- 来源
+[sources]
+# 只允许 crates.io（经 rsproxy 镜像）来源，禁止未知 registry 与 git 依赖
+unknown-registry = "deny"
+unknown-git = "deny"

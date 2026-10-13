@@ -1,0 +1,19 @@
+[project]
+name = "iv8-contract"
+version = "0.0.0"
+description = "iv8 自研运行时的 G0 契约测试 runner 与 Chromium 差分 harness"
+requires-python = ">=3.13"
+dependencies = [
+    "jsonschema>=4.23",
+    "pyyaml>=6.0",
+]
+
+[dependency-groups]
+dev = ["pytest>=8.3"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+# tmp_path 基址固定在仓库内：默认的 /tmp/var/folders/... 在受限沙箱下不可写，
+# 会让所有用到 tmp_path 的用例以 PermissionError 失败（看起来像代码 bug，实际是环境）。
+addopts = "-q --basetemp=.pytest_tmp"

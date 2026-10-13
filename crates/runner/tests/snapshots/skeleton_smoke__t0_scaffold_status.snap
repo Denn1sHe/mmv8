@@ -1,0 +1,7 @@
+---
+source: crates/runner/tests/skeleton_smoke.rs
+expression: "runner::scaffold_status()"
+---
+iv8 self-hosted runtime
+scaffold: engine-v8 isolated, workspace compiled
+status: skeleton

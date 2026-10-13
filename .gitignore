@@ -1,0 +1,30 @@
+# Rust
+/target/
+**/*.rs.bk
+
+# insta 未被接受的快照（快照本身要提交，未接受的新快照不提交）
+*.snap.new
+
+# Python（uv / pytest）
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# 编辑器 / 系统
+.DS_Store
+.idea/
+.vscode/
+
+# 本地工作区的 agent 记忆，不入版本库
+.workbuddy/
+
+# Python 侧（contracts/，见 docs/adr/0005 与 AGENTS.md 的 Python 约定）
+contracts/.venv/
+contracts/.pytest_tmp/
+contracts/**/__pycache__/
+contracts/**/*.pyc
+contracts/uv.lock
+
+# PoC 探针（独立 workspace，见 poc/README.md）
+poc/**/target/

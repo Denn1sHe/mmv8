@@ -1,0 +1,13 @@
+[package]
+name = "resources"
+description = "资源与性能时序：ResourceTiming、Observer 与资源表"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]

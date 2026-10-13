@@ -1,0 +1,13 @@
+[package]
+name = "crypto"
+description = "WebCrypto 分层：算法后端能力表与 Web 接口语义（禁止自写密码算法）"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]

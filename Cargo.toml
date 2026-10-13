@@ -1,0 +1,72 @@
+# iv8 自研运行时 —— Cargo workspace 根清单（T0 工程底座）
+#
+# crate 边界来自《iv8 自研运行时完整技术方案》第 16 节「Cargo workspace 按边界拆分」。
+# 本文件属于「工程底座」，任何边界调整须先落 ADR（AGENTS.md 会话纪律）。
+#
+# 本 workspace 只做骨架：除 `runner`（含脚手架自检代码与测试）外，其余成员
+# 目前是占位 lib（仅有 crate 级文档）。目的有二：① 验证 crate 边界可编译、
+# lint 与测试基建可用；② 为后续 G0/G1 提供稳定的依赖图起点。
+# **不在此处引入功能依赖**，功能依赖由对应 crate 在其落地 PR 中按需引入（一事一 PR）。
+
+[workspace]
+resolver = "3"
+members = [
+    "crates/engine-v8",
+    "crates/bindings-webidl",
+    "crates/web-dom",
+    "crates/web-events",
+    "crates/navigation",
+    "crates/scheduler",
+    "crates/profile",
+    "crates/policy",
+    "crates/web-style",
+    "crates/layout-backend",
+    "crates/graphics",
+    "crates/network",
+    "crates/resources",
+    "crates/storage",
+    "crates/crypto",
+    "crates/workers",
+    "crates/debug",
+    "crates/sdk-python",
+    "crates/runner",
+]
+
+[workspace.package]
+# 版本在 G0 契约冻结后由发布工程统一确定；骨架阶段固定 0.0.0 表示「未发布」。
+version = "0.0.0"
+edition = "2024"
+# 许可证：ADR-0005 决策 1（Apache-2.0 OR MIT 双许可，Rust 生态事实标准）。
+# 依赖侧含 MPL-2.0（stylo_dom）与 BSD-3（V8 / Skia），均可被本许可证链接与再分发；
+# MPL-2.0 只要求「修改了它的文件就得公开该文件」，本项目不对其源码做本地 fork。
+# 见根目录 LICENSE-MIT / LICENSE-APACHE。
+license = "MIT OR Apache-2.0"
+# MSRV：edition 2024 的最低要求，当前为**意向值** —— 尚未进 CI 矩阵（见 docs/TASKS.md
+# D-03）。质量方案 §1 要求「MSRV 固定并进 CI 矩阵」，那一步在 CI 门禁文件获批后补。
+rust-version = "1.85"
+# 本仓库不分发到 crates.io，只发布 Python wheel（maturin）。
+publish = false
+
+[workspace.dependencies]
+# 只登记「质量基建」依赖；功能依赖（rusty_v8 / html5ever / stylo / …）在各 crate
+# 落地时单独引入，避免依赖蠕变（质量方案 §5「防退化度量」）。
+insta = "1"
+proptest = "1"
+# 仅用于 dev-dependencies：workspace 一致性门禁要真正解析 Cargo.toml，
+# 手写解析器一旦与 TOML 语法脱节会给出假绿，因此用官方解析器（跨平台、纯 Rust）。
+toml = "0.9"
+
+# 全仓默认 lint（质量方案 §1）。成员通过 `[lints] workspace = true` 继承。
+#
+# 注意：`unsafe_code` 在此为 "forbid" 而非质量方案 §1 字面写法之外的其他值，
+# 因为 "forbid" 无法被任何 `#[allow]` 覆盖 —— 这正是「全仓禁止」想要的语义。
+# 唯一白名单 crate `engine-v8` 因此**不继承**本块，改为在自身 manifest 中显式
+# 声明等价 lint 集合并把 unsafe_code 放宽到 "deny"（见 crates/engine-v8/Cargo.toml
+# 内的注释与 docs/decision-briefs/2026-10-12-T0-unsafe-whitelist.md）。
+[workspace.lints.rust]
+unsafe_code = "forbid"
+missing_docs = "warn"
+
+[workspace.lints.clippy]
+all = { level = "deny", priority = -1 }
+pedantic = { level = "warn", priority = -1 }

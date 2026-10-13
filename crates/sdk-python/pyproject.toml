@@ -1,0 +1,27 @@
+# sdk-python 的 Python 侧构建/测试清单（`uv run pytest` 的装载路径）。
+#
+# 构建后端 = maturin：它读 `Cargo.toml`（`[lib] name = "iv8"`）出扩展模块 `iv8`。
+# `uv run pytest` 会自动：① 建隔离构建环境并装 maturin；② 构建并安装 `iv8`；
+# ③ 装 dev 组（pytest）；④ 跑 `tests/`。**真实 pytest 执行**，Rust 侧不模拟。
+[build-system]
+requires = ["maturin>=1.7,<2.0"]
+build-backend = "maturin"
+
+[project]
+name = "iv8"
+version = "0.0.0"
+description = "iv8 自研运行时 Python 绑定（G1 最小可用面）"
+# pyo3 0.23.5 最高支持 3.13（本地解释器 3.13.12）⇒ 上界卡在 <3.14，避免构建隔离环境
+# 误选 3.14（否则 pyo3-build-config 报 "newer than PyO3's maximum supported version"）。
+requires-python = ">=3.13,<3.14"
+
+[dependency-groups]
+dev = ["pytest>=8.3"]
+
+[tool.maturin]
+# 出 wheel 时启用 extension-module（不链接 libpython，符号由宿主解释器解析）。
+# 这条与 dev-dependencies 的 auto-initialize 分别对应「出 wheel」与「cargo test」两条路径。
+features = ["extension-module"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

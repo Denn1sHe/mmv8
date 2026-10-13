@@ -1,0 +1,24 @@
+[workspace]
+
+[package]
+name = "deadlockprobe"
+version = "0.0.0"
+edition = "2021"
+
+[dependencies]
+# 与 t2_0 / t2_1 / t2_2 探针完全一致，避免版本漂移（设计文档 §3.2）。
+v8 = "152.2.0"
+# 决策 Q-4：不引入 PyO3 就测不到 D4（GIL 路径）—— 三条死锁路径里唯一
+# 需要真 Python 解释器才能构造的一条。实测解析版本 0.23.5。
+#
+# feature 说明（偏离设计文档 §3.2 的 `extension-module`，理由见 README「偏离设计之处」）：
+#   auto-initialize  自动初始化解释器。本探针是**可执行程序**而非 Python 扩展模块，
+#                     必须自己把解释器拉起来（`Python::with_gil` 直接可用）。
+#   extension-module  链接时**不**链接 libpython（符号留给宿主进程解析）。
+#                     对 `cargo run` 的独立二进制而言 libpython 无人提供 ⇒ 运行期
+#                     dyld/got 符号解析失败。两者互斥，故取 auto-initialize。
+pyo3 = { version = "0.23", features = ["auto-initialize"] }
+
+[profile.dev]
+# V8 静态库链接体积大，关闭调试信息（与 t2_0 探针一致）。
+debug = false

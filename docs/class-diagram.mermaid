@@ -1,0 +1,228 @@
+%% G1 引擎纵向验证 —— 类图（数据模型 + 服务类）
+%% 说明：只列 G1 相关类型；`v8::*` 类型为本 crate 内部实现细节，不出现在跨 crate 签名中。
+%% 关系：--> 组合/持有；..> 依赖；--|> 实现。
+
+classDiagram
+    direction LR
+
+    class RealmId {
+        +u64 raw
+        +from_parts(isolate_seq: u32, realm_seq: u32) RealmId
+        +isolate_seq() u32
+        +realm_seq() u32
+    }
+
+    class JsHandle {
+        +u64 raw
+        +new(index: u32, generation: u32) JsHandle
+        +index() u32
+        +generation() u32
+    }
+
+    class WeakJsHandle {
+        +u64 raw
+    }
+
+    class HostValue {
+        <<enumeration>>
+        Undefined
+        Null
+        Bool(bool)
+        Number(f64)
+        Str(String)
+        Object(realm, handle)
+        Array(realm, handle)
+        Function(realm, handle)
+    }
+
+    class JsError {
+        +JsErrorKind kind
+        +String message
+        +kind() JsErrorKind
+        +message() str
+    }
+
+    class JsErrorKind {
+        <<enumeration>>
+        Compile
+        Exception
+        Collected
+        StaleHandle
+        WrongRealm
+        Terminated
+        MicrotaskBudget
+        CallbackDeadline
+        GcCycleForbidden
+        ControlRevoked
+        ReentrantEval
+        Internal
+    }
+
+    class EngineHost {
+        +init_once() Result~(), JsError~
+        +is_initialized() bool
+    }
+
+    class AgentRuntime {
+        -OwnedIsolate isolate
+        +new() Result~Self, JsError~
+        +create_realm() Result~Realm, JsError~
+        +thread_safe_handle() TerminateHandle
+    }
+
+    class TerminateHandle {
+        +terminate_execution()
+    }
+
+    class Realm {
+        -Box isolate
+        -RealmId identity
+        -Global~Context~ context
+        -HandleTable handles
+        -Vec native_fns
+        -ModuleRegistry module_registry
+        -Option module_host
+        -String module_root
+        -bool in_callback
+        -TerminateHandle terminate
+        -Duration microtask_grace
+        -bool closed
+        +id() RealmId
+        +eval(src) Result~HostValue, JsError~
+        +eval_module(src, url) Result~HostValue, JsError~
+        +get_prop(h, key) Result~HostValue, JsError~
+        +set_prop(h, key, v) Result~(), JsError~
+        +call(h, this, args) Result~HostValue, JsError~
+        +root(h) Result~HandleLease, JsError~
+        +weak(h) Result~WeakJsHandle, JsError~
+        +new_function(name, len, f) Result~JsHandle, JsError~
+        +install_native_at(spec, f) Result~JsHandle, JsError~
+        +set_microtasks_policy(p)
+        +set_microtask_grace(grace)
+        +perform_checkpoint() Result~usize, JsError~
+        +set_module_root(url)
+        +set_module_host(host)
+        +close() Result~(), JsError~
+    }
+
+    class HandleTable {
+        -Vec~Slot~ slots
+        -Vec~u32~ free
+        -RealmId realm
+        +new(realm) HandleTable
+        +alloc(isolate, local) Result~JsHandle, JsError~
+        +resolve(scope, h) Result~Local, JsError~
+        +free(h) Result~(), JsError~
+        +drain()
+    }
+
+    class Slot {
+        +u32 generation
+        +Option~Weak~ weak
+    }
+
+    class HandleLease {
+        -RealmId realm
+        -JsHandle handle
+        -Global~Value~ global
+        +realm() RealmId
+        +handle() JsHandle
+    }
+
+    class NativeFn {
+        <<type alias>>
+        FnMut(~Realm, ~[HostValue]) Result~HostValue, JsError~
+    }
+
+    class NativeFnSpec {
+        +String name
+        +u32 length
+        +u32 id
+    }
+
+    class MicrotaskPolicy {
+        <<enumeration>>
+        Explicit
+        Auto
+    }
+
+    class MicrotaskBudget {
+        +u32 max_jobs
+    }
+
+    class ModuleHost {
+        <<trait>>
+        +resolve(referrer, specifier) Option~String~
+        +load(url) Result~String, JsError~
+    }
+
+    class ModuleRegistry {
+        -Map~String, Global~Module~~ cache
+    }
+
+    class NodeMap {
+        -Map~u64, WeakJsHandle~ by_node
+        -Map~WeakJsHandle, u64~ by_handle
+        +bind(node, h) Option~WeakJsHandle~
+        +handle_for(node) Option~WeakJsHandle~
+        +node_for(h) Option~u64~
+        +unbind(node)
+        +len() usize
+    }
+
+    class ControlPlane {
+        -Realm realm
+        -bool revoked
+        +new(host) Result~Self, JsError~
+        +eval_control(src) Result~HostValue, JsError~
+        +eval_page(src) Result~HostValue, JsError~
+        +with_page_script(f) R
+        +is_control_available() bool
+        +realm_mut() Realm
+    }
+
+    class PyContext {
+        -RefCell plane
+        -Arc callback_deadline_ms
+        -String mode
+        -String time_mode
+        +eval(src) PyObject
+        +eval_module(src, url) PyObject
+        +expose(name, cb) ()
+        +perform_checkpoint() usize
+        +control_eval(src) PyObject
+        +close() ()
+        +set_callback_deadline_ms(ms)
+    }
+
+    class PyJsRef {
+        -RealmId realm
+        -JsHandle handle
+        -HandleLease _lease
+    }
+
+    EngineHost ..> AgentRuntime : 前置初始化
+    AgentRuntime *-- Realm : create_realm
+    AgentRuntime --> TerminateHandle : thread_safe_handle
+    Realm *-- HandleTable : 持有一张
+    Realm ..> HostValue : 产出
+    Realm ..> JsError : 返回
+    HandleTable *-- Slot : Vec
+    HandleTable ..> JsHandle : alloc
+    HandleLease ..> JsHandle : 自持 Global（不借用表，ADR-0013）
+    Realm ..> HandleLease : root 返回
+    Realm ..> WeakJsHandle : weak 返回
+    Realm ..> NativeFn : new_function
+    NativeFnSpec ..> NativeFn : 描述
+    Realm *-- MicrotaskPolicy : 配置
+    MicrotaskBudget ..> Realm : 约束 checkpoint
+    ModuleRegistry ..> ModuleHost : 由宿主提供
+    NodeMap ..> WeakJsHandle : 映射（弱，C-2）
+    NodeMap ..> NodeMap : u64 key（不依赖 web-dom）
+    ControlPlane *-- Realm : 单 Realm 双模式（持有）
+    PyContext *-- ControlPlane : 包装（RefCell）
+    PyContext ..> HostValue : 经 convert 往返
+    PyContext ..> PyJsRef : 句柄载体
+    HostValue ..> RealmId : 携带
+    HostValue ..> JsHandle : 携带
+    JsError *-- JsErrorKind : 分类

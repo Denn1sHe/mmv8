@@ -1,0 +1,20 @@
+[package]
+name = "web-dom"
+description = "规范 DOM：节点树、属性反射、Live 集合、Range、Shadow DOM 与自定义元素"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+# 内联样式值（§1.2 `ElementData.style`）；web-dom → web-style 单向依赖，**不依赖 engine-v8**（类型面纪律）。
+# 必须带 `version`（否则 cargo deny 报 wildcard；与 workspace.package.version = 0.0.0 一致）。
+web-style = { path = "../web-style", version = "0.0.0" }
+
+[dev-dependencies]
+# `tree_ops_state_machine` 属性测试（随机结构操作后链自洽）。
+proptest = { workspace = true }

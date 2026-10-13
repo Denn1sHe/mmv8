@@ -1,0 +1,13 @@
+[package]
+name = "layout-backend"
+description = "盒树、布局算法与几何/尺寸 API（首选 Blitz 集成，备选 Stylo+Taffy+Parley）"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]

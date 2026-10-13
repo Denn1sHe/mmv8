@@ -1,0 +1,9 @@
+[workspace]
+
+[package]
+name = "t2_1_cppgc"
+version = "0.0.0"
+edition = "2021"
+
+[dependencies]
+v8 = "152.2.0"

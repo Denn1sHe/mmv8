@@ -1,0 +1,110 @@
+%% G2 页面纵向验证 —— 时序图（纵向样例关键调用流）
+%% 覆盖：page.load / 流式解析 / 阻塞脚本暂停-执行-写回-恢复 / fetch 等待-回填 /
+%%       Promise 更新 DOM / MutationObserver / 可信输入 click / 导航·close
+%% 注意：v8::* 为 engine-v8 内部步骤；跨 crate 边界只传 RealmId/JsHandle/HostValue/NodeId。
+
+sequenceDiagram
+    autonumber
+    participant Py as Python (sdk-python)
+    participant BC as BrowsingContext
+    participant PH as ParserHost (navigation)
+    participant TB as html5ever TreeBuilder/Sink
+    participant DOM as NodeTree (web-dom)
+    participant RL as RunLoop (scheduler)
+    participant R as Realm (engine-v8)
+    participant NET as NetworkService
+    participant EV as web-events
+
+    Note over Py,DOM: (0) page.load —— 建文档 + 启动流式解析
+
+    Py->>BC: page.load(snapshot)
+    BC->>BC: controller.begin_navigation(url)  ( epoch += 1 )
+    BC->>DOM: new Document + NodeTree
+    BC->>PH: ParserHost::new(tree, opts)
+    BC->>RL: schedule(ScriptBlocking, token_for_root)
+    BC-->>Py: epoch
+
+    Note over Py,DOM: (1) page.load 内 —— 流式解析 + 阻塞脚本【同步执行】（as-built 2G）
+
+    BC->>PH: feed(html_chunk)
+    PH->>TB: tokenizer.feed(input)
+    TB->>DOM: create_element / append (流式建树)
+    TB-->>PH: TokenizerResult::Script(script_node)   ( 暂停点对 type 无感 )
+    PH-->>BC: ParseOutcome::BlockedOnScript(node)
+    alt classic
+        BC->>DOM: text_content(node) = script 源码
+        BC->>R: with_page_script { eval_with_deadline(src, 固定 2s) }   ( 页面 scope; 不经 ScriptBlocking 任务 )
+        Note right of R: 打断 ⇒ Terminated（watchdog）；as-built：上限固定 2s（非 RunBudget.deadline）
+        R->>DOM: document.write(...) -> PageBinding -> shared.writes
+        BC->>PH: enqueue_document_write(writes)   ( 保序 push_front, 上层不碰 BufferQueue )
+        BC->>PH: resume()
+    else type=module
+        BC->>BC: 记入 defer 队列 + 立即 resume()   ( 永不在暂停点执行, D3模块条款 )
+    end
+    PH->>TB: tokenizer.feed(input)  ( 先注入 pending_writes )
+    TB->>DOM: 解析写入内容 -> 新节点
+    TB-->>PH: TokenizerResult::Done
+    PH-->>BC: ParseOutcome::Done
+    BC->>BC: JS 修改 class/style -> DOM 属性/内联声明
+
+    Note over Py,RL: (1b) run_until —— 驱动 网络/MO/输入 任务泵 + 微任务检查点（as-built：不驱动脚本）
+
+    Py->>BC: run_until(max_tasks, deadline_ms)
+    BC->>BC: 解构字段 -> 独立 Exec（避免 run_until(budget, self) 双重借用，D8）
+    BC->>RL: run_until(budget, &mut exec)
+    RL-->>BC: RunOutcome（Network/MO/Input 任务；脚本任务化=延期项）
+
+    Note over Py,NET: (2) fetch 等待 —— 未命中 => WaitingIo（不凭空完成）
+
+    R->>NET: __iv8_fetch(url, res, rej)
+    NET->>NET: OfflineBundle.resolve(url) = None
+    NET-->>R: FetchOutcome::Pending(id)  ( res/rej 经 root 存为 HandleLease )
+    BC->>RL: run_until 队列空但 has_pending_io()==true
+    RL-->>BC: RunOutcome::WaitingIo
+    BC-->>Py: "WaitingIo"
+
+    Note over Py,NET: (3) 宿主注入响应 -> 入队 resolve -> 有界推进
+
+    Py->>BC: network.pending()
+    BC->>NET: pending() -> [id]
+    BC-->>Py: [id]
+    Py->>BC: network.complete(id, host_fetch(request))
+    BC->>NET: complete(id, resp)   ( 只入队, 不在此同步跑 JS )
+    NET->>RL: schedule(Network, token_for(id))
+    Py->>BC: run_until(max_tasks, deadline_ms)
+    BC->>RL: run_until(budget, &mut exec)   ( 同 D8 解构 )
+    RL->>BC: run_task(Network, token)
+    BC->>NET: 取 Completed(resp) ; 校验 epoch.is_current()
+    BC->>R: call(res_handle, None, [responseObj])   ( Promise resolve )
+    R->>R: then 回调入微任务队列
+    BC->>R: perform_checkpoint()
+    R->>DOM: 回调更新 DOM ( 结构/属性变更 )
+    DOM->>BC: MutationBuffer 记录
+    BC->>BC: MO 交付前 mem::take 出 owned 记录（释放借用）  ( copy-out, D2 )
+    BC->>EV: 交付 MutationObserver 回调 ( checkpoint 宿主前段; 登记规范偏差 )
+    EV->>R: call_weak(callback, ...)   ( 解析+调用原子, D5; 回收即跳过 )
+
+    Note over Py,EV: (4) 可信输入 click（显式 target，不做命中测试）
+
+    Py->>BC: input.dispatch(click, target_node)
+    BC->>BC: 校验 target 属于当前 Document ( 旧文档节点 => StaleDocumentNode )
+    BC->>EV: Event::new_trusted("click") + plan_dispatch(tree, registry, target)  ( owned Vec )
+    EV-->>BC: [DispatchStep(capture..target..bubble)]
+    BC->>R: 构造 JS Event 对象 ( new_object/set_prop )  ( D1 桥 )
+    BC->>R: 每步 registry.is_live(id) + call_weak(listener)   ( 移除即 skip; 回收即 skip )
+    BC->>EV: UserActivation.sticky = true
+    BC->>DOM: 默认动作：聚焦 target ( 更新 document.activeElement )
+
+    Note over Py,DOM: (5) 导航 / close —— epoch 作废 + 重建文档/绑定 + 幂等
+
+    Py->>BC: page.load(new_snapshot)
+    BC->>BC: controller.begin_navigation(url) -> epoch + 1
+    BC->>DOM: 重建全新 NodeTree ( generation 单调; NodeId 不别名 )
+    BC->>BC: 清 node_map / ListenerRegistry / MutationBuffer + 重建 ParserHost
+    BC->>NET: abort_epoch(old_epoch)   ( 旧响应/旧任务落地被拒; 释放 res/rej lease )
+    Note right of BC: 单 Realm: 旧 JS 全局残留 = 具名登记偏差 ( Realm 级替换属 G4 )
+    Py->>BC: close()
+    BC->>RL: close()  ( 停任务 )
+    BC->>NET: 取消 in-flight
+    BC->>R: close()  ( drain 句柄/回调 )
+    BC-->>Py: None

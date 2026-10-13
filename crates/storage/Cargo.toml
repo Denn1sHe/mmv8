@@ -1,0 +1,13 @@
+[package]
+name = "storage"
+description = "浏览器存储：local/sessionStorage、IndexedDB、CacheStorage 与分区"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]

@@ -1,0 +1,5 @@
+---
+source: crates/engine-v8/src/realm.rs
+expression: text
+---
+function () { [native code] }

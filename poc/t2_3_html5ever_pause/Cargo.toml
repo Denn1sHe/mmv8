@@ -1,0 +1,9 @@
+[workspace]
+
+[package]
+name = "h5probe"
+version = "0.0.0"
+edition = "2021"
+
+[dependencies]
+html5ever = "0.27"

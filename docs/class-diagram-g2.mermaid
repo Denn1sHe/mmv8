@@ -1,0 +1,328 @@
+%% G2 页面纵向验证 —— 类图（数据模型 + 服务类）
+%% 说明：`v8::*` 类型为 engine-v8 内部细节，不出现在跨 crate 签名中。
+%% 关系：--> 组合/持有；..> 依赖；--|> 实现。
+%% 类型面纪律（C-2）：web-dom/web-events 类型面不得出现 JsHandle/HandleLease；仅 NodeId/WeakJsHandle。
+
+classDiagram
+    direction LR
+
+    class NodeId {
+        +u64 raw
+        +new(index: u32, generation: u32) NodeId
+        +index() u32
+        +generation() u32
+        +raw() u64
+    }
+
+    class NodeKind {
+        <<enumeration>>
+        Document
+        DocumentType
+        Element
+        Text
+        Comment
+    }
+
+    class NodeData {
+        +NodeKind kind
+        +Option parent
+        +Option first_child
+        +Option last_child
+        +Option prev_sibling
+        +Option next_sibling
+        +Option element
+        +Option text
+    }
+
+    class ElementData {
+        +String name
+        +String namespace
+        +AttributeMap attrs
+        +InlineStyle style
+    }
+    %% ADR-0016·D6：class_list 由 attrs 惰性派生（无第二写点）
+
+    class NodeTree {
+        -Vec nodes
+        -Vec generations
+        -Vec free
+        -NodeId root
+        +create_element(...) NodeId
+        +create_text(data) NodeId
+        +create_comment(data) NodeId
+        +append_child(parent, child)
+        +insert_before(parent, child, ref)
+        +remove_child(parent, child)
+        +dispose(id)
+        +get(id) NodeData
+        +children(id) Iterator
+        +text_content(id) String
+        +set_attribute(id, name, value)
+        +get_attribute(id, name) Option
+    }
+
+    class Event {
+        +String type_
+        +bool bubbles
+        +bool cancelable
+        +bool is_trusted
+        +Option target
+        +EventPhase phase
+        +f64 time_stamp
+        +bool default_prevented
+        +new_trusted(type_, init)
+        +prevent_default()
+        +stop_propagation()
+    }
+
+    class ListenerRegistry {
+        -Map map
+        +add(target, type_, cb, opts) ListenerId
+        +remove(target, type_, cb, capture)
+        +listeners(target, type_) Vec
+        +is_live(id) bool
+        +get(id) Option
+    }
+
+    class ListenerRef {
+        +WeakJsHandle callback
+        +ListenerOptions options
+    }
+
+    class DispatchStep {
+        +NodeId target
+        +EventPhase phase
+        +Vec listener_ids
+    }
+
+    class UserActivation {
+        +bool sticky
+        +bool transient
+    }
+
+    class Origin {
+        +String scheme
+        +String host
+        +Option port
+    }
+
+    class InlineStyle {
+        -Map decls
+        +set(prop, value)
+        +get(prop) Option
+    }
+
+    class NavigationController {
+        -String url
+        -Origin origin
+        -ReadyState ready_state
+        -NavigationEpoch epoch
+        -Set load_blockers
+        +begin_navigation(url) NavigationEpoch
+        +set_ready_state(s)
+        +add_blocker(kind) u64
+        +remove_blocker(id)
+        +try_finish() bool
+        +is_current(epoch) bool
+    }
+    %% ADR-0017·D1：NavigationEpoch 定义在 policy（policy::NavigationEpoch）
+
+    class ParserHost {
+        -Tokenizer tokenizer
+        -BufferQueue input
+        -VecDeque pending_writes
+        +feed(chunk) ParseOutcome
+        +enqueue_document_write(text)
+        +resume() ParseOutcome
+        +finish()
+    }
+
+    class DomSink {
+        +Handle NodeId
+    }
+
+    class PageBinding {
+        -Rc tree
+        -NodeMap node_map
+        +install(realm, tree, shared)
+        +wrapper_for(realm, node) HostValue
+    }
+
+    class BrowsingContext {
+        -ControlPlane plane
+        -Rc shared
+        -RunLoop runloop
+        -Option parser
+        -Option binding
+        +load(snapshot) NavigationEpoch
+        +run_until(budget) RunOutcome
+        +input_dispatch(kind, target)
+        +capabilities() Capabilities
+        +close()
+    }
+    %% ADR-0017·D7：plane=ControlPlane（非裸 Realm）；parser 是本结构字段
+
+    class RunLoop {
+        -Map queues
+        -Clock clock
+        -bool in_run
+        +schedule(source, token)
+        +run_until(budget, exec) RunOutcome
+        +close()
+        +is_idle() bool
+    }
+
+    class Clock {
+        <<trait>>
+        +monotonic_now() Instant
+        +logical_now_ms() f64
+        +advance(d)
+        +mode() ClockMode
+    }
+
+    class RunBudget {
+        +u64 max_tasks
+        +Option deadline
+    }
+
+    class RunOutcome {
+        <<enumeration>>
+        Idle
+        BudgetExhausted
+        DeadlineExceeded
+        WaitingIo
+        Closed
+    }
+
+    class TaskExecutor {
+        <<trait>>
+        +run_task(source, token) TaskVerdict
+        +has_pending_io() bool
+    }
+
+    class NetworkService {
+        -Map pending
+        -Vec log
+        -Box transport
+        +fetch(spec) FetchOutcome
+        +pending() Vec
+        +complete(id, resp)
+        +abort_epoch(epoch)
+        +export_log() Vec
+    }
+
+    class OfflineBundle {
+        -Map entries
+        +insert(url, status, headers, body)
+        +resolve(url) Option
+    }
+
+    class Transport {
+        <<trait>>
+        +send(spec) Response
+    }
+
+    class RequestSpec {
+        +RequestId id
+        +String url
+        +String method
+        +Vec headers
+        +NavigationEpoch epoch
+    }
+
+    class Response {
+        +u16 status
+        +Vec headers
+        +Vec body
+        +ResponseKind kind
+    }
+
+    class Realm {
+        +new_object() JsHandle
+        +new_array() JsHandle
+        +resolve_weak(w) Option
+        +call_weak(w, this, args) HostValue
+        +dispatch_call(callee, this, args) HostValue
+        +set_global(name, value)
+    }
+
+    class NodeMap {
+        -Map by_node
+        -Map by_handle
+        +bind(node, h)
+        +bind_force(node, h)
+        +handle_for(node) Option
+        +node_for(h) Option
+    }
+
+    class SchedulerError {
+        <<enumeration>>
+        Reentrancy
+    }
+
+    class FetchTable {
+        -Map requests
+    }
+    %% FetchTable：res/rej 的 HandleLease 表，PageShared 持有（ADR-0018·D3）
+
+    class PyContext {
+        -RefCell browsing
+        +eval(src)
+        +run_until(max_tasks, deadline_ms) str
+        +page() PyPage
+        +network() PyNetwork
+        +input() PyInput
+        +capabilities() dict
+    }
+
+    class PyPage {
+        +load(snapshot)
+        +ready_state() str
+        +url() str
+    }
+    class PyNetwork {
+        +pending() list
+        +complete(id, resp)
+        +export_log() list
+    }
+    class PyInput {
+        +dispatch(kind, target)
+    }
+
+    NodeTree *-- NodeData : Vec
+    NodeTree ..> NodeId : 索引
+    NodeData *-- ElementData : 仅 Element
+    ElementData *-- InlineStyle : 内联声明
+    NodeTree ..> NodeData : 树链（下标）
+    NavigationController ..> Origin : 持有
+    NavigationController ..> NodeId : document
+    ParserHost ..> DomSink : Tokenizer 泛型参数
+    DomSink ..> NodeTree : TreeSink 落树
+    DomSink ..> NodeId : Handle
+    PageBinding *-- NodeMap : 弱句柄映射
+    PageBinding ..> NodeId : wrapper 复用
+    BrowsingContext *-- NavigationController : shared
+    BrowsingContext *-- RunLoop : 消息泵
+    BrowsingContext *-- ParserHost : 字段（导航重建，D7）
+    BrowsingContext ..> PageBinding : JS 桥
+    BrowsingContext ..> Realm : 经 plane:ControlPlane（D7）
+    RunLoop ..> Clock : 双时钟
+    RunLoop ..> RunBudget : 有界
+    RunLoop ..> RunOutcome : 返回
+    RunLoop ..> TaskExecutor : 驱动（由 BrowsingContext 实现）
+    BrowsingContext ..> NetworkService : 调度 transport
+    NetworkService *-- OfflineBundle : G2 主路径（实现 Transport）
+    Transport <|.. OfflineBundle : 实现
+    NetworkService ..> RequestSpec : 入参
+    NetworkService ..> Response : 出参
+    Realm ..> NodeMap : node_map 归 engine-v8（C-3）
+    ListenerRegistry *-- ListenerRef : 弱引用槽
+    ListenerRef ..> UserActivation : 可信激活
+    DispatchStep ..> ListenerRef : 计划
+    ListenerRef ..> Realm : call_weak（解析+调用原子；ADR-0019）
+    PyContext *-- BrowsingContext : 包装（RefCell）
+    PyContext ..> PyPage : page
+    PyContext ..> PyNetwork : network
+    PyContext ..> PyInput : input
+    PyNetwork ..> NetworkService : 委托
+    PyPage ..> NavigationController : 委托

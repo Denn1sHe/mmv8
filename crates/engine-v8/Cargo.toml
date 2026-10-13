@@ -1,0 +1,40 @@
+[package]
+name = "engine-v8"
+description = "V8 专属句柄、Inspector 宿主、模块宿主与生命周期（唯一 unsafe 白名单 crate）"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+
+# ⚠️ 本 crate 是**唯一**允许出现 unsafe 的成员（AGENTS.md 铁律 4：unsafe 白名单制）。
+#
+# 为什么这里不写 `[lints] workspace = true`：
+#   workspace 级 `unsafe_code = "forbid"` 是「不可被覆盖」的级别 —— 连本 crate 内部
+#   的 `#[allow(unsafe_code)]` 也无效，白名单机制将无法实现。因此本 crate 显式声明
+#   一份等价 lint 集合，只把 unsafe_code 从 "forbid" 放宽为 "deny"，使得必要的
+#   FFI 薄桥可以逐块开口，且每块必须带 `// SAFETY: ...` 不变量注释。
+# 该取舍已写入决策上报：docs/decision-briefs/2026-10-12-T0-unsafe-whitelist.md
+[lints.rust]
+unsafe_code = "deny"
+missing_docs = "warn"
+
+[lints.clippy]
+all = { level = "deny", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+
+[dependencies]
+# 铁律 5（ADR-0009）：`v8` 依赖**只允许**出现在本 crate。
+v8 = "152.2.0"
+
+[features]
+# 测试支持（**仅供跨 crate 测试经 dev-dependency 开启**）：暴露
+# `Realm::collect_garbage_for_testing`（复用既有 `request_garbage_collection_for_testing`）。
+# 默认关闭 ⇒ 不扩大稳定类型面（ADR-0009 类型面纪律）。
+test-util = []
+
+[dev-dependencies]
+# 属性测试（alloc/free/reuse 状态空间）。`proptest` 已在 workspace 锁图中，非新增依赖。
+proptest = { workspace = true }
+# 表征快照（`native_tostring_snapshot`，钉 v8 152 实测串；新快照=新增 golden）。
+insta = { workspace = true }

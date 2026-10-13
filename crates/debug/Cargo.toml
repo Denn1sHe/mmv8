@@ -1,0 +1,13 @@
+[package]
+name = "debug"
+description = "调试与监控：Inspector 接入、宿主 CDP 域与 API 监控"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]

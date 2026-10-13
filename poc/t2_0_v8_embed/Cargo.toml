@@ -1,0 +1,13 @@
+[workspace]
+
+[package]
+name = "v8hello"
+version = "0.0.0"
+edition = "2021"
+
+[dependencies]
+v8 = "152.2.0"
+
+[profile.dev]
+# V8 静态库链接体积大，关闭增量调试信息外的优化不影响 probe 目的
+debug = false

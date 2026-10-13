@@ -1,0 +1,13 @@
+[package]
+name = "scheduler"
+description = "任务源队列、微任务检查点、双时钟（逻辑/系统）与执行预算"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]

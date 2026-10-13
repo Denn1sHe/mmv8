@@ -1,0 +1,180 @@
+# ⚠️ AI 起草初稿 · 待维护者批准后方视为生效
+#
+# 依据 AGENTS.md 铁律 7（AI 永远不得修改 .github/workflows/**）与
+# 质量方案 §3.3（高风险面的 AI 产出只是初稿），本文件处于「起草态」。
+# 批准前请勿依赖它作为合并门禁。
+#
+# 本 skeleton 只包含**当前可执行**的 job；contract / differential / wpt /
+# sanitizer / compat-guard / budget 属 G0–G2 交付物，以注释形式占位（见文件末尾）。
+#
+# ⚠️ 本文件的结构性改动已由维护者 2026-10-12 授权（见 docs/adr/0005-t0遗留待拍板项的决策.md）：
+#   · test job 增加 MSRV 矩阵（决策 2）
+#   · 新增 contract job（跑 G0 契约测试，T1 交付物）
+#   · lint job 增加 cargo geiger 作为 warnings 级门禁（决策 2）
+# 铁律 7 的保护意图不变：托管地址与 CODEOWNERS 句柄仍需维护者填写。
+#
+# 与质量方案 §4 的对应关系：
+#   lint   → §4 lint job 的 fmt / clippy 部分（unsafe 白名单守卫与 geiger 也在本 job）
+#   deny   → §4 lint job 的 cargo deny check 部分（拆成独立 job 便于并行）
+#   test   → §4 test job（stable + MSRV 1.92.0 两档矩阵）
+#   contract→ T1 交付：G0 契约测试（manifest 结构、单调性、双 pipeline、差分骨架）
+# TODO(G0)：把 actions 固定到 commit SHA（供应链加固），当前先固定主版本。
+# TODO(G0)：审批通过后开启分支保护与 required status checks。
+
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# 同一分支的过期运行自动取消，节省额度
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+# 最小权限：CI 只需读代码
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_NET_RETRY: "5"
+
+jobs:
+  # ---------------------------------------------------------------- lint
+  lint:
+    name: lint (fmt / clippy / unsafe 白名单)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 安装 Rust 工具链
+        run: |
+          rustup show active-toolchain || rustup toolchain install stable
+          rustup component add rustfmt clippy
+
+      - name: cargo fmt --check
+        run: cargo fmt --all --check
+
+      # 与 AGENTS.md 自检命令对齐：--all-targets 覆盖 tests/benches/examples，
+      # --all-features 覆盖未来 feature 门控的可选后端（Skia / WebGL / WebGPU）。
+      - name: cargo clippy --all-targets --all-features -- -D warnings
+        run: cargo clippy --all-targets --all-features -- -D warnings
+
+      # 铁律 4 的机器执行：白名单外不得出现 unsafe / allow(unsafe_code)，
+      # 白名单内不得整 crate / 整 mod 开口，且每个 unsafe 必须带 SAFETY 注释。
+      - name: unsafe 白名单守卫
+        run: bash scripts/check-unsafe-whitelist.sh
+
+      # cargo geiger：**warnings 级**，不进 -D。
+      # 理由：V8 / Skia 等 C++ 绑定必然含 unsafe，把它当阻断门会让门禁永远红，
+      # 失去信号价值。它的作用是**趋势可见**：engine-v8 的 unsafe 块数量应保持
+      # 个位数并逐块有 SAFETY 注释。真实门槛由上面的守卫脚本负责（ADR-0005 决策 2）。
+      - name: unsafe 趋势统计（cargo geiger，不阻断）
+        continue-on-error: true
+        run: |
+          cargo install cargo-geiger --locked
+          cargo geiger --output-format Json > geiger.json || true
+          cargo geiger || true
+
+  # ---------------------------------------------------------------- contract
+  # T1 交付：G0 契约测试。覆盖 compat-manifest 结构与单调性（铁律 8）、
+  # 双 pipeline、差分骨架。
+  contract:
+    name: contract (G0 契约测试)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 安装 uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: uv sync
+        working-directory: contracts
+        run: uv sync --all-groups
+
+      - name: uv run pytest
+        working-directory: contracts
+        run: uv run pytest
+
+      # 兼容率单调性（铁律 8）：空清单阶段为绿色基线；
+      # 一旦 compat-manifest.json 有内容，这里会阻断 verified 条目回退。
+      - name: compat manifest 统计
+        working-directory: contracts
+        run: uv run python -m iv8_contract manifest
+
+  # ---------------------------------------------------------------- test
+  test:
+    name: test (workspace, ${{ matrix.toolchain }})
+    runs-on: ubuntu-24.04
+    # ADR-0005 决策 2：MSRV 采用「声明即验证」。rust-version = "1.85" 尚未被验证，
+    # 故矩阵不把它当通过性门槛，先固定 stable + 本地开发基线 1.92.0。
+    # 真实 MSRV 待用 cargo-msrv 自动二分探测后回写（登记在 docs/TASKS.md）。
+    strategy:
+      fail-fast: false
+      matrix:
+        toolchain: ["stable", "1.92.0"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 安装 Rust 工具链 ${{ matrix.toolchain }}
+        run: |
+          rustup toolchain install ${{ matrix.toolchain }} --profile minimal
+          rustup override set ${{ matrix.toolchain }}
+
+      # 与 AGENTS.md 自检命令一致（裸 `cargo test` 含 doctest）
+      - name: cargo test
+        run: cargo test --workspace
+
+      # 额外覆盖 benches / examples 等非默认 target
+      - name: cargo test --all-targets
+        run: cargo test --workspace --all-targets
+
+  # ---------------------------------------------------------------- deny
+  # 需要 deny.toml 生效（见 铁律 7：该文件同样处于「待批准」状态）
+  deny:
+    name: deny (licenses / bans / advisories / sources)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      # 不加 --all-features：与 deny.toml 的 [graph] all-features = false 保持一致，
+      # 避免 CLI 覆盖配置说明（两者口径必须相同）。
+      - name: cargo-deny
+        uses: EmbarkStudios/cargo-deny-action@v2
+        with:
+          command: check
+
+# ---------------------------------------------------------------------------
+# 以下 job 属 G0–G2 交付物，落地后取消注释并补齐 runner 依赖。
+# 全部为「发布阻断」级别：status = failed / missing / unknown 一律阻断。
+#
+#  contract:
+#    name: contract (规范模式 / iv8 兼容模式双 golden)
+#    runs-on: ubuntu-24.04
+#    steps: [ ..., run: uv run pytest tests/contract ]
+#
+#  differential:
+#    name: differential (固定 Chromium 版本 / OS / 字体 / Profile)
+#    ...
+#
+#  wpt-subset:
+#    name: wpt-subset (固定 WPT revision)
+#    ...
+#
+#  sanitizer:
+#    strategy: { matrix: { tool: [asan, tsan, lsan] } }   # 多 isolate 并发与 Context 循环
+#    ...
+#
+#  compat-guard:
+#    name: compat-guard（铁律 8：verified 条目数不得下降）
+#    steps:
+#      - run: 生成 capability-report（manifest 统计）
+#      - run: 与 main 分支报告 diff，下降即 fail
+#
+#  budget:
+#    name: budget（二进制体积预算 + 依赖树 diff 留档，防依赖蠕变）
+#    ...

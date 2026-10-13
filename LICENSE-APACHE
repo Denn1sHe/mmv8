@@ -1,0 +1,17 @@
+                                 Apache License
+                           Version 2.0, January 2004
+                        http://www.apache.org/licenses/
+
+本项目采用「MIT OR Apache-2.0」双许可：使用者可任选其一。
+
+本文件是 Apache License 2.0 的采用声明。Apache License 2.0 的**完整法定文本**
+见 http://www.apache.org/licenses/LICENSE-2.0 —— 分发 wheel 时必须随包附上该全文，
+不得只附本声明文件。
+
+选用 Apache-2.0 时需注意其附录条款：Apache-2.0 不提供显式的专利授权与互操作
+（patent grant）条款，以 `express` 方式授予专利许可。选择 MIT 则没有专利条款，
+许可更简单；若下游在意专利风险，选择 MIT。
+
+两者对本项目均适用且可自由组合：依赖树中的 MPL-2.0（Stylo 系）、BSD-3（V8 / Skia）、
+Apache-2.0 OR MIT（html5ever / parley 等）均允许被本项目链接与再分发。
+MPL-2.0 的唯一约束是「修改了其覆盖的文件须公开该文件」，本项目不对其源码做本地 fork。
