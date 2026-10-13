@@ -855,6 +855,7 @@ dependencies = [
  "stylo_taffy",
  "stylo_traits",
  "taffy",
+ "url",
  "web-dom",
  "web-style",
  "web_atoms",

@@ -57,3 +57,6 @@ web_atoms = "=0.2.6"
 # `query_container_size` 返回 `euclid::Size2D<Option<app_units::Au>>`（均 stylo 传递依赖，`=` 精确版，仅用于命名类型）。
 euclid = "=0.22.14"
 app_units = "=0.7.8"
+# `Device::new` 的视口单位（`Size2D<f32, CSSPixel/DevicePixel>`）+ `UrlExtraData` 构造（stylo 传递依赖，`=` 精确）。
+# 注：`stylo_traits` 已在锁组声明（`=0.20.0`），此处不再重复。
+url = "=2.5.8"

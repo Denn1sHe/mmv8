@@ -17,6 +17,7 @@ pub mod font_metrics;
 pub mod geometry;
 pub mod invalidate;
 pub mod opaque;
+pub mod style_system;
 pub mod stylo_host;
 
 pub use backend::{DirtyState, LayoutBackend, StyleSheetHandle};
