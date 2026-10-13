@@ -136,14 +136,23 @@ impl StyleSystem {
     /// # Errors
     /// 未知句柄 ⇒ [`LayoutErrorKind::StyleSheet`]。
     pub fn remove_stylesheet(&mut self, id: web_style::SheetId) -> Result<(), LayoutError> {
-        if self.registered.remove(&id.raw()).is_none() {
+        let Some(document_sheet) = self.registered.remove(&id.raw()) else {
             return Err(LayoutError::new(
                 LayoutErrorKind::StyleSheet,
                 "unknown stylesheet handle",
             ));
-        }
+        };
         self.sheets.remove(id);
-        // stylo sheet-set 移除 + flush 配对留待步骤③（`Stylist` 的 sheet 变更 API）。
+        // stylo 侧移除 + flush 配对（`remove` 变更须 flush 才重建规则树）。
+        let read_guard = self.lock.read();
+        self.stylist.remove_stylesheet(document_sheet, &read_guard);
+        drop(read_guard);
+        // 规则变更 ⇒ 强制 origins 脏 + flush 才重建规则树（stylo 约定）。
+        self.stylist.force_stylesheet_origins_dirty(
+            style::stylesheets::OriginSet::from(style::stylesheets::Origin::UserAgent)
+                | style::stylesheets::OriginSet::from(style::stylesheets::Origin::Author),
+        );
+        self.flush();
         Ok(())
     }
 
@@ -174,6 +183,8 @@ impl StyleSystem {
         element: NodeRef<'_>,
         now: f64,
     ) -> Result<Arc<ComputedValues>, LayoutError> {
+        // 每次 resolve 清缓存的数据（规则节点/计算值），确保样式表变更后重算（防陈旧）。
+        element.clear_data();
         thread_state::enter(ThreadState::LAYOUT);
         // 块作用域：确保 `thread_local`（含 `SequentialTaskList`）在 **LAYOUT 态内** drop
         // （stylo `SequentialTaskList::drop` 断言 `ThreadState::LAYOUT`）。
