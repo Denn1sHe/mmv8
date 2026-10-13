@@ -1033,6 +1033,20 @@ mod tests {
     }
 
     #[test]
+    fn bounding_rect_viewport_coords() {
+        // §3.4：gBCR 的 x/y 视口坐标；right == x + width。
+        let (mut realm, _binding, _tree) = setup();
+        realm
+            .eval("var a = document.createElement('div'); a.setAttribute('style','height:50px'); document.appendChild(a); var b = document.createElement('div'); b.setAttribute('style','height:10px;width:30px'); document.appendChild(b); var r = b.getBoundingClientRect(); globalThis.__ok = (r.top === 50 && r.left === 0 && r.right === r.x + r.width && r.bottom === r.y + r.height);")
+            .expect("eval");
+        assert_eq!(
+            realm.eval("globalThis.__ok").unwrap(),
+            HostValue::Bool(true),
+            "gBCR 视口坐标 + right==x+width"
+        );
+    }
+
+    #[test]
     fn computed_value_unsupported_property_errors() {
         // §3.4：白名单外属性 => 错误路径（JS 抛异常）。
         let (mut realm, _binding, _tree) = setup();

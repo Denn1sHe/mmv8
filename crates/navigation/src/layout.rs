@@ -160,6 +160,34 @@ mod tests {
     }
 
     #[test]
+    fn layout_invalidation_changes_geometry() {
+        // §3.3 几何条：改 inline width（尺寸相关）=> 几何层变（两级成对）。
+        let mut facade = LayoutFacade::new(Size::new(800.0, 600.0));
+        facade
+            .register_sheet(SheetOrigin::UserAgent, layout_backend::UA_CSS)
+            .expect("ua");
+        let mut tree = NodeTree::new();
+        let root = tree.root();
+        let div = tree.create_element(
+            "div",
+            "html",
+            vec![("style".to_owned(), "width:80px;height:10px".to_owned())],
+        );
+        tree.append_child(root, div);
+
+        let before = facade.geometry(&tree, div).expect("geometry");
+        tree.set_attribute(div, "style", "width:200px;height:10px");
+        facade.mark_dirty(layout_backend::invalidate::DomChange::InlineStyle { property: "width" });
+        let after = facade.geometry(&tree, div).expect("geometry");
+        assert!(
+            (before.offset_width - 80.0).abs() < 0.01 && (after.offset_width - 200.0).abs() < 0.01,
+            "尺寸变更 => 几何层变（before {} / after {}）",
+            before.offset_width,
+            after.offset_width
+        );
+    }
+
+    #[test]
     fn computed_value_via_facade() {
         let mut facade = LayoutFacade::new(Size::new(800.0, 600.0));
         facade
