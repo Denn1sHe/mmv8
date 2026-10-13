@@ -169,6 +169,10 @@
 > **门禁**：layout-backend **46/46**、navigation **65/65**（主理人复核）。
 > **⚠️ 教训（工程纪律）**：「**锚点补丁必须回读验证**」—— 工程师自查纠正：**前两轮补丁因 `cargo fmt` 重排锚点失配 ⇒ 静默未落地 ⇒ 前诊断失效**；本轮**重做 + `grep -c` 复核**后生效（**如实登记**）。
 > **S14-remote**：**待维护者批（apt 2 包）**，在途。
+> **S15 进展（本地，2026-10-13）**：`BrowsingContext::{element_by_id, node_geometry}`（**具名一致**；geometry 走门面 ⇒ **先隐式 flush**）+ `PyPage.geometry`（PyO3）+ Python 测试 2 条（**待重建后跑**）；**§5 S15 行 🚧**。
+> **⚠️ 发现①（陈旧陷阱家族第 3 例）**：`crates/sdk-python/.venv` 的 `iv8*.so` **为旧构建** ⇒ `uv run pytest` **11 failed / 13 passed**（统一 `AttributeError: ...'page'`）；**误诊非代码因**；**修复 = `maturin develop` 强制重建**（在跑）。**教训句**：「**动 Python 测试面先强制重建扩展**」（与「`contracts/` 必 `uv run pytest`」、「锚点补丁必须回读验证」**同族**）。
+> **⚠️ 发现②（G3-B16 残留）**：`crates/sdk-python/tests/test_page.py` 仍含 **G2 期名**（`test_capabilities_reports_g2_surface`、`test_page_geometry_is_documented_stub` —— **§3.7 明文不应存在**）⇒ 重建后**更名 + `geometry == "computed"` 断言**（与 `contracts` 侧同类、**第二处陈旧面**）。
+> **口径修正**：旧「**sdk-python 22**」按**陈旧口径**处理 —— **QA 期统一计数**（**真实数待重建后报**）。
 > **S14-remote 开工（2026-10-13）**：双端复验 + geiger 基线 + **advisories 真库跑**（远程有网）。
 > **S14 保留裁定**（**正交、绿灯，无回退**）：**次序令语义 =「R23 不沉底」**（R23 修复属**第一优先**，但 S14 watchdog **独立正交** ⇒ **不回退**其绿灯）。
 > **排序**：**R23 收尾 → S13 开工**（page 集成；§4 page 两条）。
@@ -855,7 +859,7 @@ shadow 隔离**必须有负对照**；`layout-backend` 目标 **≥80% lines**�
 | **S13（page 集成）** ✅ **完成** | `BrowsingContext` 持 `LayoutBackend` + `relayout_if_dirty` + 导航 `reset` + `Capabilities` 更新。**`f57fe20`（53 行）**：`PageShared.layout`（与 binding **共享门面**）+ `relayout_if_dirty`（**try_borrow 可判定错误，不 panic**）+ `load()` reset（门面重建 / 脏位归零 / UA 重装）+ **Capabilities 翻转**（`geometry: computed`、`shadow_dom: true`，G3-B16）；**navigation 62/62**（主理人复核） | `navigation/src/{page,controller}.rs` | S12 | §4 page 两条 | P0 ✅ |
 | **S14（模块 watchdog，U-12）** ✅（**watchdog 部分**） | 模块 eval 接 watchdog（**独立 P0 小步**；ADR-0023）。**`f531613`（67 行）**：`Realm::eval_module_with_deadline`（watchdog + **粘性复位** + `Terminated`）+ 模块路径接线；测试 **`module_deadline_terminates_module_deadloop`**；**navigation 63/63**（主理人复核）。**「双端复验 + geiger」另列 = S14-remote 批**（**R23 修复后派单**） | `navigation/src/{parser,page}.rs` + `contracts/conftest.py` | S13 | `module_deadloop_terminates` ✅ + **收集数下限哨兵** | P0 ✅（watchdog；**保留裁定：正交 / 绿灯 / 无回退**） |
 | **S14-remote（双端复验 + geiger 基线）** 🚧 **开工** | **双端复验清单** + **`cargo geiger` 基线留档**（**S6-G 顺延**；geiger ≥0.13 需 rustc ≥1.94 > 钉版 1.92 ⇒ **仅远程跑**，属**基线观测非门禁**）；**geiger 备忘**：`.workbuddy/refs/g3-s6-whitelist-evidence/geiger-S14-备忘.md`（命令/输出格式/关注点 = **unsafe 计数 ≈5 且全在桥内**）；**含 advisories 真库跑（远程有网）**；**S14-remote 开工（2026-10-13）** | （远程） | S14 | geiger 基线 + advisories | P1 |
-| **S15（控制面）** | `sdk-python` 几何能力面 + `contracts` 口径 | `sdk-python/src/page.rs`、`contracts/iv8_contract/page_control.py`、`tests/test_page_control.py` | S13 | §3.7 三条 | P0 |
+| **S15（控制面）** 🚧 | `sdk-python` 几何能力面 + `contracts` 口径。**已实现（本地，2026-10-13）**：`BrowsingContext::{element_by_id, node_geometry}`（**具名一致**；geometry 走门面 ⇒ **先隐式 flush**）+ `PyPage.geometry`（PyO3）+ Python 测试 2 条（**待重建后跑**） | `sdk-python/src/page.rs`、`contracts/iv8_contract/page_control.py`、`tests/test_page_control.py` | S13 | §3.7 三条 | P0 |
 | **S16（纵向 + 收口）** | 纵向样例 `vertical_g3_style_layout_shadow` + 覆盖率 + **双端门禁复验** | `navigation/tests/vertical_g3.rs`、`sdk-python/tests/test_page.py` | S11,S14,S15 | §4 vertical + 五门禁 | P0/P1 |
 
 > **S0 已落（本批）**；**S1/S3 探针全绿前不得开工 S2+**（S2 为 P-4 前置例外，见 G3-B2）；
