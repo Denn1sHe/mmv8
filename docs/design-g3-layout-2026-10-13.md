@@ -120,7 +120,7 @@
 > `stylo/sharing/mod.rs:605`；typeless 占位 `_element: usize`；blitz 对照 `type BlitzNode<'a> = &'a Node`）——
 > `NodeRef<'a>{tree,id}`（≥24B）违反。**裁决 = A-3**：`ElementSlot<'a> = {tree, id, data, flags, atoms}`（**不持 slice**；
 > **(A)-直译 / A-1（leak）/ A-2（新 unsafe）均排除**）。
-> **✅ 已解（`88351d6`）**：`NodeRef<'a> = &'a ElementSlot<'a>`（**8B**）+ **`SlotCore`+`OnceCell` 两阶段背引用（零 unsafe）⇒ 父 / 子 / 兄弟全导航一次到位** ⇒ **`S7-nav` 消解**（升级线**未触发**）。
+> **✅ 已解（`88351d6`）**：`NodeRef<'a> = &'a ElementSlot<'a>`（**8B**）+ **as-built = `slots: Cell<Option<&'a [ElementSlot<'a>]>>` + 两阶段 `Vec → Box::leak → Cell 回填`（零 unsafe）⇒ 父 / 子 / 兄弟全导航一次到位** ⇒ **`S7-nav` 消解**（升级线**未触发**）。
 > **句柄 as-built 终稿（2026-10-13）= leak 版**：「零泄漏 `SlotCore`」被借检**实证拒绝**（`E0515`：cannot return value referencing local variable `core`/`slots`；`E0505`：cannot move out of `slots` because it is borrowed）⇒ **零泄漏在安全 Rust 下不可构造**。**裁决：维持 leak 版为 as-built**（两阶段 `Vec → Box::leak → Cell 回填`；**泄漏口径 = 每次 `build_slots`（host 重建）一次、非每 resolve**）；**辩论关闭**，「零泄漏优化」转入 **G5 内存优化批**（§7）。**opaque 锚点 = 槽地址（P-4 兼容）**。
 >
 > **导航依赖核验（§3.3~§3.7 + S11，2026-10-13）**：
@@ -133,8 +133,8 @@
 >
 > **判定（✅ 已消解）**：**全导航（父/子/兄弟，`88351d6`）一次到位 ⇒ 原「父链必需 / 兄弟组合器可延后」分野消失**；
 > **§3.1~§3.7 + S11 的导航条件全部满足**（须 S7 内补父链的 §3.1 / §3.3 计算值 / §3.5 计算值，**随 `dbc3262` 真级联接通即具备**）。
-> 升级线**未触发**（`SlotCore`+`OnceCell` 过借用检查）；辩论草案 `18c7405` **未触发·作废**（保留历史）。
-> **缓释**：A-3 的 `ElementSlot` 已持 `tree`+`id` ⇒ `parent_element`/`traversal_parent` **可经 web-dom 实现（无自引用）**；**待工程师确认 A-3 是否涵盖父子 nav**（若涵盖 ⇒ 一次到位、S7-nav 消解）。
+> **升级线未触发**（工程师以 **`Cell`+`leak` as-built** 落地全导航）；**零泄漏候选（`SlotCore`+`OnceCell`）被借检拒**（`E0515`/`E0505`）；辩论草案 `18c7405` **未触发·关闭（转 G5 备档）**。
+> **缓释已验**：A-3 的 `ElementSlot` 持 `tree`+`id` ⇒ 父子 nav 已随 `88351d6` **一次到位**（S7-nav 消解）。
 >
 > **探针门总账（2026-10-13）—— 100% 收口**：**全 8 项 ✅** —— **P-1 机制 ✅**（零 unsafe+反查命中；**总判随落档**，= E′+R / ADR-0024）、
 > **P-1b ✅**（信封 = 5 声明 + 0 腔体，终值）、**P-2 ✅**（「样式改⇒布局盒变」**非恒真 + 负对照**，`128dee9`）、
@@ -338,8 +338,9 @@ impl LayoutBackend for StyloBackend { /* … */ }
 > （与 blitz `type BlitzNode<'a> = &'a Node` 同构）⇒ **类 `RefCell` 活口 / 多字段句柄 `E` 一律不适用**。
 > **最终形态 = A-3 + 全导航（`88351d6`，2026-10-13）**：`NodeRef<'a> = &'a ElementSlot<'a>`（**8B**）；
 > `ElementSlot<'a> = { tree, id, data, flags, atoms }`（**不持 slice**；**(A)-直译 / A-1（leak）/ A-2（新 unsafe）均排除**）。
-> **`SlotCore`+`OnceCell` 两阶段背引用（零 unsafe）⇒ 父/子/兄弟全导航一次到位 ⇒ S7-nav 消解**。
-> **句柄 as-built 暂缓定稿**（leak → `SlotCore` **零泄漏限时试行中**）。**opaque 锚点 = 槽地址**（**保留 P-4 兼容**）。**演进见 §6 R18**。
+> **as-built = `slots: Cell<Option<&'a [ElementSlot<'a>]>>` + 两阶段 `Vec → Box::leak → Cell 回填`（零 unsafe）⇒ 父 / 子 / 兄弟全导航一次到位 ⇒ S7-nav 消解**。
+> （`SlotCore`+`OnceCell` 为**被借检拒的零泄漏候选**，非 as-built。）
+> **句柄 as-built 终稿 = leak 版**（**零泄漏试行已结束 = 拒绝**；`E0515`/`E0505` 实证）。**opaque 锚点 = 槽地址**（**保留 P-4 兼容**）。**演进见 §6 R18**。
 
 > **为什么必须设计它**：`selectors::Element::opaque(&self) -> OpaqueElement` 是**必需方法、无默认实现**
 > （`selectors-0.40.0/tree.rs:50`）；`OpaqueElement(NonNull<()>)`（同文件 `:17`）**唯一反解**是
@@ -772,7 +773,7 @@ shadow 隔离**必须有负对照**；`layout-backend` 目标 **≥80% lines**�
 | **S5（web-style）** | `Stylesheet` + `ComputedStyle`（+ remove 语义）。**注**：`SheetOrigin` 已于 **S4 提前落位**，本步续扩 `sheet.rs` | `web-style/src/{sheet,computed,error,lib}.rs` | S0 | §3.1 登记/往返/remove | P0 |
 | **S6（stylo_host）** ✅ | `impl style::dom::{TNode,TElement,TShadowRoot}` + `selectors::Element`（`opaque()` 走 §1.2.1 侧表）+ `src/opaque.rs`；**落目录模块 `src/stylo_host/`**；**句柄形态 as-built = `&'a ElementSlot<'a>`（8B，R18）**；`layout-backend` 本地 `deny` + 逐 `fn` `#[allow]`+`SAFETY`（**5 声明 + 0 腔体**，P-1b 终值）。**前置（R17）已解**（E′+R，ADR-0024）。**✅ 已完成；四态注入首验通过**（证据 `.workbuddy/refs/g3-s6-whitelist-evidence/`）；**S6-G：`cargo geiger` 顺延 S14** | `layout-backend/src/stylo_host/`、`src/opaque.rs` | S4 | P-1 回填 + P-1b 定形 + 编译 ✅ | P0 |
 | **S7（级联 + 失效）** | `style_system` + `invalidate`（**变更→脏级映射** + restyle root）+ `serialize`（**属性白名单**）+ **`font_metrics` 子组件（S7-b）**。**S7-a ✅**（`a885eb6`，`invalidate.rs` 两级失效簿记 + §2.2 映射；layout-backend 14/14、workspace **185**）；**S7-b① ✅**（`0b4d1d4`，`font_metrics.rs`）/ **S7-b② ✅**（`6416c03`，`style_system` 最小面）/ **S7-b③-a ✅**（`88351d6`，**句柄 8B + 全导航**）/ **S7-b③-b ✅ 真级联接通 · 里程碑**（`dbc3262`，`resolve_element_style`）；**余 S7-b③-c** | `layout-backend/src/{style_system,invalidate,serialize,font_metrics}.rs` | S5,S6 | §3.1 六条 + §3.3 四条（几何条**与 S8/S12 合验**） | P0 |
-| **S7-nav** ✅ **消解** | **`88351d6` 落地完整导航（父 / 子 / 兄弟，非 stub；两阶段背引用、零 unsafe）** ⇒ **本步消解**（原「兄弟/组合器可延后」不再需要）；**`SlotCore`+`OnceCell` 背引用模式成立**，升级线未触发 | —（随 S7 落地） | S7 | 全导航一次到位 | P1 ✅ |
+| **S7-nav** ✅ **消解** | **`88351d6` 落地完整导航（父 / 子 / 兄弟，非 stub；零 unsafe）** ⇒ **本步消解**（原「兄弟/组合器可延后」不再需要）。**as-built = `slots: Cell<Option<&'a [ElementSlot<'a>]>>` + 两阶段 `Vec → Box::leak → Cell 回填`**（`SlotCore`+`OnceCell` 为**被借检拒的零泄漏候选**）；升级线未触发 | —（随 S7 落地） | S7 | 全导航一次到位 | P1 ✅ |
 | **S8（盒树）** | `box_tree`（Taffy 建树/匿名盒/内联） | `layout-backend/src/box_tree.rs` | S7 | §3.2 五条 + **§3.3 `layout_invalidation_changes_geometry` 合验**（依赖本步几何） | P0 |
 | **S9（文本）** | `text`（Parley 整形 + fontique 回退 + 内嵌字体）。**注**：文本整形另属本步，**与 S7-b 的 `font_metrics` 无重复**（S7-b = Device 度量；S9 = 逐字 advance/换行） | `layout-backend/src/text.rs` | S7 | §3.6 三条（钉死值） | P0 |
 | **S10（web-dom Shadow JS 面）** | `attachShadow`/`shadowRoot` 原生原语 + shim（`querySelector` 不做→G4） | `web-dom/src/document.rs`、`navigation/src/binding.rs` | S2,S8 | §3.5 `shadow_root_open_only_via_js` | P0 |
@@ -832,8 +833,8 @@ shadow 隔离**必须有负对照**；`layout-backend` 目标 **≥80% lines**�
 | **U-10** | `getComputedStyle` 计算值语义 | 「以 stylo 计算值为准 + 白名单」 | §3.1 | 白名单内可用 | **本设计定（ADR-0020）** |
 | **U-11** | 逻辑时钟与 `now=0.0` | 「与 ADR-0010 正交」 | — | 成立 | **确定** |
 
-> **导航（已解，2026-10-13）**：`88351d6` 落地**完整导航**（父 / 子 / 兄弟；`SlotCore`+`OnceCell` 两阶段背引用，**零 unsafe**）
-> ⇒ **`S7-nav` 消解**；原「父链必需 / 兄弟组合器可延后」**不确定点移除**（升级线未触发；辩论草案 `18c7405` 作废）。
+> **导航（已解，2026-10-13）**：`88351d6` 落地**完整导航**（父 / 子 / 兄弟；**as-built = `slots: Cell<Option<&'a [ElementSlot<'a>]>>` + 两阶段 `Vec → Box::leak → Cell 回填`，零 unsafe**）
+> ⇒ **`S7-nav` 消解**；原「父链必需 / 兄弟组合器可延后」**不确定点移除**（升级线未触发；辩论草案 `18c7405` 关闭→G5 备档）。
 > **导航依赖核验结论**（哪些测试依赖 nav）见 §0.1.3。
 >
 > **G5 内存优化批（新登记项，2026-10-13）**：句柄内存形态 **as-built = leak 版**（两阶段 `Vec → Box::leak → Cell 回填`；
