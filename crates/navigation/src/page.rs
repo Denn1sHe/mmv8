@@ -45,6 +45,7 @@ use crate::binding::{BindingInputs, PageBinding};
 use crate::controller::{LoadBlockerKind, NavigationController, ReadyState};
 use crate::error::{PageError, PageErrorKind};
 use crate::input::{self, InputKind};
+use crate::layout::LayoutFacade;
 use crate::parser::{ParseOutcome, ParserHost};
 
 /// 一个预置离线资源（供解析后 `fetch`/外链脚本命中）。
@@ -161,6 +162,17 @@ pub struct PageShared {
     pub deferred: Rc<RefCell<Vec<DeferredScript>>>,
     /// 是否存在**未解析到的外链脚本**（`<script src>` 离线未命中 ⇒ 停泊；§3.2）。
     pub pending_external: Rc<Cell<bool>>,
+    /// 布局门面（S13：宿主持 `LayoutBackend`；与 binding 共享；导航 `reset` 时整体替换）。
+    pub layout: Rc<RefCell<LayoutFacade>>,
+}
+
+/// 建一个已装 UA 表的布局门面（S13；导航 `reset` 亦复用）。
+fn new_layout_facade() -> Rc<RefCell<LayoutFacade>> {
+    let mut facade = LayoutFacade::new(layout_backend::geometry::Size::new(800.0, 600.0));
+    facade
+        .register_sheet(web_style::SheetOrigin::UserAgent, layout_backend::UA_CSS)
+        .expect("UA 表应可登记");
+    Rc::new(RefCell::new(facade))
 }
 
 /// G2 能力面口径（§3.8；`geometry` = stub 为**明确登记**）。
@@ -263,6 +275,8 @@ impl BrowsingContext {
         self.shared.completed = Rc::new(RefCell::new(HashMap::new()));
         self.shared.deferred = Rc::new(RefCell::new(Vec::new()));
         self.shared.pending_external = Rc::new(Cell::new(false));
+        // 布局 reset：新文档 ⇒ 门面整体重建（脏位归零，UA 表重装）。
+        self.shared.layout = new_layout_facade();
         self.shared.controller.set_document(document);
         // 装离线资源（与网络 transport 共享，供 fetch 就地解析）。
         let mut bundle = OfflineBundle::new();
@@ -492,6 +506,24 @@ impl BrowsingContext {
     }
 
     /// G2 能力面。
+    /// **宿主驱动路径**（S13）：脏 ⇒ 隐式同步重建布局（§2.5）。
+    ///
+    /// # Errors
+    /// `RefCell` 冲突（可判定，不 panic）或级联 / 布局失败 ⇒ [`PageErrorKind::Internal`]。
+    pub fn relayout_if_dirty(&mut self) -> Result<(), PageError> {
+        let tree = Rc::clone(&self.shared.tree);
+        let tree = tree
+            .try_borrow()
+            .map_err(|_| PageError::new(PageErrorKind::Internal, "NodeTree 借用冲突"))?;
+        let mut layout = self
+            .shared
+            .layout
+            .try_borrow_mut()
+            .map_err(|_| PageError::new(PageErrorKind::Internal, "LayoutFacade 借用冲突"))?;
+        layout.relayout_if_dirty(&tree)
+    }
+
+    /// G3 能力面口径（§3.8）：`geometry = "computed"`、`shadow_dom = true`。
     #[must_use]
     pub fn capabilities(&self) -> Capabilities {
         Capabilities {
@@ -500,8 +532,8 @@ impl BrowsingContext {
             navigation: true,
             network: "offline",
             input: "explicit_target",
-            geometry: "stub",
-            shadow_dom: false,
+            geometry: "computed",
+            shadow_dom: true,
             script_interruptible: true,
             input_user_activation: "sticky_only",
             single_realm_navigation: true,
@@ -534,9 +566,7 @@ impl BrowsingContext {
             activation: Rc::clone(&self.shared.activation),
             active_element: Rc::clone(&self.shared.active_element),
             parser_active: Rc::clone(&self.shared.parser_active),
-            layout: Rc::new(RefCell::new(crate::layout::LayoutFacade::new(
-                layout_backend::geometry::Size::new(800.0, 600.0),
-            ))),
+            layout: Rc::clone(&self.shared.layout),
         };
         let binding = PageBinding::install(self.plane.realm_mut(), inputs).map_err(map_js)?;
         self.binding = Some(binding);
@@ -803,6 +833,7 @@ impl PageShared {
             completed: Rc::new(RefCell::new(HashMap::new())),
             deferred: Rc::new(RefCell::new(Vec::new())),
             pending_external: Rc::new(Cell::new(false)),
+            layout: new_layout_facade(),
         }
     }
 }
@@ -1186,7 +1217,16 @@ mod tests {
         let root = tree.borrow().root();
         assert!(tree.borrow().len() > 1, "应有节点");
         assert_eq!(page.document(), root);
-        assert_eq!(page.capabilities().geometry, "stub");
+        assert_eq!(page.capabilities().geometry, "computed");
+    }
+
+    #[test]
+    fn capabilities_reports_g3_surface() {
+        // §4 page：G3 能力面 —— geometry 由 stub 升为 computed；shadow_dom 开启。
+        let page = BrowsingContext::new("https://a.example/").expect("new");
+        let caps = page.capabilities();
+        assert_eq!(caps.geometry, "computed", "G3 几何面应为 computed");
+        assert!(caps.shadow_dom, "G3 应开启 Shadow DOM 面");
     }
 
     #[test]

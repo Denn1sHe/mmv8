@@ -96,15 +96,15 @@ CAPABILITY_KEYS = frozenset(
     }
 )
 
-#: G2 能力面口径（施工图 §3.8；`geometry`/`input`/`input_user_activation` 为**明确登记**）。
+#: G3 能力面口径（施工图 §3.8；G3-B16：geometry 升为 computed、shadow_dom 开启）。
 CAPABILITY_VALUES = {
     "parsing": "streaming",
     "document_write": True,
     "navigation": True,
     "network": "offline",
     "input": "explicit_target",
-    "geometry": "stub",
-    "shadow_dom": False,
+    "geometry": "computed",
+    "shadow_dom": True,
     "script_interruptible": True,
     "input_user_activation": "sticky_only",
     "single_realm_navigation": True,

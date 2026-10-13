@@ -81,8 +81,8 @@ def test_capabilities_keys_match_rust_struct() -> None:
     assert rust == py, f"Capabilities 字段名两侧不相等：Rust={rust} Python={py}"
 
 
-def test_capability_values_are_g2_documented() -> None:
-    """能力面口径逐项断言（含 geometry/input/input_user_activation 的明确登记）。"""
+def capabilities_reports_g3_surface() -> None:
+    """G3 能力面口径（G3-B16：geometry=computed、shadow_dom=on；原 `page_geometry_is_documented_stub` 更名）。"""
     values = page_control.CAPABILITY_VALUES
     assert set(values) == page_control.CAPABILITY_KEYS
     assert values["parsing"] == "streaming"
@@ -90,8 +90,8 @@ def test_capability_values_are_g2_documented() -> None:
     assert values["navigation"] is True
     assert values["network"] == "offline"
     assert values["input"] == "explicit_target"
-    assert values["geometry"] == "stub"
-    assert values["shadow_dom"] is False
+    assert values["geometry"] == "computed"
+    assert values["shadow_dom"] is True
     assert values["script_interruptible"] is True
     assert values["input_user_activation"] == "sticky_only"
     assert values["single_realm_navigation"] is True
