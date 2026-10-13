@@ -81,3 +81,18 @@ missing_docs = "warn"
   这是白名单机制的必要条件，也是它与 `forbid` 的唯一差别。
 - 遗留：脚本只能匹配**文本**，无法覆盖「依赖 / proc-macro 生成的 unsafe」；
   该盲区由 `cargo geiger` 趋势留档观测（CI 中为 warnings 级，不阻断）。
+
+---
+
+## 修正注记（2026-10-13 · ADR-0024；维护者 2026-10-13 18:10 批准）
+
+1. **白名单由「唯一 `engine-v8`」扩为两支**：
+   - `crates/engine-v8/`（V8 / rusty_v8 的 FFI 薄桥）；
+   - **`crates/layout-backend/src/stylo_host/`**（**显式声明的 stylo FFI 薄桥**，见 **ADR-0024**——承载
+     `style::dom::TElement` 的 5 个必需 `unsafe fn`）。守卫 `WHITELIST` 已按 ADR-0024 决策 2 追加该**目录数据行**
+     （**零 bash 逻辑改动**；`AGENTS.md` 维持零改动）。
+2. **约束强度不变**：两支白名单**同样**要求「**逐块**开口 + 每个 `unsafe` 带 `// SAFETY:` + 禁 crate/mod 级开口」。
+3. **机器执行增强（ADR-0024 决策 3）**：新增 Rust 门禁 a/b/c/d（5 名集合恰等 / 无旁逸 unsafe / lint 副本**逐项全等** /
+   no-`v8::` 补位规则 5），作为「逐块开口」的机器保证；`workspace_policy.rs` 断言**集合化**（含 `:224-227`）。
+4. **增删白名单仍须经决策上报协议**（AGENTS.md 铁律 6）；本次增删已按协议落 **ADR-0024**，并经维护者
+   **预授权模式**批准（**记录纪律不变**：全量 ADR/台账）。

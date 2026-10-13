@@ -56,6 +56,10 @@ cd "$(dirname "$0")/.." || exit 2
 WHITELIST=(
   "crates/engine-v8/"
   "poc/"
+  # stylo FFI 薄桥（显式声明）：承载 `style::dom::TElement` 的 5 个必需 `unsafe fn`。
+  # 依 ADR-0024（E′ 目录级白名单）+ ADR-0002 修正注记；维护者 2026-10-13 18:10 批准。
+  # 尾斜杠目录条目 ⇒ `[ -d ]` 为真 ⇒ 规则 3/4 对目录内文件照常生效；非桥文件仍受规则 1 文本拦。
+  "crates/layout-backend/src/stylo_host/"
 )
 
 PAT_UNSAFE='(^|[^[:alnum:]_])unsafe([^[:alnum:]_]|$)'
