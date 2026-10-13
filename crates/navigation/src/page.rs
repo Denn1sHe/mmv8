@@ -529,7 +529,6 @@ impl BrowsingContext {
     /// 按 `id` 属性查元素节点（深度优先；未命中 ⇒ `None`）。
     #[must_use]
     pub fn element_by_id(&self, id: &str) -> Option<NodeId> {
-        let tree = self.shared.tree.try_borrow().ok()?;
         fn walk(tree: &NodeTree, node: NodeId, id: &str) -> Option<NodeId> {
             for child in tree.children(node) {
                 if tree.get_attribute(child, "id") == Some(id) {
@@ -541,6 +540,7 @@ impl BrowsingContext {
             }
             None
         }
+        let tree = self.shared.tree.try_borrow().ok()?;
         walk(&tree, tree.root(), id)
     }
 
