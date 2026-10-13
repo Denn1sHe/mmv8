@@ -15,7 +15,6 @@
 pub mod dom;
 
 use std::cell::Cell;
-use std::sync::OnceLock;
 
 use selectors::attr::{AttrSelectorOperation, CaseSensitivity, NamespaceConstraint};
 use selectors::bloom::BloomFilter;
@@ -28,11 +27,11 @@ use web_dom::tree::NodeTree;
 
 use crate::opaque;
 
-/// 进程级共享锁（`Locked<…>` 的内联样式块与 `StylesheetGuards` 必须同源，否则 stylo `read_with` 断言）。
+/// 进程级**唯一**共享锁（＝ `TDocument::shared_lock()` 同一把；`Locked<…>` 与 `StylesheetGuards`
+/// 必须同源，否则 stylo `read_with` 断言 —— R21：统一为 `GLOBAL_STYLE_DATA.shared_lock`，不再自建）。
 #[must_use]
 pub fn global_shared_lock() -> &'static style::shared_lock::SharedRwLock {
-    static LOCK: OnceLock<style::shared_lock::SharedRwLock> = OnceLock::new();
-    LOCK.get_or_init(style::shared_lock::SharedRwLock::new_leaked)
+    &style::global_style_data::GLOBAL_STYLE_DATA.shared_lock
 }
 
 /// 元素句柄：**对槽的引用**（8 字节；见模块头的不变量说明）。
@@ -547,6 +546,20 @@ mod tests {
     use super::{NodeRef, StyloHost, build_slots};
     use selectors::Element as _;
     use web_dom::tree::NodeTree;
+
+    #[test]
+    fn single_shared_lock_identity() {
+        use style::dom::TDocument;
+        let tree = NodeTree::new();
+        let root = tree.root();
+        let slots = build_slots(&tree, super::global_shared_lock());
+        let host = StyloHost::new(slots);
+        let node = host.node(root).expect("root slot");
+        assert!(
+            std::ptr::eq(super::global_shared_lock(), TDocument::shared_lock(&node)),
+            "全局锁必须与 TDocument::shared_lock() 同一把（R21 防分叉）"
+        );
+    }
 
     #[test]
     fn element_handle_is_pointer_sized() {
