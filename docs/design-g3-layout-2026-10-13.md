@@ -129,7 +129,8 @@
 > **R20 解 = 同源 `SharedRwLock`**（`build_slots(tree, system.shared_lock())`；三路失败皆非同一实例）——**待 reviewer-a 确认性复核回执后标终态**。
 > **备忘入库（待办）**：`docs/decision-briefs/2026-10-13-G3-R19-复审-评审员A.md` 待 reviewer-a **§2 附记**落笔后由我**一次性入库**（`g3(docs): R19 复审备忘入库（含 §2 复核附记）`）。
 > **S7 实质收口（2026-10-13）**：**§3.1 = 6/6**（`fcd77f4`）+ **R19 修复闭环**（`0b55f30`，**判别性观测**）+ layout-backend **29/29**。
-> **S8 开工**（盒树）：**`to_taffy_style` 首进生产路径**（§3.2 五条，**带判别力纪律**）。
+> **S8-a ✅ 里程碑（`cbfd2f3`，338 行）**：**`box_tree.rs` 落地——盒几何真算出来（Taffy 输出）**；**`to_taffy_style` P-2 桥首进生产路径**；`NodeGeometry`/`client_w/h`（padding box）派生；**§3.2 = 4/5**（`clientWidth==96` 闭核算术修正 + `display:none` 负对照）；layout-backend **33/33**（主理人复核）。**余 S8-b**：`inline_text_shaped_width` → `text.rs` → 匿名盒。
+> **P-2 桥「探针→生产」闭环**：探针验证的桥与特性组配置（`default-features=false` + 特性集）**在生产中首次实战通过**。
 > **已推送**：S7 批次（`a885eb6`…`0b55f30`）+ 文档 → `origin/main`（**边界备份**）。
 > **S8 已派**：盒树（Taffy 建树 / 匿名盒 / 内联；§3.2 五条）。
 > **S7-b 子组件 `font_metrics.rs`**（stylo `Device` 所需 **`Box<dyn FontMetricsProvider>`** 的**最小实现**；
@@ -792,7 +793,7 @@ shadow 隔离**必须有负对照**；`layout-backend` 目标 **≥80% lines**�
 | **S6（stylo_host）** ✅ | `impl style::dom::{TNode,TElement,TShadowRoot}` + `selectors::Element`（`opaque()` 走 §1.2.1 侧表）+ `src/opaque.rs`；**落目录模块 `src/stylo_host/`**；**句柄形态 as-built = `&'a ElementSlot<'a>`（8B，R18）**；`layout-backend` 本地 `deny` + 逐 `fn` `#[allow]`+`SAFETY`（**5 声明 + 0 腔体**，P-1b 终值）。**前置（R17）已解**（E′+R，ADR-0024）。**✅ 已完成；四态注入首验通过**（证据 `.workbuddy/refs/g3-s6-whitelist-evidence/`）；**S6-G：`cargo geiger` 顺延 S14** | `layout-backend/src/stylo_host/`、`src/opaque.rs` | S4 | P-1 回填 + P-1b 定形 + 编译 ✅ | P0 |
 | **S7（级联 + 失效）** ✅ **收口** | `style_system` + `invalidate` + `serialize` + **`font_metrics`**。全链：**a**（`a885eb6`）/ **b①**（`0b4d1d4`）/ **b②**（`6416c03`）/ **b③-a**（`88351d6` 句柄 8B + 全导航）/ **b③-b**（`dbc3262` 真级联）/ **b③-c**（`2422cfe` serialize）/ **b③-d**（`8451043` §3.1 + bloom 修复）/ **b③-e**（`5e37415` 真移除）/ **b③-f**（`ed627ef` style_attribute 投影 + build_slots 接共享锁）。**serialize ✅ / invalidate ✅；layout-backend 29/29；§3.1 = 6/6 全绿、§3.3 = 2/4**。**余项**：② R20 复核回执（`fcd77f4`；待 reviewer-a 标终态）；③ §3.3 几何 2 条（**S12 合验**） | `layout-backend/src/{style_system,invalidate,serialize,font_metrics}.rs` | S5,S6 | §3.1 六条（**6/6 全绿**）+ §3.3 四条（**2/4**；余 2 几何项**与 S12 合验**） | P0 ✅ |
 | **S7-nav** ✅ **消解** | **`88351d6` 落地完整导航（父 / 子 / 兄弟，非 stub；零 unsafe）** ⇒ **本步消解**（原「兄弟/组合器可延后」不再需要）。**as-built = `slots: Cell<Option<&'a [ElementSlot<'a>]>>` + 两阶段 `Vec → Box::leak → Cell 回填`**（`SlotCore`+`OnceCell` 为**被借检拒的零泄漏候选**）；升级线未触发 | —（随 S7 落地） | S7 | 全导航一次到位 | P1 ✅ |
-| **S8（盒树）** | `box_tree`（Taffy 建树/匿名盒/内联） | `layout-backend/src/box_tree.rs` | S7 | §3.2 五条 + **§3.3 `layout_invalidation_changes_geometry` 合验**（依赖本步几何） | P0 |
+| **S8（盒树）** | `box_tree`（Taffy 建树/匿名盒/内联）。**S8-a ✅**（`cbfd2f3`，338 行：`box_tree.rs` 落地——**盒几何真算**（Taffy 输出）+ **`to_taffy_style` P-2 桥首进生产路径** + `NodeGeometry`/`client_w/h`（padding box）派生）；**§3.2 = 4/5**（`clientWidth==96` 闭核算术修正 + `display:none` 负对照）；layout-backend **33/33**（主理人复核）。**余 S8-b**：`inline_text_shaped_width` → `text.rs` → 匿名盒 | `layout-backend/src/box_tree.rs` | S7 | §3.2 五条（**4/5**）+ **§3.3 `layout_invalidation_changes_geometry` 合验**（依赖本步几何） | P0 |
 | **S9（文本）** | `text`（Parley 整形 + fontique 回退 + 内嵌字体）。**注**：文本整形另属本步，**与 S7-b 的 `font_metrics` 无重复**（S7-b = Device 度量；S9 = 逐字 advance/换行） | `layout-backend/src/text.rs` | S7 | §3.6 三条（钉死值） | P0 |
 | **S10（web-dom Shadow JS 面）** | `attachShadow`/`shadowRoot` 原生原语 + shim（`querySelector` 不做→G4） | `web-dom/src/document.rs`、`navigation/src/binding.rs` | S2,S8 | §3.5 `shadow_root_open_only_via_js` | P0 |
 | **S11（shadow 作用域 + slot→布局）** | `layout-backend::shadow`（`:host`/`::slotted` + slot 参与布局） | `layout-backend/src/shadow.rs` | S8,S9 | §3.5（Rust 层五条） | P0 |
