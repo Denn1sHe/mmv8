@@ -144,7 +144,9 @@
 > **S11 开工（2026-10-13）**：`:host`/`::slotted` 作用域 + slot→布局；**P-4 探针机制首进生产**；§3.5 Rust 层五条。
 > **S11-a ✅（`f252156`，140 行）**：`layout-backend/src/shadow.rs` 组合面（`flattened_children`/`assigned_nodes`/`light_children` + 归属谓词）+ `box_tree` 接 `flattened_children`（**影子/分发节点参与真实布局**）；**§3.5 = 3/5 绿**（slot 分发 / 隔离（不含影子内容）/ 影子布局几何 `60x40`）；**layout-backend 44/44**（主理人复核）。
 > **S11-b 开工**：影子作用域表接入 `Stylist`（**P-4 机制首进生产**）+ 级联带影子上下文；验收 §3.5 **余 2 条**（`:host` 宽 `120` / `::slotted` 计算值）。
-> **⚠️ R22 上游缺口（S11-b 实测，2026-10-13）**：servo stylo **`DocumentStyleSheet::implicit_scope_root()` 恒 `None`**（`stylesheets/stylesheet.rs:281`/`:311`）⇒ **`:host`/`::slotted` 样式作用域表无注入通道**（`StylistSheet` 为**具体类型** `= DocumentStyleSheet`、`Stylist` 非泛型）⇒ **§3.5 余 2 条经 `Stylist` 不可达**（**非本仓实现问题** —— 解析器能解、作用域钩子 `implicit_scope_for_sheet_in_shadow_root` **正是我方 S6 实现**，**唯一缺口 = 上游绑定通道**）。**待裁**：**(a) 具名局限延 G4**（默认建议）/ **(b) 手工叠加层**（自解析 + 手工应用，**本身亦属具名偏差**）。登记于 §6 R22 / §1.5 / §7。
+> **⚠️ R22 上游缺口（S11-b 实测，2026-10-13）**：servo stylo **`DocumentStyleSheet::implicit_scope_root()` 恒 `None`**（`stylesheets/stylesheet.rs:281`/`:311`）⇒ **`:host`/`::slotted` 样式作用域表无注入通道**（`StylistSheet` 为**具体类型** `= DocumentStyleSheet`、`Stylist` 非泛型）⇒ **§3.5 余 2 条经 `Stylist` 不可达**（**非本仓实现问题** —— 解析器能解、作用域钩子 `implicit_scope_for_sheet_in_shadow_root` **正是我方 S6 实现**，**唯一缺口 = 上游绑定通道**）。**待裁**：**(a) 具名局限延 G4**（默认建议）/ **(b) 手工叠加层**（自解析 + 手工应用，**本身亦属具名偏差**）。**✅ 已裁 (a) = G4 前置项**（(b) 否决）；**§3.5 = 3/5 定格**；**remediation 评估序**：① ADR-0021 补丁通道（vendor 补 `implicit_scope_root`）② 手工叠加 ③ 上游观察。登记于 §6 R22 / §1.5 / §7。
+> **S12 开工（2026-10-13）**：**几何真值接线 + 同步读**（`offset*`/`client*`/`gBCR`/`getComputedStyle` + §2.5 同步读；§3.4 七条 + §3.3 **几何 2 合验**）。
+> **G3 报告口径预备**：「**Shadow 用例**」= **结构 + 布局 + JS 面 + 匹配机制（P-4）**；**样式作用域层延后**（**构建限制，诚实登记**）。
 > **已推送**：S7 批次（`a885eb6`…`0b55f30`）+ 文档 → `origin/main`（**边界备份**）。
 > **S8 已派**：盒树（Taffy 建树 / 匿名盒 / 内联；§3.2 五条）。
 > **S7-b 子组件 `font_metrics.rs`**（stylo `Device` 所需 **`Box<dyn FontMetricsProvider>`** 的**最小实现**；
@@ -213,6 +215,8 @@
   G3 只做**模块 watchdog**）。
 - **CDP / 真实 Chromium 差分**（技术方案 T1.3 未完；G3 判据降级为自洽 + 具名偏差，G3-B3）。
   （**导航**：原「组合器/兄弟导航局限」条目**已移除** —— `88351d6` 落地**全导航**，**S7-nav 消解**。）
+- **Shadow `:host`/`::slotted` 样式级联层**（**R22 上游缺口**，servo 构建通道封闭）⇒ **延 G4**（remediation 序见 §6 R22/§7）。
+  （**已证可达**：解析 / 匹配机制 / 隔离 / 布局；**G3 报告口径**见 §3.5。）
 - **不改** `.github/workflows/**`、`CODEOWNERS`、`deny.toml`、`AGENTS.md`、golden（铁律 7）。
 
 ---
@@ -577,7 +581,7 @@ impl BrowsingContext {
 | `attachShadow` | `NodeTree::attach_shadow`（**mode 语义定死**，§1.2）+ JS 原语/shim | `web-dom::tree` + `navigation::binding`（S10） |
 | 影子树结构 | `NodeKind::ShadowRoot` 独立节点；shadow 树链独立于 light DOM | `web-dom::node/tree`（S2） |
 | **作用域隔离** | light 查询/遍历**不含** shadow 内容；`shadowRoot` 仅 open 可见 | **Rust 层**：`ShadowSupport` + `NodeTree` 遍历（S11） |
-| `:host` / `::slotted` | 作者表内 `:host` 命中宿主；`::slotted(...)` 命中被分发 light 子节点（**经 opaque 侧表 + `implicit_scope...`**） | `layout-backend::shadow`（S11） |
+| `:host` / `::slotted` | 作者表内 `:host` 命中宿主；`::slotted(...)` 命中被分发 light 子节点（**经 opaque 侧表 + `implicit_scope...`**）（**样式级联层 = G4 / R22**） | `layout-backend::shadow`（S11） |
 | **slot 分发** | 默认 + 具名简单匹配；`assigned_nodes`/`flattened_children` **按需计算** | `web-dom::tree`（S2） |
 | **布局参与** | shadow 节点经 `flattened_children` 参与布局 | `layout-backend::box_tree`（S11） |
 | **不做（G4）** | `querySelector`、事件 retargeting、`composedPath`、`slotchange`、`closed` 完整封装隔离 | 登记 §7 U-6 |
@@ -736,6 +740,9 @@ url          = "=2.5.8"      # S7-b：Device::new 视口单位 + UrlExtraData
 
 #### 3.5 Shadow 用例（**Rust 层为主** + JS 最小面）
 
+> **定格 = 3/5（R22，2026-10-13）**：**结构 / 隔离 / 布局 ✅**；**`:host` / `::slotted` 样式级联 2 条 = G4 / R22**（servo「表 → 影子根作用域绑定」通道封闭）。
+> **G3 报告口径**：「Shadow 用例」= **结构 + 布局 + JS 面 + 匹配机制（P-4）**；**样式作用域层延后**（**构建限制，诚实登记**）。
+
 | 测试名 | 断言要点 |
 |---|---|
 | `attach_shadow_mode_semantics` | 同 mode 重复 ⇒ 幂等返回既有根；**mode 不同 ⇒ `Err`**（G3-B13） |
@@ -773,7 +780,7 @@ url          = "=2.5.8"      # S7-b：Device::new 视口单位 + UrlExtraData
 | `layout-backend::geometry` | §3.2 `rect_reflects_position` / §3.4 `offset_size_is_border_box_int` / `client_size_excludes_border` / `bounding_rect_viewport_coords` | 坐标/取整/box 口径 | 单测 | cargo |
 | `layout-backend::invalidate` | §3.3 四条 | **两级失效成对**（`layout_invalidation_changes_geometry` **依赖几何 ⇒ 与 S8/S12 合验**） | 单测 | cargo |
 | `layout-backend::text` | §3.6 三条 | 内嵌字体钉死值 + 回退 + 整形宽度 | 单测 | cargo |
-| `layout-backend::shadow` | §3.5 五条（Rust 层） | 作用域隔离 + `:host`/`::slotted` + slot + 布局 | 单测 | cargo |
+| `layout-backend::shadow` | §3.5 五条（Rust 层，**3/5 定格**） | 作用域隔离 + slot + 布局（**+ `:host`/`::slotted` 样式级联 2 条 = G4 / R22**） | 单测 | cargo |
 | `layout-backend`（属性） | `resolve_idempotent` / `nodeid_slot_stable_across_resolve` / `backend_rebuild_matches_spec_dom` / `viewport_change_relayouts` | resolve 幂等；槽稳定；**后端树只是缓存**（T2.4 C10）；视口变更重排 | 属性/单测 | proptest |
 | `layout-backend`（错误路径） | `unknown_node_errors` / `not_laid_out_errors` / `computed_value_unsupported_property_errors` | 每个 `pub` 方法 ≥1 错误路径 | 单测 | cargo |
 | `web-style::sheet` / `computed` | `stylesheet_origin_and_dedup` / `computed_style_roundtrip` | 登记/往返 | 单测 | cargo |
@@ -816,8 +823,8 @@ shadow 隔离**必须有负对照**；`layout-backend` 目标 **≥80% lines**�
 | **S8（盒树）** ✅ **收口** | `box_tree`（Taffy 建树/匿名盒/内联）。**S8-a ✅**（`cbfd2f3`，338 行：**盒几何真算**（Taffy 输出）+ **P-2 桥首进生产路径** + `NodeGeometry`/`client_w/h` 派生）/ **S8-b ✅**（`0475e78`，170 行：`text.rs` `TextShaper`——`fontique` 仅装**内嵌 Tuffy**（确定性）+ parley 整形；钉值 **`PINNED_EMBEDDED_ADVANCE_PX = 112.625`**（P-10））/ **S8-c ✅**（`cf94547`，**匿名盒**——连续内联级子元素包进匿名块盒，CSS 2.1 §9.2.1.1；`anonymous_box_wraps_inline_run`）。**§3.2 = 5/5 全绿 + 匿名盒**；layout-backend **38/38**（主理人复核）。**§3.3 几何 2 条：条件已备（与 S12 合验）** | `layout-backend/src/{box_tree,text}.rs` | S7 | §3.2 五条（**5/5**）+ §3.3 四条（**2/4**；余 2 几何项**与 S12 合验**） | P0 ✅ |
 | **S9（文本）** ✅ | `text`（Parley 整形 + fontique 回退 + 内嵌字体）。**注**：文本整形另属本步，**与 S7-b 的 `font_metrics` 无重复**（S7-b = Device 度量；S9 = 逐字 advance/换行）。**`3daba67` 深化**（D7 回退：未注册家族 ⇒ **内嵌回退字体**；`glyph_advance_sum` 逐字 advance）；**§3.6 = 3/3 全绿**（钉值 `112.625` / 回退 `>0` 负对照 / 整形宽 == advance 之和）；layout-backend **41/41**（主理人复核） | `layout-backend/src/text.rs` | S7 | §3.6 三条（**3/3**） | P0 ✅ |
 | **S10（web-dom Shadow JS 面）** ✅ **完成** | `attachShadow`/`shadowRoot` 原生原语 + shim（**`querySelector` 不做 → G4**）。**S10-a ✅**（`d724300`，web-dom `Document::attach_shadow`/`shadow_root`，**19/19**）→ **S10-b ✅**（`d789d53`：`navigation/src/binding.rs` `__iv8_dom_attach_shadow`/`__iv8_dom_shadow_root` 原语 + shim `attachShadow`/`shadowRoot` getter）——**§3.5 `shadow_root_open_only_via_js` JS 层经 V8 端到端通过**（open/closed 双态）；**G3-B8 边界遵守**（`querySelector`/retargeting → G4）；**navigation 52/52**（主理人复核） | `web-dom/src/document.rs`、`navigation/src/binding.rs` | S2,S8 | §3.5 `shadow_root_open_only_via_js` | P0 ✅ |
-| **S11（shadow 作用域 + slot→布局）** 🚧 | `layout-backend::shadow`（`:host`/`::slotted` + slot 参与布局）。**S11-a ✅**（`f252156`，140 行：`shadow.rs` 组合面——`flattened_children`/`assigned_nodes`/`light_children` + 归属谓词；`box_tree` 接 `flattened_children`（**影子/分发节点参与真实布局**）；**§3.5 = 3/5 绿**——slot 分发 / 隔离（不含影子内容）/ 影子布局几何 `60x40`；layout-backend **44/44**，主理人复核）。**S11-b 开工**：影子作用域表接入 `Stylist`（**P-4 机制首进生产**）+ 级联带影子上下文；验收 §3.5 余 2 条（`:host` 宽 `120` / `::slotted` 计算值）。**⚠️ 上游缺口（R22）**：`:host`/`::slotted` **样式作用域表无注入通道**（`DocumentStyleSheet::implicit_scope_root` 恒 `None`）⇒ 余 2 条**经 `Stylist` 不可达**；**待裁 (a)/(b)** | `layout-backend/src/shadow.rs` | S8,S9 | §3.5（Rust 层五条，**3/5**） | P0 |
-| **S12（几何真值接线 + 同步读）** | `binding`：`offset*`/`client*`/`gBCR`/`getComputedStyle` + §2.5 同步读 | `navigation/src/binding.rs`、`Cargo.toml` | S8,S9 | §3.4 七条 + **§3.3 `layout_invalidation_changes_geometry` 合验** | P0 |
+| **S11（shadow 作用域 + slot→布局）** 🚧 | `layout-backend::shadow`（`:host`/`::slotted` + slot 参与布局）。**S11-a ✅**（`f252156`，140 行：`shadow.rs` 组合面——`flattened_children`/`assigned_nodes`/`light_children` + 归属谓词；`box_tree` 接 `flattened_children`（**影子/分发节点参与真实布局**）；**§3.5 = 3/5 绿**——slot 分发 / 隔离（不含影子内容）/ 影子布局几何 `60x40`；layout-backend **44/44**，主理人复核）。**S11-b 开工**：影子作用域表接入 `Stylist`（**P-4 机制首进生产**）+ 级联带影子上下文；验收 §3.5 余 2 条（`:host` 宽 `120` / `::slotted` 计算值）。**⚠️ 上游缺口（R22）**：`:host`/`::slotted` **样式作用域表无注入通道**（`DocumentStyleSheet::implicit_scope_root` 恒 `None`）⇒ 余 2 条**经 `Stylist` 不可达**；**已裁 (a)：= G4 前置项（R22）** | `layout-backend/src/shadow.rs` | S8,S9 | §3.5（Rust 层五条，**3/5 定格**） | P0 |
+| **S12（几何真值接线 + 同步读）** 🚧 **开工** | `binding`：`offset*`/`client*`/`gBCR`/`getComputedStyle` + §2.5 同步读；**S12 开工（2026-10-13）** | `navigation/src/binding.rs`、`Cargo.toml` | S8,S9 | §3.4 七条 + **§3.3 几何 2 合验** | P0 |
 | **S13（page 集成）** | `BrowsingContext` 持 `LayoutBackend` + `relayout_if_dirty` + 导航 `reset` + `Capabilities` 更新 | `navigation/src/{page,controller}.rs` | S12 | §4 page 两条 | P0 |
 | **S14（模块 watchdog，U-12）** | 模块 eval 接 watchdog（**独立 P0 小步**；ADR-0023）+ **`cargo geiger` 基线留档**（**S6-G 顺延至此**；geiger ≥0.13 需 rustc ≥1.94 > 钉版 1.92 ⇒ **仅远程 S14 跑**，属**基线观测非门禁**）。**geiger 备忘**：`.workbuddy/refs/g3-s6-whitelist-evidence/geiger-S14-备忘.md`（命令/输出格式/关注点 = **unsafe 计数 ≈5 且全在桥内**） | `navigation/src/{parser,page}.rs` | S13 | `module_deadloop_terminates` + geiger 基线 | P0 |
 | **S15（控制面）** | `sdk-python` 几何能力面 + `contracts` 口径 | `sdk-python/src/page.rs`、`contracts/iv8_contract/page_control.py`、`tests/test_page_control.py` | S13 | §3.7 三条 | P0 |
@@ -856,7 +863,7 @@ shadow 隔离**必须有负对照**；`layout-backend` 目标 **≥80% lines**�
 | **R19** ✅ | **`stylesheet_remove` 端到端失效（移除后重算仍旧值）** | `5e37415` 后 `stylesheet_remove` 仍红；**两轮未果按纪律停报** | **曾判「表移除不生效」——实为「测试判别力盲区」（实现正确且充分）** | **✅ 解除（2026-10-13，评审员 A 源级复审）**：**判据** = `ua.css:11`（`div{display:block}` 令观测值**恒真**）+ **`Display::Block = 514`** 恰为移除成功后的正确值（主理人两端亲验）。**as-built 正确序列（序列表验证，收录）**：`append → dirty → flush → rebuild → Arc::ptr_eq → FullyInvalid → clear_cascade_data → re-add existing`；**次序不敏感**；**`flush` 即唯一必需触发**；`force_stylesheet_origins_dirty` **冗余无害**。**残余 2 条**：① **多元素失效清理**（**仅清 resolve 元素**，`style_system.rs:187`）→ **S13 关联条目**；② **flush 失集弃用**（全量重算无害 / **增量模式必须应用**）。**修复闭环（`0b55f30`）**：`stylesheet_remove_invalidates` **回归绿**（`width` 观测**回落 `auto`** / **负对照（UA 保 block）** / 诊断记账 / no-panic）；**备忘入库 ✓**（`docs/decision-briefs/2026-10-13-G3-R19-复审-评审员A.md`：§1 移除序列 + §2 锁配对） | 评审员A + 工程师 |
 | **R20** ✅ | **`inline_style_wins_over_author` 失效 / `Locked` 锁身份**（**与 R19 同族**） | 工程师**三路已试未果**（根因 = **三路皆非同一锁实例**） | inline style 未胜出 author | **✅ 终态（`fcd77f4` 实测解 + 源级复核通过）**：`inline_style_wins_over_author` **绿**；**解 = 同源 `SharedRwLock`**（`build_slots(tree, system.shared_lock())`）。**备忘 §2 独立验证「同源」结论与机理**（见 `…-R19-复审-评审员A.md`） | 评审员A + 工程师 |
 | **R21** ✅ | **双锁错配（潜伏）**：`stylo_host::global_shared_lock()`（自建 `new_leaked`，`mod.rs:33-36`）**≠** `TDocument::shared_lock()`（`GLOBAL_STYLE_DATA.shared_lock`，`dom.rs:57-58`） | 动画 / rAF / `owner_doc().shared_lock()` 路径接入（G4+ 前置） | 异源接入 ⇒ 命中 `read_with` 断言（跨锁数据竞争/失效） | **✅ 已解（`5625141`，潜伏消除）**：`global_shared_lock()` **直返 `&GLOBAL_STYLE_DATA.shared_lock`（同一把）**、**自建 `new_leaked` 锁删除**、**零行为变化**；新增 **`single_shared_lock_identity`**（`ptr::eq` 防分叉）；**未用 `read_only()`**。参考 stylo 动画路径 3 处文档锁 `matching.rs:567/:650`、`animation.rs:236/:1694/:1700`；**溯源 = 备忘 §2.4** | 工程师 |
-| **R22** | **servo stylo `DocumentStyleSheet::implicit_scope_root()` 恒 `None`** ⇒ **`:host`/`::slotted` 样式作用域表无注入通道** | `Stylist::append_stylesheet` 只收 `StylistSheet`（**具体类型** `= DocumentStyleSheet`，`stylist.rs:103`；`Stylist` 非泛型）；`implicit_scope_root` 硬编码 `None`（`stylesheets/stylesheet.rs:281`/`:311`） | **§3.5 `host_selector_styles_host` / `slotted_selector_styles_slotted` 经 `Stylist` 表路径不可达**（**上游 API 面缺口，非本仓实现问题**）；§3.5 其余 **3/5 已绿** | **待裁 (a)/(b)**：**(a)** 具名局限**延 G4**（默认建议；合 G3「自洽 + 具名偏差」）；**(b)** **手工叠加层**（自解析 `:host`/`::slotted` + 手工应用 —— **本身亦属具名偏差**，语义发散风险）。**注**：解析器能解（`servo/selector_parser.rs:771/775` `parse_host/parse_slotted`）、作用域钩子 `E::implicit_scope_for_sheet_in_shadow_root` **正是我方 S6 实现** ⇒ **唯一缺口 = 上游绑定通道** | 架构师+主理人 |
+| **R22** | **servo stylo `DocumentStyleSheet::implicit_scope_root()` 恒 `None`** ⇒ **`:host`/`::slotted` 样式作用域表无注入通道** | `Stylist::append_stylesheet` 只收 `StylistSheet`（**具体类型** `= DocumentStyleSheet`，`stylist.rs:103`；`Stylist` 非泛型）；`implicit_scope_root` 硬编码 `None`（`stylesheets/stylesheet.rs:281`/`:311`） | **§3.5 `host_selector_styles_host` / `slotted_selector_styles_slotted` 经 `Stylist` 表路径不可达**（**上游 API 面缺口，非本仓实现问题**）；§3.5 其余 **3/5 已绿** | **✅ 裁决 (a)（主理人，2026-10-13）= G4 前置项**：**(b) 否决**（重装 + 一致性风险）。**通道封闭点** = servo 构建「**表 → 影子根作用域绑定**」；**已证可达** = 解析（`servo/selector_parser.rs:771/775` `parse_host/parse_slotted`）/ 匹配机制 / 隔离 / 布局（钩子 `E::implicit_scope_for_sheet_in_shadow_root` **正是我方 S6 实现**）；**不可达** = **`:host`/`::slotted` 样式级联**。**remediation 评估序（G4）**：① **ADR-0021 补丁通道**（vendor 补 `implicit_scope_root`）② **手工叠加** ③ **上游观察** | 架构师+主理人 |
 
 ---
 
@@ -891,7 +898,7 @@ shadow 隔离**必须有负对照**；`layout-backend` 目标 **≥80% lines**�
 >
 > **G4 具名局限（R22 上游缺口，2026-10-13）**：servo stylo `DocumentStyleSheet::implicit_scope_root()` **恒 `None`** ⇒
 > **`:host`/`::slotted` 样式作用域表无注入通道**（`StylistSheet` 为具体类型、`Stylist` 非泛型）。**§3.5 余 2 条经 `Stylist` 不可达**；
-> **待裁 (a) 具名局限延 G4 / (b) 手工叠加层**（§6 R22；§1.5）。
+> **已裁 (a) = G4 前置项**；**remediation 评估序** ① ADR-0021 补丁通道 ② 手工叠加 ③ 上游观察（§6 R22；§1.5）。
 
 #### 探针清单（**修订版 P-1~P-11**，逐条 = 假设 + 最小实验 + 判定标准）
 
