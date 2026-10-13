@@ -19,6 +19,7 @@ pub mod geometry;
 pub mod invalidate;
 pub mod opaque;
 pub mod serialize;
+pub mod shadow;
 pub mod style_system;
 pub mod stylo_host;
 pub mod text;

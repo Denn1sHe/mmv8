@@ -113,7 +113,8 @@ impl BoxTree {
         parent_dom: NodeId,
         parent_taffy: taffy::NodeId,
     ) -> Result<(), LayoutError> {
-        let children: Vec<NodeId> = tree.children(parent_dom).collect();
+        // composed/flattened 子（跨 shadow 边界 + slot 展开）——影子内容与分发节点参与真实布局（S11）。
+        let children: Vec<NodeId> = tree.flattened_children(parent_dom);
         let mut inline_run: Vec<taffy::NodeId> = Vec::new();
         for child in children {
             if !is_element(tree, child) {
@@ -390,6 +391,34 @@ mod tests {
             crate::text::PINNED_EMBEDDED_ADVANCE_PX,
             crate::text::PINNED_EMBEDDED_ADVANCE_PX.round(),
             geometry.offset_width
+        );
+    }
+
+    #[test]
+    fn shadow_node_participates_in_layout() {
+        use web_dom::node::ShadowMode;
+        let system = ua_system();
+        let mut tree = NodeTree::new();
+        let root = tree.root();
+        let host = tree.create_element("x-host", "html", vec![]);
+        tree.append_child(root, host);
+        let shadow = tree.attach_shadow(host, ShadowMode::Open).expect("shadow");
+        let inside = tree.create_element(
+            "div",
+            "html",
+            vec![("style".to_owned(), "width:60px;height:40px".to_owned())],
+        );
+        tree.append_child(shadow, inside);
+
+        let mut boxes = BoxTree::build(&tree, &system).expect("build");
+        boxes.compute_layout(VIEWPORT).expect("compute");
+        let geometry = boxes.geometry(inside).expect("shadow 内节点几何应可读");
+        assert!(
+            (geometry.offset_width.round() - 60.0).abs() < 0.01
+                && (geometry.offset_height.round() - 40.0).abs() < 0.01,
+            "影子内块级节点应参与布局：{}x{}",
+            geometry.offset_width,
+            geometry.offset_height
         );
     }
 
