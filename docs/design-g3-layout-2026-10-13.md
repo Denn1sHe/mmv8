@@ -112,9 +112,10 @@
 > **S6 偏离（已裁定受理，具名登记；与 S2 447 行同类）**：**S6-1 单提交 572 行**（`stylo_host/mod.rs` **433 > 400**）
 > + **S6-1c 556 行**（`dom.rs` **484 行为最小可编译单元**）—— **单一 API 面不可分割**，故不拆。
 > **S6-G（geiger）顺延 S14**：`cargo geiger` ≥0.13 需 rustc ≥1.94~1.97 > 钉版 1.92 ⇒ 仅**远程 S14** 跑，
-> 属**基线观测（非门禁）**。**S7-a ✅**（`a885eb6`，`invalidate.rs` 两级失效簿记 + §2.2 映射；layout-backend **14/14**、workspace **185**）；**S7-b（级联）在途**。
-> **S7-b 新增子组件 `font_metrics.rs`**（stylo `Device` 所需 **`Box<dyn FontMetricsProvider>`** 的**最小实现**；
-> 复用 P-3/P-10 的 `fontique`/`skrifa` 集合 + **内嵌回退字体**；**与 S9 文本整形无重复**）——已登记 §1.1/§1.2/§2.1。
+> 属**基线观测（非门禁）**。**S7-a ✅**（`a885eb6`，`invalidate.rs` 两级失效簿记 + §2.2 映射；layout-backend **14/14**、workspace **185**）。
+> **S7-b① ✅**（`0b4d1d4`，`font_metrics.rs`；layout-backend **16/16**）+ **S7-b② ✅**（`6416c03`，`style_system` 最小面：Device/Stylist/表登记去重/remove/flush；**17/17**）；**S7-b③（逐元素级联）在途**。
+> **S7-b 子组件 `font_metrics.rs`**（stylo `Device` 所需 **`Box<dyn FontMetricsProvider>`** 的**最小实现**；
+> 复用 P-3/P-10 的 `fontique`/`skrifa` 集合 + **内嵌回退字体 Tuffy**；**与 S9 文本整形无重复**）——已登记 §1.1/§1.2/§2.1。
 >
 > **探针门总账（2026-10-13）—— 100% 收口**：**全 8 项 ✅** —— **P-1 机制 ✅**（零 unsafe+反查命中；**总判随落档**，= E′+R / ADR-0024）、
 > **P-1b ✅**（信封 = 5 声明 + 0 腔体，终值）、**P-2 ✅**（「样式改⇒布局盒变」**非恒真 + 负对照**，`128dee9`）、
@@ -484,6 +485,8 @@ impl BrowsingContext {
 - 回退：`fontique` 家族回退；未命中 ⇒ **内嵌回退字体**。
 - **确定性**：测试/门禁**用内嵌字体**；`offsetWidth` 断言只用内嵌字体场景。**跨机判据 = 容差 ≤0.5px**
   （本地 arm64 vs 远程 x86_64 的 `f32` 不保证逐位相等，G3-B10）。
+- **G3 口径（D7 后续注）**：**G3 字体链 = 内嵌确定集合**（`system_fonts = false` + **Tuffy 回退**）；
+  **系统字体 discovery 接线随 S13 / 真实页面**（届时 `fontique` 系统发现 + **内嵌回退**）。
 
 #### 1.5 Shadow 支撑面（D6；**Rust 层为主 + JS 最小面**）
 
@@ -526,6 +529,13 @@ impl BrowsingContext {
                 ▼
         web-dom::NodeTree（arena + generation）+ web-style（CSSOM 值）
 ```
+
+> **S7-b `Device` 初始化口径（§2.1 注）**：`style::device::servo::Device::new(...)` 实参含
+> **`PrefersColorScheme::Light`** / **`PointerCapabilities::empty()`** 等（G3 固定值 ⇒ 确定性）；
+> 其 `Box<dyn FontMetricsProvider>` = `font_metrics::FontMetricsProvider`（S7-b）。
+>
+> **字体链口径（D7，§2.1 注）**：**G3 = 内嵌确定集合**（`system_fonts = false` + **Tuffy 回退**）；
+> **系统字体发现接线随 S13 / 真实页面**（届时 `fontique` 系统发现 + **内嵌回退**）。
 
 #### 2.2 `resolve` 的两级失效 + **变更→脏级映射**（G3-B8）
 
@@ -570,7 +580,8 @@ fontique     = "=0.11.1"
 web_atoms    = "=0.2.6"      # SelectorImpl 的 LocalName/Namespace（interned atom；stylo-0.20.0/lib.rs:153/156/159）
 euclid       = "=0.22.14"    # query_container_size 的 euclid::Size2D<Option<app_units::Au>>
 app_units    = "=0.7.8"
-# 注：Atom 经 style re-export ⇒ 无需直依赖 stylo_atoms
+url          = "=2.5.8"      # S7-b：Device::new 视口单位 + UrlExtraData
+# 注：Atom 经 style re-export ⇒ 无需直依赖 stylo_atoms；stylo_traits 复用锁组（extern 名 = style_traits）
 ```
 
 - 版本取 = `poc/t2_4_blitz_probe/Cargo.lock` 中**经 blitz 传递编译通过**的整组；
