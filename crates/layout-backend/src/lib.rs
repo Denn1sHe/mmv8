@@ -13,6 +13,7 @@
 
 pub mod backend;
 pub mod error;
+pub mod font_metrics;
 pub mod geometry;
 pub mod invalidate;
 pub mod opaque;
