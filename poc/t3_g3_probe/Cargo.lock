@@ -329,6 +329,7 @@ dependencies = [
  "stylo_taffy",
  "stylo_traits",
  "taffy",
+ "web-dom",
 ]
 
 [[package]]
@@ -1486,6 +1487,17 @@ dependencies = [
  "same-file",
  "winapi-util",
 ]
+
+[[package]]
+name = "web-dom"
+version = "0.0.0"
+dependencies = [
+ "web-style",
+]
+
+[[package]]
+name = "web-style"
+version = "0.0.0"
 
 [[package]]
 name = "web_atoms"

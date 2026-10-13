@@ -29,6 +29,7 @@
 
 pub mod fonts;
 pub mod opaque;
+pub mod p4;
 pub mod pins;
 pub mod prefs;
 pub mod report;

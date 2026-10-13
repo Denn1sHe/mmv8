@@ -52,3 +52,6 @@ parley = "=0.11.1"
 selectors = "=0.40.0"
 skrifa = "=0.44.0"
 fontique = "=0.11.1"
+
+# P-4：在**真实 web-dom 模型**上判定 shadow 作用域（path 依赖，不入分发）。
+web-dom = { path = "../../crates/web-dom" }
