@@ -108,8 +108,11 @@
 > 供 §3.4 `computed_value_unsupported_property_errors` 契约）——类图错误枚举同步 9 项。
 >
 > **S5/S6 进度回填（2026-10-13）**：**S5**（web-style `Stylesheet` / `ComputedStyle` + remove 语义）已完成（`473514a`）；
-> **S6 进行中**。**S6-1 偏离（已裁定受理，具名登记；与 S2 447 行同类）**：S6-1 单提交 **572 行**
-> （`stylo_host/mod.rs` **433 > 400** —— **单一 API 面不可分割**，故不拆）。
+> **S6 ✅ 完成**（**四态注入首验通过**，证据 `.workbuddy/refs/g3-s6-whitelist-evidence/`）。
+> **S6 偏离（已裁定受理，具名登记；与 S2 447 行同类）**：**S6-1 单提交 572 行**（`stylo_host/mod.rs` **433 > 400**）
+> + **S6-1c 556 行**（`dom.rs` **484 行为最小可编译单元**）—— **单一 API 面不可分割**，故不拆。
+> **S6-G（geiger）顺延 S14**：`cargo geiger` ≥0.13 需 rustc ≥1.94~1.97 > 钉版 1.92 ⇒ 仅**远程 S14** 跑，
+> 属**基线观测（非门禁）**。**S7 已派（工程师在途）**。
 >
 > **探针门总账（2026-10-13）—— 100% 收口**：**全 8 项 ✅** —— **P-1 机制 ✅**（零 unsafe+反查命中；**总判随落档**，= E′+R / ADR-0024）、
 > **P-1b ✅**（信封 = 5 声明 + 0 腔体，终值）、**P-2 ✅**（「样式改⇒布局盒变」**非恒真 + 负对照**，`128dee9`）、
@@ -545,9 +548,11 @@ parley       = "=0.11.1"
 selectors    = "=0.40.0"
 skrifa       = "=0.44.0"
 fontique     = "=0.11.1"
-# S6 直依赖（interned atom）：SelectorImpl 的 LocalName/Namespace/Prefix（stylo-0.20.0/lib.rs:153/156/159）
-web_atoms    = "=0.2.6"
-stylo_atoms  = "=0.20.0"   # 兄弟（stylo 通用 Atom，lib.rs:149）；按 S6 实际所需
+# S6 直依赖（stylo 关联类型的具名引用；锁图内、同版 `=`）：
+web_atoms    = "=0.2.6"      # SelectorImpl 的 LocalName/Namespace（interned atom；stylo-0.20.0/lib.rs:153/156/159）
+euclid       = "=0.22.14"    # query_container_size 的 euclid::Size2D<Option<app_units::Au>>
+app_units    = "=0.7.8"
+# 注：Atom 经 style re-export ⇒ 无需直依赖 stylo_atoms
 ```
 
 - 版本取 = `poc/t2_4_blitz_probe/Cargo.lock` 中**经 blitz 传递编译通过**的整组；
@@ -694,7 +699,7 @@ shadow 隔离**必须有负对照**；`layout-backend` 目标 **≥80% lines**�
 | **S3（探针 B）** ✅ | **P-4**（真实 `web-dom` 模型上 shadow 作用域 + opaque 机制）/ **P-3**（字体发现）/ **P-10**（内嵌字体度量）。**已收口（2026-10-13）** | `layout-backend/tests/probe_*.rs` | S1,S2 | P-3/P-4/P-10 判定 ✅ | P0 |
 | **S4（骨架）** | `backend`（trait **`: Debug`**）+ `geometry` + `error`（**`LayoutErrorKind` 9 变体，含 `UnsupportedProperty`**）+ **`assets/ua.css`**。**偏离（已受理）**：`web_style::SheetOrigin` 于本步**提前落位**（门面签名编译所需） | `layout-backend/src/{lib,backend,geometry,error}.rs`、`assets/ua.css`、`Cargo.toml` | S1 | 门面编译 + `ua_default_display_block` + Debug 断言 | P0 |
 | **S5（web-style）** | `Stylesheet` + `ComputedStyle`（+ remove 语义）。**注**：`SheetOrigin` 已于 **S4 提前落位**，本步续扩 `sheet.rs` | `web-style/src/{sheet,computed,error,lib}.rs` | S0 | §3.1 登记/往返/remove | P0 |
-| **S6（stylo_host）** | `impl style::dom::{TNode,TElement,TShadowRoot}` + `selectors::Element`（`opaque()` 走 §1.2.1 侧表）+ `src/opaque.rs`；**落目录模块 `src/stylo_host/mod.rs`**；`layout-backend` 本地 `deny` + 逐 `fn` `#[allow]`+`SAFETY`（**5 声明 + 0 腔体**，P-1b 终值）。**前置（R17）已解**（**E′+R，ADR-0024；守卫数据行已落地**） | `layout-backend/src/{stylo_host/mod.rs,opaque}.rs` | S4 | P-1 回填 + P-1b 定形 + 编译 | P0 |
+| **S6（stylo_host）** ✅ | `impl style::dom::{TNode,TElement,TShadowRoot}` + `selectors::Element`（`opaque()` 走 §1.2.1 侧表）+ `src/opaque.rs`；**落目录模块 `src/stylo_host/`**；`layout-backend` 本地 `deny` + 逐 `fn` `#[allow]`+`SAFETY`（**5 声明 + 0 腔体**，P-1b 终值）。**前置（R17）已解**（E′+R，ADR-0024）。**✅ 已完成；四态注入首验通过**（证据 `.workbuddy/refs/g3-s6-whitelist-evidence/`）；**S6-G：`cargo geiger` 顺延 S14** | `layout-backend/src/stylo_host/`、`src/opaque.rs` | S4 | P-1 回填 + P-1b 定形 + 编译 ✅ | P0 |
 | **S7（级联 + 失效）** | `style_system` + `invalidate`（**变更→脏级映射** + restyle root）+ `serialize`（**属性白名单**） | `layout-backend/src/{style_system,invalidate,serialize}.rs` | S5,S6 | §3.1 六条 + §3.3 四条 | P0 |
 | **S8（盒树）** | `box_tree`（Taffy 建树/匿名盒/内联） | `layout-backend/src/box_tree.rs` | S7 | §3.2 五条 | P0 |
 | **S9（文本）** | `text`（Parley 整形 + fontique 回退 + 内嵌字体） | `layout-backend/src/text.rs` | S7 | §3.6 三条（钉死值） | P0 |
@@ -702,7 +707,7 @@ shadow 隔离**必须有负对照**；`layout-backend` 目标 **≥80% lines**�
 | **S11（shadow 作用域 + slot→布局）** | `layout-backend::shadow`（`:host`/`::slotted` + slot 参与布局） | `layout-backend/src/shadow.rs` | S8,S9 | §3.5（Rust 层五条） | P0 |
 | **S12（几何真值接线 + 同步读）** | `binding`：`offset*`/`client*`/`gBCR`/`getComputedStyle` + §2.5 同步读 | `navigation/src/binding.rs`、`Cargo.toml` | S8,S9 | §3.4 七条 | P0 |
 | **S13（page 集成）** | `BrowsingContext` 持 `LayoutBackend` + `relayout_if_dirty` + 导航 `reset` + `Capabilities` 更新 | `navigation/src/{page,controller}.rs` | S12 | §4 page 两条 | P0 |
-| **S14（模块 watchdog，U-12）** | 模块 eval 接 watchdog（**独立 P0 小步**；ADR-0023） | `navigation/src/{parser,page}.rs` | S13 | `module_deadloop_terminates` | P0 |
+| **S14（模块 watchdog，U-12）** | 模块 eval 接 watchdog（**独立 P0 小步**；ADR-0023）+ **`cargo geiger` 基线留档**（**S6-G 顺延至此**；geiger ≥0.13 需 rustc ≥1.94 > 钉版 1.92 ⇒ **仅远程 S14 跑**，属**基线观测非门禁**） | `navigation/src/{parser,page}.rs` | S13 | `module_deadloop_terminates` + geiger 基线 | P0 |
 | **S15（控制面）** | `sdk-python` 几何能力面 + `contracts` 口径 | `sdk-python/src/page.rs`、`contracts/iv8_contract/page_control.py`、`tests/test_page_control.py` | S13 | §3.7 三条 | P0 |
 | **S16（纵向 + 收口）** | 纵向样例 `vertical_g3_style_layout_shadow` + 覆盖率 + **双端门禁复验** | `navigation/tests/vertical_g3.rs`、`sdk-python/tests/test_page.py` | S11,S14,S15 | §4 vertical + 五门禁 | P0/P1 |
 
