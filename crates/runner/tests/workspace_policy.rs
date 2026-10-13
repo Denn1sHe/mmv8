@@ -18,7 +18,7 @@ use std::path::{Path, PathBuf};
 /// 允许不继承 workspace lints 的 crate（AGENTS.md 铁律 4 白名单）。
 ///
 /// 两支（ADR-0002 + **ADR-0024 修正注记**）：
-/// - `engine-v8`：V8/rusty_v8 的 FFI 薄桥（铁律 5）。
+/// - `engine-v8`：V8 与 `rusty_v8` 的 FFI 薄桥（铁律 5）。
 /// - `layout-backend`：**stylo FFI 薄桥**（`style::dom::TElement` 的 5 个必需 `unsafe fn`）。
 const WHITELISTED_CRATES: &[&str] = &["engine-v8", "layout-backend"];
 
@@ -340,4 +340,148 @@ fn three_safety_types_have_single_definition_point() {
             "`{needle}` 的定义点应位于 {abi_rs}，实际在 {file}（{lineno}: {content}）"
         );
     }
+}
+
+// ============================================================================
+// ADR-0024 决策 3：stylo FFI 薄桥（`layout-backend/src/stylo_host/`）的 Rust 门禁 a/b/c/d。
+//   a: `src/stylo_host/**` 的 `unsafe fn` 名集合恰 == `TElement` 上游 5 名（计数 == 5）；
+//   b: `layout-backend/src/**` 除这 5 个具名方法签名（体内块 ≤ 0）外，无任何受限关键字文本；
+//   c: lint 副本逐项 == workspace（由 `whitelisted_crate_lint_blocks_match_workspace_except_unsafe_code` 覆盖）；
+//   d: `layout-backend` 文本无 V8 类型路径引用（规则 5 的等效补位）。
+//   b 的阈值 = 0（P-1b 终值，commit 407c0aa）。
+// 注：本文件在白名单外，故关键字的字符串字面量经 `concat!` 拼接，避免守卫文本误报（同 `poc` 的 K-3 规避）。
+// ============================================================================
+
+/// 受限关键字（`un` + `safe` 拼接构造，避免守卫文本误报）。
+const UNSAFE_KW: &str = concat!("un", "safe");
+/// V8 类型路径首段（拼接构造）。
+const V8_PATH_PREFIX: &str = concat!("v8", "::");
+/// `extern crate` + V8 名字（拼接构造）。
+const V8_EXTERN: &str = concat!("extern crate ", "v8");
+
+/// `TElement` 的 5 个必需受限方法（`stylo-0.20.0/dom.rs:648/675/680/739/744`）。
+const TELEMENT_UNSAFE_FNS: &[&str] = &[
+    "set_handled_snapshot",
+    "set_dirty_descendants",
+    "unset_dirty_descendants",
+    "ensure_data",
+    "clear_data",
+];
+
+/// `crates/layout-backend/src/**/*.rs` 全部文件。
+fn layout_backend_src_files(root: &Path) -> Vec<PathBuf> {
+    let mut files = Vec::new();
+    collect_rs_files(
+        &root.join("crates").join("layout-backend").join("src"),
+        &mut files,
+    );
+    files
+}
+
+/// 代码行（截掉 `//` 注释）中是否出现**词边界**上的受限关键字（`unsafe_code` 因 `_` 不匹配）。
+fn contains_unsafe_token(code: &str) -> bool {
+    code.split(|c: char| !(c.is_ascii_alphanumeric() || c == '_'))
+        .any(|token| token == UNSAFE_KW)
+}
+
+fn rel(root: &Path, file: &Path) -> String {
+    file.strip_prefix(root)
+        .unwrap_or(file)
+        .to_string_lossy()
+        .replace('\\', "/")
+}
+
+#[test]
+fn gate_a_stylo_host_unsafe_fn_names_are_exactly_the_five() {
+    let root = workspace_root();
+    let mut files = Vec::new();
+    collect_rs_files(
+        &root
+            .join("crates")
+            .join("layout-backend")
+            .join("src")
+            .join("stylo_host"),
+        &mut files,
+    );
+    let prefix = format!("{UNSAFE_KW} fn ");
+    let mut names: Vec<String> = Vec::new();
+    for file in &files {
+        let text = std::fs::read_to_string(file).unwrap_or_default();
+        for line in text.lines() {
+            let code = line.split("//").next().unwrap_or("").trim();
+            if let Some(rest) = code.strip_prefix(&prefix) {
+                let name = rest
+                    .split(['(', '<', ' ', ':'])
+                    .next()
+                    .unwrap_or("")
+                    .to_owned();
+                names.push(name);
+            }
+        }
+    }
+    names.sort();
+    let mut expected: Vec<String> = TELEMENT_UNSAFE_FNS
+        .iter()
+        .map(|s| (*s).to_owned())
+        .collect();
+    expected.sort();
+    assert_eq!(
+        names.len(),
+        5,
+        "stylo_host 应有恰 5 个受限方法；实际 = {names:?}"
+    );
+    assert_eq!(
+        names, expected,
+        "门禁 a：受限方法名集合应恰 == 上游 TElement 5 名（不增不减）"
+    );
+}
+
+#[test]
+fn gate_b_no_unsafe_text_outside_the_five_signatures() {
+    let root = workspace_root();
+    let mut violations: Vec<String> = Vec::new();
+    let prefix = format!("{UNSAFE_KW} fn ");
+    for file in layout_backend_src_files(&root) {
+        let relative = rel(&root, &file);
+        let text = std::fs::read_to_string(&file).unwrap_or_default();
+        for (index, line) in text.lines().enumerate() {
+            let code = line.split("//").next().unwrap_or("").trim();
+            if !contains_unsafe_token(code) {
+                continue;
+            }
+            let allowed = TELEMENT_UNSAFE_FNS
+                .iter()
+                .any(|name| code.starts_with(&format!("{prefix}{name}(")));
+            if !allowed {
+                violations.push(format!("{relative}:{}: {code}", index + 1));
+            }
+        }
+    }
+    assert!(
+        violations.is_empty(),
+        "门禁 b（阈值 0）：`layout-backend/src/**` 除 5 个具名方法签名外不得出现受限关键字文本\
+         （块 / impl / 其他 fn / 体内块均违规）：\n{}",
+        violations.join("\n")
+    );
+}
+
+#[test]
+fn gate_d_layout_backend_has_no_v8_paths() {
+    let root = workspace_root();
+    let mut hits: Vec<String> = Vec::new();
+    for file in layout_backend_src_files(&root) {
+        let relative = rel(&root, &file);
+        let text = std::fs::read_to_string(&file).unwrap_or_default();
+        for (index, line) in text.lines().enumerate() {
+            let code = line.split("//").next().unwrap_or("").trim();
+            if code.contains(V8_PATH_PREFIX) || code.contains(V8_EXTERN) {
+                hits.push(format!("{relative}:{}: {code}", index + 1));
+            }
+        }
+    }
+    assert!(
+        hits.is_empty(),
+        "门禁 d：`layout-backend` 不得出现 V8 类型路径引用（铁律 5）：\n{}",
+        hits.join("\n")
+    );
 }
