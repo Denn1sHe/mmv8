@@ -1,18 +1,52 @@
 [package]
 name = "layout-backend"
-description = "盒树、布局算法与几何/尺寸 API（首选 Blitz 集成，备选 Stylo+Taffy+Parley）"
+description = "盒树、布局算法与几何/尺寸 API（直连 Stylo + Taffy + Parley，ADR-0020/0021）"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 publish.workspace = true
 license.workspace = true
 
-[lints]
-workspace = true
+# ⚠️ 本 crate 承载 stylo FFI 薄桥（`src/stylo_host/`）——`style::dom::TElement` 有 5 个**必需**
+# `unsafe fn`（`stylo-0.20.0/dom.rs:648/675/680/739/744`），而 workspace 级 `unsafe_code = "forbid"`
+# **不可被 `#[allow]` 覆盖**。故本 crate **不继承** workspace lints，改为本地等价集合，仅将
+# `unsafe_code` 由 `"forbid"` 放宽为 `"deny"`（engine-v8 同款；ADR-0024 决策 1）。
+# 逐 `fn` 具名 `#[allow(unsafe_code)]` + `// SAFETY:`；**函数体零 unsafe**（P-1b 定形 `signatures:5 bodies:0`）。
+# 机器保证：守卫脚本（`crates/layout-backend/src/stylo_host/` 目录级白名单，规则 3/4）+
+# `crates/runner/tests/workspace_policy.rs` 门禁 a/b/c/d（unsafe 面不蔓延 + lint 副本防漂移 + v8 边界）。
+[lints.rust]
+unsafe_code = "deny"
+missing_docs = "warn"
+
+[lints.clippy]
+all = { level = "deny", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
 
 [dependencies]
-# 门面 trait 的类型面：`web_dom::{node::NodeId, tree::NodeTree}` + `web_style::SheetOrigin`（施工图 §1.2）。
+# 门面 trait 的类型面：`web_dom::{node::NodeId, tree::NodeTree}` + `web_style::SheetOrigin`。
 # 必须带 `version`（否则 cargo deny 报 wildcard；与 workspace.package.version = 0.0.0 一致）。
-# 样式/布局引擎依赖（stylo/taffy/parley/…，ADR-0021 精确锁版）在 **S6** 落地时按需引入（一事一 PR）。
 web-dom = { path = "../web-dom", version = "0.0.0" }
 web-style = { path = "../web-style", version = "0.0.0" }
+
+# ===== 样式 / 布局引擎（ADR-0021 精确锁版整组；S1/P-8 实测编译通过）=====
+# ⚠️ `taffy` 必须 `default-features = false`：否则 default 的 `float_layout`/`flexbox_balance` 与
+# `stylo_taffy` 特性统一后给 `taffy::Style` 多出字段，而 `to_taffy_style` 字面量未初始化 ⇒ E0063。
+# 证据：`.workbuddy/refs/g3-probe-evidence/p8-taffy-e0063-evidence.txt`。
+style = { version = "=0.20.0", package = "stylo" }   # import 名 style（servo feature 默认开）
+stylo_dom = "=0.20.0"
+stylo_traits = "=0.20.0"
+stylo_taffy = "=0.3.0-beta.2"
+taffy = { version = "=0.14.0", default-features = false, features = [
+    "std",
+    "taffy_tree",
+    "flexbox",
+    "grid",
+    "block_layout",
+    "content_size",
+    "calc",
+    "detailed_layout_info",
+] }
+parley = "=0.11.1"
+selectors = "=0.40.0"
+skrifa = "=0.44.0"
+fontique = "=0.11.1"

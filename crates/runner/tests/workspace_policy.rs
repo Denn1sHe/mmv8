@@ -15,8 +15,17 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 
-/// 唯一允许不继承 workspace lints 的 crate（AGENTS.md 铁律 4 的白名单）。
-const WHITELISTED_CRATE: &str = "engine-v8";
+/// 允许不继承 workspace lints 的 crate（AGENTS.md 铁律 4 白名单）。
+///
+/// 两支（ADR-0002 + **ADR-0024 修正注记**）：
+/// - `engine-v8`：V8/rusty_v8 的 FFI 薄桥（铁律 5）。
+/// - `layout-backend`：**stylo FFI 薄桥**（`style::dom::TElement` 的 5 个必需 `unsafe fn`）。
+const WHITELISTED_CRATES: &[&str] = &["engine-v8", "layout-backend"];
+
+/// 是否白名单 crate（允许不继承 workspace lints / 允许逐 `fn` `#[allow(unsafe_code)]`）。
+fn is_whitelisted_crate(name: &str) -> bool {
+    WHITELISTED_CRATES.contains(&name)
+}
 
 fn workspace_root() -> PathBuf {
     // CARGO_MANIFEST_DIR = <repo>/crates/runner
@@ -188,43 +197,45 @@ fn workspace_members_equal_scaffold_roster() {
 }
 
 #[test]
-fn engine_v8_lint_block_matches_workspace_except_unsafe_code() {
+fn whitelisted_crate_lint_blocks_match_workspace_except_unsafe_code() {
+    // 泛化自 `engine_v8_lint_block_matches_workspace_except_unsafe_code`（ADR-0024 决策 4）：
+    // 对**每一支**白名单 crate（engine-v8 / layout-backend）断言其 lint 副本与 workspace **逐项全等**
+    // （`unsafe_code` 除外；`:224-227` 的逐项全等不得放宽）。
     let root = workspace_root();
     let workspace = read_cargo_toml(&root.join("Cargo.toml"));
-    let engine = read_cargo_toml(
-        &root
-            .join("crates")
-            .join(WHITELISTED_CRATE)
-            .join("Cargo.toml"),
-    );
-
     let ws_lints = workspace
         .get("workspace")
         .and_then(|w| w.get("lints"))
         .expect("根 Cargo.toml 必须有 [workspace.lints]");
 
-    let mut workspace_lints = flatten_lints(ws_lints.get("rust"), ws_lints.get("clippy"));
-    let mut engine_lints =
-        flatten_lints(lints_table(&engine, "rust"), lints_table(&engine, "clippy"));
+    for name in WHITELISTED_CRATES {
+        let manifest = read_cargo_toml(&root.join("crates").join(name).join("Cargo.toml"));
 
-    // 唯一允许的差异：unsafe_code（forbid → deny，见决策上报 D-01）
-    let ws_unsafe = workspace_lints.remove("rust.unsafe_code");
-    let engine_unsafe = engine_lints.remove("rust.unsafe_code");
-    assert_eq!(
-        ws_unsafe.as_deref(),
-        Some("\"forbid\""),
-        "workspace 级 unsafe_code 必须保持不可被覆盖的 forbid"
-    );
-    assert_eq!(
-        engine_unsafe.as_deref(),
-        Some("\"deny\""),
-        "{WHITELISTED_CRATE} 必须显式把 unsafe_code 放宽为 deny（白名单的唯一开口）"
-    );
+        let mut workspace_lints = flatten_lints(ws_lints.get("rust"), ws_lints.get("clippy"));
+        let mut crate_lints = flatten_lints(
+            lints_table(&manifest, "rust"),
+            lints_table(&manifest, "clippy"),
+        );
 
-    assert_eq!(
-        workspace_lints, engine_lints,
-        "白名单 crate 的 lint 副本与 workspace lints 发生漂移；全仓 lint 升级时必须同步"
-    );
+        // 唯一允许的差异：unsafe_code（forbid → deny，见 ADR-0002 / ADR-0024 决策 1）
+        let ws_unsafe = workspace_lints.remove("rust.unsafe_code");
+        let crate_unsafe = crate_lints.remove("rust.unsafe_code");
+        assert_eq!(
+            ws_unsafe.as_deref(),
+            Some("\"forbid\""),
+            "workspace 级 unsafe_code 必须保持不可被覆盖的 forbid"
+        );
+        assert_eq!(
+            crate_unsafe.as_deref(),
+            Some("\"deny\""),
+            "{name} 必须显式把 unsafe_code 放宽为 deny（白名单的唯一开口）"
+        );
+
+        assert_eq!(
+            workspace_lints, crate_lints,
+            "{name} 的 lint 副本与 workspace lints 发生漂移；全仓 lint 升级时必须同步"
+        );
+    }
 }
 
 #[test]
@@ -237,10 +248,10 @@ fn only_whitelisted_crate_opts_out_of_workspace_lints() {
             .and_then(|l| l.get("workspace"))
             .and_then(toml::Value::as_bool)
             .unwrap_or(false);
-        if *name == WHITELISTED_CRATE {
+        if is_whitelisted_crate(name) {
             assert!(
                 !inherits,
-                "{WHITELISTED_CRATE} 不应继承 workspace lints（forbid 无法被覆盖，白名单会失效）"
+                "{name} 不应继承 workspace lints（forbid 无法被覆盖，白名单会失效）"
             );
         } else {
             assert!(
@@ -276,7 +287,8 @@ fn v8_dependency_only_in_engine_v8() {
 
     for name in runner::workspace_crates() {
         // engine-v8 是唯一允许持有 v8 依赖的 crate，跳过（不要求它**必须**有）。
-        if *name == WHITELISTED_CRATE {
+        // 注意：layout-backend 虽在 lints 白名单内，但**不允许**持有 v8 依赖 ⇒ 这里只跳过 engine-v8。
+        if *name == "engine-v8" {
             continue;
         }
         let manifest = read_cargo_toml(&root.join("crates").join(name).join("Cargo.toml"));
@@ -293,7 +305,7 @@ fn v8_dependency_only_in_engine_v8() {
 
     assert!(
         offenders.is_empty(),
-        "铁律 5：`v8`/`rusty_v8` 依赖只允许出现在 `{WHITELISTED_CRATE}`，\
+        "铁律 5：`v8`/`rusty_v8` 依赖只允许出现在 `engine-v8`，\
          却出现在非白名单 crate（ADR-0009 决策 3）：{offenders:?}"
     );
 }
