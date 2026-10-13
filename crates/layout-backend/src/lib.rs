@@ -21,6 +21,7 @@ pub mod opaque;
 pub mod serialize;
 pub mod style_system;
 pub mod stylo_host;
+pub mod text;
 
 pub use backend::{DirtyState, LayoutBackend, StyleSheetHandle};
 pub use error::{LayoutError, LayoutErrorKind};

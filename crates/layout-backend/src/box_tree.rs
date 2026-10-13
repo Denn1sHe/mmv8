@@ -17,6 +17,7 @@ use crate::error::{LayoutError, LayoutErrorKind};
 use crate::geometry::Size;
 use crate::style_system::StyleSystem;
 use crate::stylo_host::{StyloHost, build_slots};
+use crate::text::{EMBEDDED_FAMILY, SAMPLE_SIZE, TextShaper};
 
 /// 一个节点的几何读数（`offsetWidth`/`clientWidth`/`gBCR` 的源）。
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -55,6 +56,7 @@ pub struct BoxTree {
     map: HashMap<NodeId, taffy::NodeId>,
     root: Option<taffy::NodeId>,
     geometry: HashMap<NodeId, NodeGeometry>,
+    shaper: TextShaper,
 }
 
 #[allow(clippy::missing_fields_in_debug)] // 摘要（节点数）；taffy/映射无稳定 Debug 面。
@@ -92,6 +94,7 @@ impl BoxTree {
             map: HashMap::new(),
             root: None,
             geometry: HashMap::new(),
+            shaper: TextShaper::new(),
         };
 
         let root_id = tree.root();
@@ -133,6 +136,11 @@ impl BoxTree {
         // 文档根 = 初始包含块：块容器（G3 无定位/滚动，视口原点 (0,0)）。
         if is_root {
             style.display = taffy::Display::Block;
+        }
+        // 内联文字：元素含文本子节点 ⇒ 用整形宽度作为其盒宽（§3.2 inline_text_shaped_width）。
+        if let Some(text) = first_text(tree, id) {
+            let width = self.shaper.shape_width(&text, EMBEDDED_FAMILY, SAMPLE_SIZE);
+            style.size.width = taffy::Dimension::length(width);
         }
         let taffy_node = self.taffy.new_leaf(style).map_err(map_taffy_error)?;
         self.map.insert(id, taffy_node);
@@ -182,6 +190,15 @@ impl BoxTree {
     pub fn geometry(&self, id: NodeId) -> Option<NodeGeometry> {
         self.geometry.get(&id).copied()
     }
+}
+
+/// 元素的首个文本子节点内容（非空 ⇒ `Some`）。
+fn first_text(tree: &NodeTree, id: NodeId) -> Option<String> {
+    tree.children(id)
+        .filter_map(|child| tree.get(child))
+        .find(|node| node.kind == NodeKind::Text)
+        .and_then(|node| node.text.clone())
+        .filter(|text| !text.is_empty())
 }
 
 fn is_element(tree: &NodeTree, id: NodeId) -> bool {
@@ -309,6 +326,29 @@ mod tests {
             "第二块 top == 上方块高 50"
         );
         assert!((rect.left.round() - 0.0).abs() < 0.01, "left == 0");
+    }
+
+    #[test]
+    fn inline_text_shaped_width() {
+        let system = ua_system();
+        let mut tree = NodeTree::new();
+        let root = tree.root();
+        let span = tree.create_element("span", "html", vec![]);
+        let text = tree.create_text("Hamburgefonstiv");
+        tree.append_child(root, span);
+        tree.append_child(span, text);
+
+        let mut boxes = BoxTree::build(&tree, &system).expect("build");
+        boxes.compute_layout(VIEWPORT).expect("compute");
+        let geometry = boxes.geometry(span).expect("geometry");
+        // offsetWidth 按 CSSOM View 四舍五入到整数：112.625 -> 113。
+        assert!(
+            (geometry.offset_width - crate::text::PINNED_EMBEDDED_ADVANCE_PX.round()).abs() < 0.01,
+            "内联整形宽应为 P-10 钉值 {}（四舍五入 {}）；实测 {}",
+            crate::text::PINNED_EMBEDDED_ADVANCE_PX,
+            crate::text::PINNED_EMBEDDED_ADVANCE_PX.round(),
+            geometry.offset_width
+        );
     }
 
     #[test]
