@@ -302,6 +302,7 @@ impl BrowsingContext {
         self.shared.parser_active.set(false);
         if parsed_done {
             self.shared.controller.mark_parse_finished();
+            self.register_document_styles()?;
             self.run_deferred_scripts(&snapshot.url)?;
             self.fire_dom_content_loaded()?;
             self.shared.controller.try_finish();
@@ -670,6 +671,46 @@ impl BrowsingContext {
                 }
             }
         }
+    }
+
+    /// 收集文档内 `<style>` 文本为**作者表**（S16 纵向链：样式表 → 级联 → 盒树）。
+    ///
+    /// # Errors
+    /// 表登记 / 级联失败 ⇒ [`PageErrorKind::Internal`]。
+    fn register_document_styles(&mut self) -> Result<(), PageError> {
+        fn collect(tree: &NodeTree, node: NodeId, out: &mut Vec<String>) {
+            for child in tree.children(node) {
+                let is_style = tree
+                    .get(child)
+                    .and_then(|data| data.element.as_ref())
+                    .is_some_and(|element| element.name == "style");
+                if is_style {
+                    let text = tree.text_content(child);
+                    if !text.is_empty() {
+                        out.push(text);
+                    }
+                }
+                collect(tree, child, out);
+            }
+        }
+        let mut sheets = Vec::new();
+        {
+            let tree = self
+                .shared
+                .tree
+                .try_borrow()
+                .map_err(|_| PageError::new(PageErrorKind::Internal, "NodeTree 借用冲突"))?;
+            collect(&tree, tree.root(), &mut sheets);
+        }
+        let mut layout = self
+            .shared
+            .layout
+            .try_borrow_mut()
+            .map_err(|_| PageError::new(PageErrorKind::Internal, "LayoutFacade 借用冲突"))?;
+        for css in sheets {
+            layout.register_sheet(web_style::SheetOrigin::Author, &css)?;
+        }
+        Ok(())
     }
 
     /// 解析完成后、`DOMContentLoaded` 前，按文档序执行 defer/module 脚本（S9b）。

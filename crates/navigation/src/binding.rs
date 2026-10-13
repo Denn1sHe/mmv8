@@ -783,7 +783,9 @@ const SHIM: &str = r"
     node.getAttribute = function (name) { return nGetAttr(this, String(name)); };
     node.attachShadow = function (init) {
       var mode = (init && typeof init.mode === 'string') ? init.mode : '';
-      return decorate(nAttachShadow(this, mode));
+      var root = decorate(nAttachShadow(this, mode));
+      nDirty('child', '');
+      return root;
     };
     Object.defineProperty(node, 'shadowRoot', {
       configurable: true, enumerable: true,
