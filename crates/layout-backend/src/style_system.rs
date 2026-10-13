@@ -231,6 +231,65 @@ mod tests {
     use web_style::SheetOrigin;
 
     #[test]
+    fn cascade_author_over_user_agent() {
+        use crate::stylo_host::{StyloHost, build_slots};
+        use style::values::computed::Display as StyloDisplay;
+        use web_dom::tree::NodeTree;
+
+        let mut system = StyleSystem::new(Size::new(800.0, 600.0));
+        system
+            .add_stylesheet(SheetOrigin::UserAgent, "div { display: inline; }")
+            .expect("ua sheet");
+        system
+            .add_stylesheet(SheetOrigin::Author, "div { display: block; }")
+            .expect("author sheet");
+        system.flush();
+
+        let mut tree = NodeTree::new();
+        let root = tree.root();
+        let div = tree.create_element("div", "html", vec![]);
+        tree.append_child(root, div);
+        let slots = build_slots(&tree);
+        let host = StyloHost::new(slots);
+        let style = system
+            .resolve_element_style(host.node(div).expect("div slot"), 0.0)
+            .expect("cascade");
+        assert_eq!(
+            style.clone_display(),
+            StyloDisplay::Block,
+            "author 应胜出 UA（cascade order）"
+        );
+    }
+
+    #[test]
+    fn ua_default_display_block() {
+        use crate::stylo_host::{StyloHost, build_slots};
+        use style::values::computed::Display as StyloDisplay;
+        use web_dom::tree::NodeTree;
+
+        let mut system = StyleSystem::new(Size::new(800.0, 600.0));
+        system
+            .add_stylesheet(SheetOrigin::UserAgent, crate::UA_CSS)
+            .expect("ua css");
+        system.flush();
+
+        let mut tree = NodeTree::new();
+        let root = tree.root();
+        let div = tree.create_element("div", "html", vec![]);
+        tree.append_child(root, div);
+        let slots = build_slots(&tree);
+        let host = StyloHost::new(slots);
+        let style = system
+            .resolve_element_style(host.node(div).expect("div slot"), 0.0)
+            .expect("cascade");
+        assert_eq!(
+            style.clone_display(),
+            StyloDisplay::Block,
+            "内嵌 UA 表应使 <div> 默认 display:block（G3-B7）"
+        );
+    }
+
+    #[test]
     fn cascade_author_rule_changes_computed_display() {
         use crate::stylo_host::{StyloHost, build_slots};
         use style::values::computed::Display as StyloDisplay;
