@@ -329,6 +329,7 @@ dependencies = [
  "stylo_taffy",
  "stylo_traits",
  "taffy",
+ "url",
  "web-dom",
 ]
 

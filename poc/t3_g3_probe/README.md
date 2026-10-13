@@ -15,6 +15,7 @@
 | **P-2**（stylo→taffy 桥） | PENDING | 依赖 P-1 投影（`TElement`）成立；P-1 阻断 ⇒ 未执行 |
 | **P-3**（字体发现路径） | **PASS（本地）** | `fontique` 系统发现 667 家族 + 内嵌 Tuffy 注册 + 回退非 0 且不 panic（远程复验归 S14） |
 | **P-10**（内嵌字体度量确定） | **PASS（本地）** | 内嵌 Tuffy `"Hamburgefonstiv"`@16px ⇒ **112.625 px**（同架构逐位相等；跨架构 ≤0.5px） |
+| **P-4**（真实模型 shadow 作用域） | **PASS** | `p4.rs`+`p4_match.rs`：light 隔离 + `:host`/`::slotted` 命中（`selectors::matching`）+ opaque 反查，**零 unsafe** |
 
 **综合判定 = `BLOCK` ⇒ 停上报**（ADR-0020 决策 2 / 施工图 §7 P-1 铁律）。
 
@@ -65,6 +66,13 @@ Rust 要求**实现**这些方法时也声明为 `unsafe fn`。而 `#![forbid(un
 ```bash
 cargo run --example p1b_eager_data --offline   # P1B_UNSAFE_SURFACE=signatures:5 bodies:0
 ```
+
+## P-4（真实 web-dom 模型 shadow 作用域，S3 探针 B）
+
+`src/p4.rs`（真实 `web_dom::NodeTree`）+ `src/p4_match.rs`（`selectors::Element` + `matches_selector`）。
+判定（三者同时成立）：① light 遍历不含影子内容；② `:host`/`::slotted` 经 shadow 作用域命中；③ opaque 机制 + 零 unsafe。
+模型：`<x-host>` + `#shadow-root(open){<div>,<slot>}` + light `<span>`。
+证据：`.workbuddy/refs/g3-probe-evidence/p4-shadow-scope-evidence.md`；`cargo test` 18/18。
 
 ## P-3 / P-10（字体，施工图 §1.4 / §7）
 

@@ -30,6 +30,7 @@
 pub mod fonts;
 pub mod opaque;
 pub mod p4;
+pub mod p4_match;
 pub mod pins;
 pub mod prefs;
 pub mod report;

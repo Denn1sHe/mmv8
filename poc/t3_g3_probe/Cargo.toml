@@ -55,3 +55,5 @@ fontique = "=0.11.1"
 
 # P-4：在**真实 web-dom 模型**上判定 shadow 作用域（path 依赖，不入分发）。
 web-dom = { path = "../../crates/web-dom" }
+# P-4b：构造 `UrlExtraData` 需要 `url::Url`（stylo 传递依赖，此处为探针直接引用）。
+url = "=2.5.8"
