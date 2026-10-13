@@ -26,7 +26,7 @@ use engine_v8::realm::Realm;
 use engine_v8::{HostValue, JsHandle};
 
 use web_dom::mutation::{MutationBuffer, MutationRecord};
-use web_dom::node::NodeId;
+use web_dom::node::{NodeId, ShadowMode};
 use web_dom::tree::NodeTree;
 use web_events::{ListenerOptions, ListenerRegistry, UserActivation};
 
@@ -401,6 +401,64 @@ impl PageBinding {
             )?;
         }
 
+        // —— 原生原语：Shadow 面（S10-b；G3-B8 边界：仅 attachShadow / shadowRoot，无 querySelector）——
+        {
+            let tree = Rc::clone(&inputs.tree);
+            let node_map = Rc::clone(&node_map);
+            install_global_fn(
+                realm,
+                "__iv8_dom_attach_shadow",
+                2,
+                Box::new(move |realm, args| {
+                    let host = node_of(realm, args.first())?.ok_or_else(|| {
+                        JsError::new(JsErrorKind::Exception, "attachShadow: 非法 host")
+                    })?;
+                    let mode = match arg_str(args, 1).as_deref() {
+                        Some("open") => ShadowMode::Open,
+                        Some("closed") => ShadowMode::Closed,
+                        _ => {
+                            return Err(JsError::new(
+                                JsErrorKind::Exception,
+                                "attachShadow: mode 必须为 open/closed",
+                            ));
+                        }
+                    };
+                    let root = tree
+                        .try_borrow_mut()
+                        .map_err(|_| refcell_conflict("NodeTree"))?
+                        .attach_shadow(host, mode)
+                        .map_err(|err| {
+                            JsError::new(JsErrorKind::Exception, err.message().to_owned())
+                        })?;
+                    wrapper_for_impl(realm, &node_map, root)
+                }),
+            )?;
+        }
+        {
+            let tree = Rc::clone(&inputs.tree);
+            let node_map = Rc::clone(&node_map);
+            install_global_fn(
+                realm,
+                "__iv8_dom_shadow_root",
+                1,
+                Box::new(move |realm, args| {
+                    let found = match node_of(realm, args.first())? {
+                        Some(host) => tree
+                            .try_borrow()
+                            .map_err(|_| refcell_conflict("NodeTree"))?
+                            .shadow_root(host)
+                            .filter(|(_, mode)| *mode == ShadowMode::Open)
+                            .map(|(root, _)| root),
+                        None => None,
+                    };
+                    match found {
+                        Some(root) => wrapper_for_impl(realm, &node_map, root),
+                        None => Ok(HostValue::Null),
+                    }
+                }),
+            )?;
+        }
+
         realm.eval(SHIM)?;
         Ok(Self { inputs, node_map })
     }
@@ -562,6 +620,8 @@ const SHIM: &str = r"
   var nGetStyle = g.__iv8_dom_get_style;
   var nSetStyle = g.__iv8_dom_set_style;
   var nWrite = g.__iv8_dom_write;
+  var nAttachShadow = g.__iv8_dom_attach_shadow;
+  var nShadowRoot = g.__iv8_dom_shadow_root;
   var nEvAdd = g.__iv8_ev_add;
   var nEvRemove = g.__iv8_ev_remove;
   var nEvClick = g.__iv8_ev_click;
@@ -576,6 +636,8 @@ const SHIM: &str = r"
   delete g.__iv8_dom_get_style;
   delete g.__iv8_dom_set_style;
   delete g.__iv8_dom_write;
+  delete g.__iv8_dom_attach_shadow;
+  delete g.__iv8_dom_shadow_root;
   delete g.__iv8_ev_add;
   delete g.__iv8_ev_remove;
   delete g.__iv8_ev_click;
@@ -615,6 +677,14 @@ const SHIM: &str = r"
     node.appendChild = function (child) { nAppend(this, child); return child; };
     node.setAttribute = function (name, value) { nSetAttr(this, String(name), String(value)); };
     node.getAttribute = function (name) { return nGetAttr(this, String(name)); };
+    node.attachShadow = function (init) {
+      var mode = (init && typeof init.mode === 'string') ? init.mode : '';
+      return decorate(nAttachShadow(this, mode));
+    };
+    Object.defineProperty(node, 'shadowRoot', {
+      configurable: true, enumerable: true,
+      get: function () { var r = nShadowRoot(this); return r === null ? null : decorate(r); }
+    });
     node.addEventListener = function (type, cb, opts) {
       var isObj = (opts && typeof opts === 'object');
       var cap = isObj ? !!opts.capture : !!opts;
@@ -750,6 +820,33 @@ mod tests {
             element.style.get_property("color"),
             Some("red"),
             "style.color 应写入内联声明"
+        );
+    }
+
+    #[test]
+    fn shadow_root_open_only_via_js() {
+        // §3.5：JS 层 shadowRoot 仅 open 返回；closed => null。
+        let (mut realm, _binding, _tree) = setup();
+        realm
+            .eval(
+                "var host = document.createElement('x-host'); document.appendChild(host);\
+                 var shadow = host.attachShadow({ mode: 'open' });\
+                 var got = host.shadowRoot;\
+                 var closed = document.createElement('x-closed'); document.appendChild(closed);\
+                 closed.attachShadow({ mode: 'closed' });\
+                 globalThis.__openOk = (got !== null) && (got === shadow);\
+                 globalThis.__closedOk = (closed.shadowRoot === null);",
+            )
+            .expect("eval");
+        assert_eq!(
+            realm.eval("globalThis.__openOk").unwrap(),
+            HostValue::Bool(true),
+            "open 应返回可操作影子根"
+        );
+        assert_eq!(
+            realm.eval("globalThis.__closedOk").unwrap(),
+            HostValue::Bool(true),
+            "closed 应返回 null（G3-B14）"
         );
     }
 
