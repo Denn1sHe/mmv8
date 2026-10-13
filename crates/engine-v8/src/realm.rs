@@ -741,6 +741,46 @@ impl Realm {
         Self::eval_module_impl(realm, src, url)
     }
 
+    /// 同 [`Self::eval_module`]，但带 **watchdog 墙钟上限**（ADR-0017·D2；U-12）：
+    /// 模块执行超过 `deadline` 被打断 ⇒ [`JsErrorKind::Terminated`]（专有判据）。
+    ///
+    /// # Errors
+    /// 同 [`Self::eval_module`]；或超 deadline 被打断（[`JsErrorKind::Terminated`]）。
+    pub fn eval_module_with_deadline(
+        &mut self,
+        src: &str,
+        url: &str,
+        deadline: std::time::Duration,
+    ) -> Result<HostValue, JsError> {
+        self.ensure_open()?;
+        let terminate = self.terminate.clone();
+        let fired = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let fired_watch = std::sync::Arc::clone(&fired);
+        let (tx, rx) = mpsc::channel::<()>();
+        let watchdog = std::thread::spawn(move || {
+            if rx.recv_timeout(deadline).is_err() {
+                fired_watch.store(true, std::sync::atomic::Ordering::SeqCst);
+                terminate.terminate_execution();
+            }
+        });
+
+        let outcome = self.eval_module(src, url);
+        tx.send(()).ok();
+        let _ = watchdog.join();
+
+        if fired.load(std::sync::atomic::Ordering::SeqCst) {
+            // 终止是粘性的：复位以便 isolate 之后继续可用（G1 同款）。
+            self.isolate.cancel_terminate_execution();
+            if outcome.is_err() {
+                return Err(JsError::new(
+                    JsErrorKind::Terminated,
+                    "模块执行超过 deadline 被 watchdog 截断",
+                ));
+            }
+        }
+        outcome
+    }
+
     /// `eval_module` 的实现（别名/生命周期论证同 [`Self::eval_impl`]）。
     fn eval_module_impl(realm: *mut Self, src: &str, url: &str) -> Result<HostValue, JsError> {
         // SAFETY（别名 + 生命周期）：同 `eval_impl`。

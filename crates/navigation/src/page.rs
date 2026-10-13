@@ -348,7 +348,10 @@ impl BrowsingContext {
     /// # Errors
     /// 求值失败时报 [`JsError`]。
     pub fn eval_module(&mut self, src: &str, url: &str) -> Result<HostValue, JsError> {
-        self.plane.realm_mut().eval_module(src, url)
+        let deadline = self.script_deadline;
+        self.plane
+            .realm_mut()
+            .eval_module_with_deadline(src, url, deadline)
     }
 
     /// 控制范围求值（G1 `control_eval` 语义；`__iv8__` 临时可用，RAII）。
@@ -633,6 +636,7 @@ impl BrowsingContext {
 
     /// 解析完成后、`DOMContentLoaded` 前，按文档序执行 defer/module 脚本（S9b）。
     fn run_deferred_scripts(&mut self, base_url: &str) -> Result<(), PageError> {
+        let deadline = self.script_deadline;
         let deferred: Vec<DeferredScript> = self.shared.deferred.borrow_mut().drain(..).collect();
         for (index, script) in deferred.into_iter().enumerate() {
             let text = self.shared.tree.borrow().text_content(script.node);
@@ -645,7 +649,11 @@ impl BrowsingContext {
                 }
                 let url = format!("{base_url}#module-{index}");
                 self.plane
-                    .with_page_script(|plane| plane.realm_mut().eval_module(&text, &url))
+                    .with_page_script(|plane| {
+                        plane
+                            .realm_mut()
+                            .eval_module_with_deadline(&text, &url, deadline)
+                    })
                     .map_err(map_js)?;
             } else {
                 self.eval_page_script(&text)?;
@@ -1700,6 +1708,23 @@ mod tests {
         assert!(
             message.contains("DocumentWriteAfterLoad"),
             "post-load write 应呈具名错误，实得 {message:?}"
+        );
+    }
+
+    #[test]
+    fn module_deadline_terminates_module_deadloop() {
+        // S14 / U-12：模块死循环 ⇒ watchdog 截断 ⇒ `Terminated`（模块 eval 接 deadline）。
+        use engine_v8::error::JsErrorKind;
+        let mut page = BrowsingContext::new("https://a.example/").expect("new");
+        page.set_script_deadline_ms(50);
+        let err = page
+            .eval_module("while (true) {}", "https://a.example/loop.js")
+            .expect_err("模块死循环应被 watchdog 截断");
+        assert_eq!(
+            err.kind(),
+            JsErrorKind::Terminated,
+            "应为 Terminated 专有判据，实得 {:?}",
+            err.kind()
         );
     }
 
