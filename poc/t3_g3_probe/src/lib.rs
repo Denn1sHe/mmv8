@@ -27,6 +27,7 @@
 //! 直接冲突，属 **P-1 阻断项**，须停上报（ADR-0020 决策 2 / 施工图 §7 P-1 铁律）。详见 [`report`]。
 #![forbid(unsafe_code)]
 
+pub mod fonts;
 pub mod opaque;
 pub mod pins;
 pub mod prefs;

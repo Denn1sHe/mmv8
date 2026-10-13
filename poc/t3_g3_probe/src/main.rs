@@ -65,6 +65,23 @@ fn main() {
     println!("P1_BLOCKED_BY_TRAIT_SURFACE_RESTRICTED_CODE=true");
     println!();
 
+    // ---------------- P-3 / P-10：字体发现 + 内嵌字体度量 ----------------
+    println!("--- P-3 字体发现 + P-10 内嵌字体度量 ---");
+    let fonts = g3probe::fonts::probe();
+    println!("P3_SYSTEM_FAMILIES={}", fonts.system_family_count);
+    println!("P3_EMBEDDED_REGISTERED={}", fonts.embedded_registered);
+    println!("P3_EMBEDDED_ADVANCE_PX={}", fonts.embedded_advance_px);
+    println!("P3_FALLBACK_ADVANCE_PX={}", fonts.fallback_advance_px);
+    println!("P10_ARCH={}", fonts.arch);
+    println!("P10_FONT_HASH={:#018x}", fonts.font_hash);
+    println!(
+        "P10_PINNED_ADVANCE_PX={}  DELTA={}  TOLERANCE_PX={}",
+        g3probe::fonts::PINNED_EMBEDDED_ADVANCE_PX,
+        (fonts.embedded_advance_px - g3probe::fonts::PINNED_EMBEDDED_ADVANCE_PX).abs(),
+        g3probe::fonts::CROSS_ARCH_TOLERANCE_PX
+    );
+    println!();
+
     // ---------------- 汇总 ----------------
     let out = evaluate();
     println!("=== S1 判定汇总 ===");

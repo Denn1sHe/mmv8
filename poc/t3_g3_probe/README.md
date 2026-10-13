@@ -12,6 +12,8 @@
 | **P-1-机制**（opaque 侧表） | **PASS** | `#![forbid(unsafe_code)]` 下编译通过 + `OpaqueElement` 反查命中（零 unsafe） |
 | **P-1-总**（投影编译+级联+零 unsafe） | **BLOCK ⛔** | `style::dom::TElement` 的 **5 个必需 `unsafe fn`** 与全仓 `unsafe_code = "forbid"` **冲突** |
 | **P-2**（stylo→taffy 桥） | PENDING | 依赖 P-1 投影（`TElement`）成立；P-1 阻断 ⇒ 未执行 |
+| **P-3**（字体发现路径） | **PASS（本地）** | `fontique` 系统发现 667 家族 + 内嵌 Tuffy 注册 + 回退非 0 且不 panic（远程复验归 S14） |
+| **P-10**（内嵌字体度量确定） | **PASS（本地）** | 内嵌 Tuffy `"Hamburgefonstiv"`@16px ⇒ **112.625 px**（同架构逐位相等；跨架构 ≤0.5px） |
 
 **综合判定 = `BLOCK` ⇒ 停上报**（ADR-0020 决策 2 / 施工图 §7 P-1 铁律）。
 
@@ -50,6 +52,19 @@ Rust 要求**实现**这些方法时也声明为 `unsafe fn`。而 `#![forbid(un
 - **③** 将 `TElement` 实现移入已白名单的 `engine-v8`（不推荐：违反类型面纪律的初衷）。
 
 > 详见回传主理人的报告；**P-1 未解前不得开工 S2+**（施工图 §5）。
+
+## P-3 / P-10（字体，施工图 §1.4 / §7）
+
+`src/fonts.rs`：字体栈 `parley`（整形）← `fontique`（发现/回退）← `skrifa`（字形）。
+
+- **P-3**：`Collection::new({system_fonts:true}).family_names()` 本地发现 **667** 家族；内嵌字体经
+  `register_fonts(Blob::new(Arc::new(bytes)), None)` 注册后 `family_id("Tuffy").is_some()`；缺失家族
+  回退**非 0 且不 panic**。判定 = 本地度量钉死值；远程非 0 且不 panic（**远程复验归 S14**）。
+- **P-10**：内嵌字体 `Tuffy` 整形 `"Hamburgefonstiv"`@16px ⇒ **112.625 px**（本机 aarch64）。
+  判定 = 同架构**逐位相等**（测试 `assert_eq!`）；跨架构 **≤0.5px**（`CROSS_ARCH_TOLERANCE_PX`）+ 记录
+  `arch`/`font_hash`。§4 测试计划回填见 `.workbuddy/refs/g3-probe-evidence/p3-p10-fonts-evidence.md`。
+- **内嵌字体授权**：`fonts/Tuffy.ttf` 为 **public domain**（作者 Thatcher Ulrich 等宣告，原文见
+  `fonts/LICENSE.txt`）；`sha256=b97cd500…fdce98`。选内嵌（而非系统字体）是为**跨机确定性**（R4/G3-B10）。
 
 ## 运行
 
