@@ -73,7 +73,7 @@ impl StyleSystem {
     /// 建样式系统：`Device`（注入 [`FontChain`] 度量提供者）+ `Stylist`。
     #[must_use]
     pub fn new(viewport: Size) -> Self {
-        let lock = SharedRwLock::new_leaked();
+        let lock = crate::stylo_host::global_shared_lock().clone();
         let default_values: Arc<ComputedValues> =
             ComputedValues::initial_values_with_font_override(Font::initial_values());
         let device = Device::new(
@@ -168,6 +168,12 @@ impl StyleSystem {
         self.stylist.flush(&StylesheetGuards::same(&guard));
     }
 
+    /// 共享锁（`Locked<…>` 与 guards 同源；供 `stylo_host::build_slots` 用）。
+    #[must_use]
+    pub const fn shared_lock(&self) -> &SharedRwLock {
+        &self.lock
+    }
+
     /// stylo 级联引擎（只读）。
     #[must_use]
     pub const fn stylist(&self) -> &Stylist {
@@ -260,7 +266,7 @@ mod tests {
         let div = tree.create_element("div", "html", vec![]);
         tree.append_child(root, div);
         let before = {
-            let slots = build_slots(&tree);
+            let slots = build_slots(&tree, system.shared_lock());
             let style = system
                 .resolve_element_style(StyloHost::new(slots).node(div).expect("div slot"), 0.0)
                 .expect("cascade");
@@ -271,7 +277,7 @@ mod tests {
         // 改 class（§2.2：class ⇒ style 级脏）→ 同元素重算应得新计算值。
         tree.set_attribute(div, "class", "c");
         let after = {
-            let slots = build_slots(&tree);
+            let slots = build_slots(&tree, system.shared_lock());
             let style = system
                 .resolve_element_style(StyloHost::new(slots).node(div).expect("div slot"), 0.0)
                 .expect("cascade");
@@ -299,7 +305,7 @@ mod tests {
         // 动态插入新节点（append）→ 重建槽 → 读其计算值应为输入值。
         let div = tree.create_element("div", "html", vec![("id".to_owned(), "box".to_owned())]);
         tree.append_child(root, div);
-        let slots = build_slots(&tree);
+        let slots = build_slots(&tree, system.shared_lock());
         let style = system
             .resolve_element_style(StyloHost::new(slots).node(div).expect("div slot"), 0.0)
             .expect("cascade");
@@ -325,7 +331,7 @@ mod tests {
         let root = tree.root();
         let div = tree.create_element("div", "html", vec![("id".to_owned(), "box".to_owned())]);
         tree.append_child(root, div);
-        let slots = build_slots(&tree);
+        let slots = build_slots(&tree, system.shared_lock());
         let style = system
             .resolve_element_style(StyloHost::new(slots).node(div).expect("div slot"), 0.0)
             .expect("cascade");
@@ -361,7 +367,7 @@ mod tests {
             ],
         );
         tree.append_child(root, div);
-        let slots = build_slots(&tree);
+        let slots = build_slots(&tree, system.shared_lock());
         let style = system
             .resolve_element_style(StyloHost::new(slots).node(div).expect("div slot"), 0.0)
             .expect("cascade");
@@ -391,7 +397,7 @@ mod tests {
         let root = tree.root();
         let div = tree.create_element("div", "html", vec![]);
         tree.append_child(root, div);
-        let slots = build_slots(&tree);
+        let slots = build_slots(&tree, system.shared_lock());
         let host = StyloHost::new(slots);
         let style = system
             .resolve_element_style(host.node(div).expect("div slot"), 0.0)
@@ -419,7 +425,7 @@ mod tests {
         let root = tree.root();
         let div = tree.create_element("div", "html", vec![]);
         tree.append_child(root, div);
-        let slots = build_slots(&tree);
+        let slots = build_slots(&tree, system.shared_lock());
         let host = StyloHost::new(slots);
         let style = system
             .resolve_element_style(host.node(div).expect("div slot"), 0.0)
@@ -447,7 +453,7 @@ mod tests {
         let root = tree.root();
         let div = tree.create_element("div", "html", vec![]);
         tree.append_child(root, div);
-        let slots = build_slots(&tree);
+        let slots = build_slots(&tree, system.shared_lock());
         let host = StyloHost::new(slots);
         let style = system
             .resolve_element_style(host.node(div).expect("div slot"), 0.0)

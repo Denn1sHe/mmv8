@@ -194,7 +194,7 @@ impl<'a> TElement for &'a ElementSlot<'a> {
     }
 
     fn style_attribute(&self) -> Option<ArcBorrow<'_, Locked<PropertyDeclarationBlock>>> {
-        None
+        ElementSlot::style_attribute(self).map(Arc::borrow_arc)
     }
 
     fn animation_rule(
@@ -437,7 +437,7 @@ mod tests {
         let shadow = tree.attach_shadow(host, ShadowMode::Open).unwrap();
         assert!(tree.is_shadow_root(shadow));
 
-        let slots = build_slots(&tree);
+        let slots = build_slots(&tree, crate::stylo_host::global_shared_lock());
         let host_ctx = StyloHost::new(slots);
         let host_ref = host_ctx.node(host).expect("host slot");
 

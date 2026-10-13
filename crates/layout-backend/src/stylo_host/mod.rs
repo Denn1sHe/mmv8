@@ -15,6 +15,7 @@
 pub mod dom;
 
 use std::cell::Cell;
+use std::sync::OnceLock;
 
 use selectors::attr::{AttrSelectorOperation, CaseSensitivity, NamespaceConstraint};
 use selectors::bloom::BloomFilter;
@@ -26,6 +27,13 @@ use web_dom::node::{ElementData as DomElementData, NodeId, NodeKind};
 use web_dom::tree::NodeTree;
 
 use crate::opaque;
+
+/// 进程级共享锁（`Locked<…>` 的内联样式块与 `StylesheetGuards` 必须同源，否则 stylo `read_with` 断言）。
+#[must_use]
+pub fn global_shared_lock() -> &'static style::shared_lock::SharedRwLock {
+    static LOCK: OnceLock<style::shared_lock::SharedRwLock> = OnceLock::new();
+    LOCK.get_or_init(style::shared_lock::SharedRwLock::new_leaked)
+}
 
 /// 元素句柄：**对槽的引用**（8 字节；见模块头的不变量说明）。
 pub type NodeRef<'a> = &'a ElementSlot<'a>;
@@ -44,6 +52,11 @@ pub struct ElementSlot<'a> {
     local_name: web_atoms::LocalName,
     namespace: web_atoms::Namespace,
     id_atom: Option<style::Atom>,
+    style_attribute: Option<
+        style::servo_arc::Arc<
+            style::shared_lock::Locked<style::properties::PropertyDeclarationBlock>,
+        >,
+    >,
 }
 
 impl std::fmt::Debug for ElementSlot<'_> {
@@ -167,6 +180,18 @@ impl<'a> ElementSlot<'a> {
         self.id_atom.as_ref()
     }
 
+    /// 内联 `style` 属性块（`style="…"` 解析结果；无 ⇒ `None`）。
+    #[must_use]
+    pub fn style_attribute(
+        &self,
+    ) -> Option<
+        &style::servo_arc::Arc<
+            style::shared_lock::Locked<style::properties::PropertyDeclarationBlock>,
+        >,
+    > {
+        self.style_attribute.as_ref()
+    }
+
     /// 急切借出可变数据（安全：`borrow_mut` 内部互斥）。
     pub fn ensure_data(&self) -> ElementDataMut<'_> {
         self.data.borrow_mut()
@@ -235,8 +260,14 @@ impl<'a> StyloHost<'a> {
 ///
 /// **前提**：一次 `resolve` 内不 `dispose`（`NodeId::generation` 保持 0）；槽位按 `NodeId::index()` 对齐。
 /// **泄漏登记**：每 host 一次性（跨 resolve 复用；重建即重分配）；G5 前如需回收另立优化项。
+///
+/// # Panics
+/// 槽数组构造中若 `about:blank` URL 解析失败即 panic（内建常量，不应发生）。
 #[must_use]
-pub fn build_slots(tree: &NodeTree) -> &[ElementSlot<'_>] {
+pub fn build_slots<'a>(
+    tree: &'a NodeTree,
+    lock: &style::shared_lock::SharedRwLock,
+) -> &'a [ElementSlot<'a>] {
     let len = tree.len();
     let mut slots: Vec<ElementSlot<'_>> = Vec::with_capacity(len);
     for index in 0..len {
@@ -248,6 +279,20 @@ pub fn build_slots(tree: &NodeTree) -> &[ElementSlot<'_>] {
         let id_atom = element
             .and_then(|element| element.attrs.get("id"))
             .map(style::Atom::from);
+        let style_attribute = element
+            .and_then(|element| element.attrs.get("style"))
+            .map(|text| {
+                let block = style::properties::parse_style_attribute(
+                    text,
+                    &style::stylesheets::UrlExtraData::from(
+                        url::Url::parse("about:blank").expect("about:blank"),
+                    ),
+                    None,
+                    style::context::QuirksMode::NoQuirks,
+                    style::stylesheets::CssRuleType::Style,
+                );
+                style::servo_arc::Arc::new(lock.wrap(block))
+            });
         let (local_name, namespace) = element.map_or_else(
             || {
                 (
@@ -272,6 +317,7 @@ pub fn build_slots(tree: &NodeTree) -> &[ElementSlot<'_>] {
             local_name,
             namespace,
             id_atom,
+            style_attribute,
         });
     }
 
@@ -523,7 +569,7 @@ mod tests {
         tree.append_child(html, body);
         tree.append_child(body, div);
 
-        let slots = build_slots(&tree);
+        let slots = build_slots(&tree, crate::stylo_host::global_shared_lock());
         let host = StyloHost::new(slots);
 
         let node = host.node(div).expect("div slot");
