@@ -122,6 +122,23 @@
 > **S6-1（`stylo_host/{mod,dom}.rs`）需重构一次**；**(B) 否决**（`usize` + 线程局部 = **叠加全局态**）。
 > 工程师已按 (A) 重构 `stylo_host/{mod,dom}.rs`；**③-a WIP 已按纪律回滚（树保持 17/17）**。
 >
+> **R18 演进定案 = A-3（2026-10-13）**：`ElementSlot<'a> = {tree, id, data, flags, atoms}`（**不持 slice**，规避自引用；
+> **(A)-直译 / A-1（leak）/ A-2（新 unsafe）均排除**）；**导航暂 stub**；**opaque 锚点 = 槽地址（保留 P-4 兼容）**；
+> **新增 S7-nav 专项步**（至迟 S11 前；`ouroboros`/受控 arena 集中评估，**unsafe 仍禁**）。
+>
+> **导航依赖核验（§3.3~§3.7 + S11，2026-10-13）**：
+> ① **light 组合器**（` ` `>` `+` `~`）才调 `parent_element`/兄弟（`selectors-0.40.0/matching.rs:827-843`）——
+> **§3.1~§3.7 测试选择器均不含 light 组合器**（§3.1 `#id`/`.class`/元素；§3.5 `:host`/`::slotted`）⇒ 测试本身**不触发组合器 nav**；
+> ② **`:host`/`::slotted`** 经 `containing_shadow`/`assigned_slot`/`host_for_part`（`matching.rs:842-843`；`stylo/dom.rs:814/866`）——
+> **不调 `parent_element`**，走**影子树 host/slot nav**（A-3 经 `tree`+`id` 保留）；
+> ③ **⚠️ stylo 级联/继承要求 `TElement::traversal_parent()`**（**必需方法** `stylo/dom.rs:246`；`traversal.rs:116` 走链 `.unwrap()`）
+> ⇒ **任何「计算值」断言依赖祖先链 nav**。
+>
+> **判定**：**可跑（父链 nav 补上前）** = §3.2 几何 / §3.4 几何 API / §3.6 字体 / §3.7 控制 / §3.5 **结构类**（attach_shadow/assigned_nodes/flattened/隔离）；
+> **必须等** = §3.1 计算值 / §3.3 **计算值层** / §3.5 `:host`+`::slotted` **计算值** ⇒ **S7-nav = §3.1/§3.3/§3.5 硬前置**（兄弟/组合器 nav 可延后）。
+> **缓释**：A-3 的 `ElementSlot` 已持 `tree`+`id` ⇒ `parent_element`/`traversal_parent` **可经 web-dom 实现（无自引用）**；
+> **若 A-3 接线此项 ⇒ 仅兄弟/组合器需 S7-nav，§3.1/§3.3/§3.5 可先跑 —— 请工程师确认 A-3 是否涵盖 `parent_element`/`traversal_parent`。**
+>
 > **探针门总账（2026-10-13）—— 100% 收口**：**全 8 项 ✅** —— **P-1 机制 ✅**（零 unsafe+反查命中；**总判随落档**，= E′+R / ADR-0024）、
 > **P-1b ✅**（信封 = 5 声明 + 0 腔体，终值）、**P-2 ✅**（「样式改⇒布局盒变」**非恒真 + 负对照**，`128dee9`）、
 > **P-3 ✅**、**P-4 ✅**（三判据全过，含负对照 ⇒ **R1 解除**）、**P-8 ✅**、**P-10 ✅**、**P-11 ✅**。
@@ -165,6 +182,8 @@
 - **执行模型收口**：**脚本任务化 / timer 事件循环 / 宿主 `try_borrow` 残余**（**ADR-0023 ⇒ G4**；
   G3 只做**模块 watchdog**）。
 - **CDP / 真实 Chromium 差分**（技术方案 T1.3 未完；G3 判据降级为自洽 + 具名偏差，G3-B3）。
+- **light 组合器 / 兄弟导航**（A-3 句柄**暂 stub**，见 §1.2.1 / §6 R18）⇒ **S7-nav 专项步**（至迟 S11 前；
+  `ouroboros` / 受控 arena 集中评估，**unsafe 仍禁**）；**祖先链 nav（`traversal_parent`）为级联必需，作 §3.1/§3.3/§3.5 硬前置**（§7 核验）。
 - **不改** `.github/workflows/**`、`CODEOWNERS`、`deny.toml`、`AGENTS.md`、golden（铁律 7）。
 
 ---
@@ -320,7 +339,10 @@ impl LayoutBackend for StyloBackend { /* … */ }
 > `SharingCache<E>` 与 `TypelessSharingCache`（占位 `FakeCandidate { _element: usize }`）**等尺寸/等 align 断言**
 > （`stylo-0.20.0/sharing/mod.rs:605`）；`ThreadLocalStyleContext::new()` **无条件**构造该缓存 ⇒ 违反即 **panic**
 > （`disable_style_sharing_cache` **救不了构造**）。**形式 = 单引用** `NodeRef<'a> = &'a ElementSlot<'a>`
-> （与 blitz `type BlitzNode<'a> = &'a Node` 同构）⇒ **类 `RefCell` 活口 / 多字段句柄 `E` 一律不适用**。**主理人已裁 (A)**。
+> （与 blitz `type BlitzNode<'a> = &'a Node` 同构）⇒ **类 `RefCell` 活口 / 多字段句柄 `E` 一律不适用**。
+> **最终形态 = A-3**（主理人裁，2026-10-13）：`ElementSlot<'a> = { tree, id, data, flags, atoms }`，**不持 slice**
+> （规避自引用；**(A)-直译 / A-1（leak）/ A-2（新 unsafe）均排除**）；**导航暂 stub**（→ **S7-nav 专项步**，至迟 S11 前）；
+> **opaque 锚点 = 槽地址**（**保留 P-4 兼容**）。**演进与被否理由见 §6 R18**。
 
 > **为什么必须设计它**：`selectors::Element::opaque(&self) -> OpaqueElement` 是**必需方法、无默认实现**
 > （`selectors-0.40.0/tree.rs:50`）；`OpaqueElement(NonNull<()>)`（同文件 `:17`）**唯一反解**是
@@ -753,6 +775,7 @@ shadow 隔离**必须有负对照**；`layout-backend` 目标 **≥80% lines**�
 | **S5（web-style）** | `Stylesheet` + `ComputedStyle`（+ remove 语义）。**注**：`SheetOrigin` 已于 **S4 提前落位**，本步续扩 `sheet.rs` | `web-style/src/{sheet,computed,error,lib}.rs` | S0 | §3.1 登记/往返/remove | P0 |
 | **S6（stylo_host）** ✅ | `impl style::dom::{TNode,TElement,TShadowRoot}` + `selectors::Element`（`opaque()` 走 §1.2.1 侧表）+ `src/opaque.rs`；**落目录模块 `src/stylo_host/`**；**句柄形态 as-built = `&'a ElementSlot<'a>`（8B，R18）**；`layout-backend` 本地 `deny` + 逐 `fn` `#[allow]`+`SAFETY`（**5 声明 + 0 腔体**，P-1b 终值）。**前置（R17）已解**（E′+R，ADR-0024）。**✅ 已完成；四态注入首验通过**（证据 `.workbuddy/refs/g3-s6-whitelist-evidence/`）；**S6-G：`cargo geiger` 顺延 S14** | `layout-backend/src/stylo_host/`、`src/opaque.rs` | S4 | P-1 回填 + P-1b 定形 + 编译 ✅ | P0 |
 | **S7（级联 + 失效）** | `style_system` + `invalidate`（**变更→脏级映射** + restyle root）+ `serialize`（**属性白名单**）+ **`font_metrics` 子组件（S7-b；stylo `Device` 的 `FontMetricsProvider`）**。**S7-a ✅**（`a885eb6`，`invalidate.rs` 两级失效簿记 + §2.2 映射；layout-backend 14/14、workspace **185**）；**S7-b（级联 + font_metrics）在途** | `layout-backend/src/{style_system,invalidate,serialize,font_metrics}.rs` | S5,S6 | §3.1 六条 + §3.3 四条（几何条**与 S8/S12 合验**） | P0 |
+| **S7-nav（导航专项步）** | 补 `parent_element`/`traversal_parent`（stylo 级联必需，见 §7 核验）+ 兄弟/组合器 nav；集中评估 `ouroboros` / 受控 arena（**unsafe 仍禁**） | `layout-backend/src/stylo_host/`（`ElementSlot` 导航面） | S7 | **§3.1/§3.3/§3.5 计算值可跑**（§7 核验） | P0（**硬前置；至迟 S11 前**） |
 | **S8（盒树）** | `box_tree`（Taffy 建树/匿名盒/内联） | `layout-backend/src/box_tree.rs` | S7 | §3.2 五条 + **§3.3 `layout_invalidation_changes_geometry` 合验**（依赖本步几何） | P0 |
 | **S9（文本）** | `text`（Parley 整形 + fontique 回退 + 内嵌字体）。**注**：文本整形另属本步，**与 S7-b 的 `font_metrics` 无重复**（S7-b = Device 度量；S9 = 逐字 advance/换行） | `layout-backend/src/text.rs` | S7 | §3.6 三条（钉死值） | P0 |
 | **S10（web-dom Shadow JS 面）** | `attachShadow`/`shadowRoot` 原生原语 + shim（`querySelector` 不做→G4） | `web-dom/src/document.rs`、`navigation/src/binding.rs` | S2,S8 | §3.5 `shadow_root_open_only_via_js` | P0 |
@@ -792,7 +815,7 @@ shadow 隔离**必须有负对照**；`layout-backend` 目标 **≥80% lines**�
 | **R15** | **resolve 无增量 ⇒ 每次全量 restyle** | 未实现 restyle root | 性能/内存面 | **restyle root**（§2.2）；若退化为全树 ⇒ **具名登记**（ADR-0017 as-built 范式） | 工程师 |
 | **R16** | **stylo prefs/`servo` feature 初始化时机** | 无 GUI 环境下 prefs 初始化 | 启动失败 | **P-11 探针**（无 GUI 可运行性）；**S1 实测 PASS**；落 S4 | 工程师 |
 | **R17** ✅ | **`TElement` 5 个必需 `unsafe fn` vs 全仓 `forbid(unsafe_code)`**（P-1b 已定形：**5 声明 + 0 腔体**，见 §7 P-1b） | 实现 `TElement`（Stylo 级联必备） | 承载 crate 不能零 unsafe | **已落 = 「E′+R」**（**ADR-0024**；白名单形态 = 尾斜杠目录条目 `crates/layout-backend/src/stylo_host/` + Rust 门禁 a/b/c/d）；**守卫数据行已落地**（维护者 2026-10-13 18:10 批准）；**S6 门已解** | 架构师+主理人 |
-| **R18** | **`TElement` 句柄 `E` 必须 8 字节**（stylo `SharingCache<E>` 不变量；实测违反即 panic） | `ThreadLocalStyleContext::new()` **无条件**构造共享缓存（`stylo/sharing/mod.rs:605` 断言 `size/align`) | **级联 panic ⇒ S7-b③ / S6 受阻** | **改 handle = `&'a ElementSlot`（A）**（与 blitz `&'a Node` 同构；改动集中 `stylo_host/`）⇒ **S6-1 需重构一次**（trait impl 走 `self.tree()/self.id()`）；弃（B）`usize` + TLS | 架构师+工程师 |
+| **R18** | **`TElement` 句柄 `E` 必须 8 字节**（stylo `SharingCache<E>` 不变量；实测违反即 panic）→ **落地遇自引用障碍** | `ThreadLocalStyleContext::new()` **无条件**构造共享缓存（`stylo/sharing/mod.rs:605` 断言 `size/align`）；(A) 直译要求 slot 持**自身 slice 引用**（安全 Rust 不可构造） | **级联 panic ⇒ S7-b③ / S6 受阻** | **裁决 = A-3**：`NodeRef<'a> = &'a ElementSlot<'a>`（8B，与 blitz `&Node` 同构）；`ElementSlot<'a> = {tree, id, data, flags, atoms}`（**不持 slice**）⇒ **导航暂 stub**（**S7-nav 专项步**）。**排除**：(A)直译（自引用）/ **A-1**（leak+跨 resolve 复用；`&NodeTree` 装不进 `'static`）/ **A-2**（新 unsafe ⇒ 违 R17 冻结面）。**硬约束**：仅安全模式 / 导航完整（→ S7-nav）/ ≤400；**opaque 锚点 = 槽地址（P-4 兼容）** | 架构师+工程师 |
 
 ---
 
@@ -811,6 +834,10 @@ shadow 隔离**必须有负对照**；`layout-backend` 目标 **≥80% lines**�
 | **U-9** | 几何取整/盒口径 | 「`offset` 取整 / `client` 去 border 与规范一致」 | **P-5** | **自洽 + 具名偏差**（G3-B3） | **待实测（S8/S16）** |
 | **U-10** | `getComputedStyle` 计算值语义 | 「以 stylo 计算值为准 + 白名单」 | §3.1 | 白名单内可用 | **本设计定（ADR-0020）** |
 | **U-11** | 逻辑时钟与 `now=0.0` | 「与 ADR-0010 正交」 | — | 成立 | **确定** |
+
+> **导航依赖（as-built 不确定点，2026-10-13 · A-3）**：`ElementSlot<'a>` 暂 **stub light 组合器/兄弟 nav**；
+> 但 **stylo 级联/继承要求 `TElement::traversal_parent()`**（必需方法，`stylo/dom.rs:246`）⇒ **祖先链 nav 必需**
+> ⇒ **S7-nav 为 §3.1/§3.3/§3.5 硬前置**（**可跑 / 必须等**清单见 §0.1.3「导航依赖核验」）。
 
 #### 探针清单（**修订版 P-1~P-11**，逐条 = 假设 + 最小实验 + 判定标准）
 
