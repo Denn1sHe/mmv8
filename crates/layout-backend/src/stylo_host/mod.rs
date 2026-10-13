@@ -8,6 +8,8 @@
 //! **投影只读**（DOM 树）；每节点 stylo 元素数据（[`ElementSlot`]）**急切持有**（P-1b 定形），
 //! 由宿主按节点数一次性分配、`NodeRef` 持 `&'a [ElementSlot]` ⇒ `ensure_data` 返回值的生命周期挂 `'a`。
 
+pub mod dom;
+
 use std::cell::Cell;
 
 use selectors::attr::{AttrSelectorOperation, CaseSensitivity, NamespaceConstraint};
@@ -31,6 +33,8 @@ pub struct ElementSlot {
     data: ElementDataWrapper,
     snapshot_handled: Cell<bool>,
     dirty_descendants: Cell<bool>,
+    local_name: web_atoms::LocalName,
+    namespace: web_atoms::Namespace,
 }
 
 impl ElementSlot {
@@ -38,6 +42,30 @@ impl ElementSlot {
     #[must_use]
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// 为一个元素建槽（interned `LocalName`/`Namespace`；`SelectorImpl::Borrowed*` 需它们）。
+    #[must_use]
+    pub fn for_element(name: &str, namespace: &str) -> Self {
+        Self {
+            data: ElementDataWrapper::default(),
+            snapshot_handled: Cell::new(false),
+            dirty_descendants: Cell::new(false),
+            local_name: web_atoms::LocalName::from(name),
+            namespace: web_atoms::Namespace::from(namespace),
+        }
+    }
+
+    /// interned 标签名（`TElement::local_name` 的返回）。
+    #[must_use]
+    pub fn local_name(&self) -> &web_atoms::LocalName {
+        &self.local_name
+    }
+
+    /// interned 命名空间（`TElement::namespace` 的返回）。
+    #[must_use]
+    pub fn namespace(&self) -> &web_atoms::Namespace {
+        &self.namespace
     }
 
     /// 急切借出可变数据（安全：`borrow_mut` 内部互斥）。
@@ -187,6 +215,20 @@ impl<'a> NodeRef<'a> {
     #[must_use]
     pub fn is_slot(&self) -> bool {
         self.local_name() == Some("slot")
+    }
+}
+
+impl PartialEq for NodeRef<'_> {
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id
+    }
+}
+
+impl Eq for NodeRef<'_> {}
+
+impl std::hash::Hash for NodeRef<'_> {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.id.hash(state);
     }
 }
 
@@ -402,6 +444,24 @@ impl SelectorsElement for NodeRef<'_> {
     fn add_element_unique_hashes(&self, _filter: &mut BloomFilter) -> bool {
         false
     }
+}
+
+/// 按节点数构建元素数据槽（元素节点 ⇒ interned 名/命名空间；其余 ⇒ 空槽）。
+///
+/// **前提**：一次 `resolve` 内不 `dispose`（`NodeId::generation` 保持 0）；槽位按 `NodeId::index()` 对齐。
+#[must_use]
+pub fn build_slots(tree: &NodeTree) -> Vec<ElementSlot> {
+    let mut slots: Vec<ElementSlot> = (0..tree.len()).map(|_| ElementSlot::new()).collect();
+    for (index, slot) in slots.iter_mut().enumerate() {
+        let Ok(index_u32) = u32::try_from(index) else {
+            break;
+        };
+        let id = NodeId::new(index_u32, 0);
+        if let Some(element) = tree.get(id).and_then(|node| node.element.as_ref()) {
+            *slot = ElementSlot::for_element(&element.name, &element.namespace);
+        }
+    }
+    slots
 }
 
 #[cfg(test)]
