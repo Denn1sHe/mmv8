@@ -201,6 +201,10 @@ will enable rehydration」，`blitz-dom/src/stylo.rs:316-325`）。故：
 - 待实测登记 **T5** 更新为：`TElement` 5 名 `unsafe fn` 落 **目录模块** `src/stylo_host/`；
   **实际体内 `unsafe` 面 = 0（P-1b 终值）**，门禁 b 阈值 = 0；`layout-backend` 本地 `deny`。
 - **S6 门**：**已随维护者批准守卫数据行解冻**（ADR-0024 决策 2 已落地）。**P-4 已 PASS ⇒ R1 解除**。
+- **实现期不变量（S7-b③，2026-10-13）**：`TElement` 句柄 `E` **必须 8 字节**（stylo 样式共享缓存
+  `SharingCache<E>` vs `TypelessSharingCache` 等尺寸断言，`stylo-0.20.0/sharing/mod.rs:605`；
+  `ThreadLocalStyleContext::new()` 无条件构造 ⇒ 违反 panic）⇒ **`NodeRef<'a> = &'a ElementSlot<'a>`（主理人裁 (A)，与 blitz `&'a Node` 同构）**；
+  **(B)**（`usize` + 线程局部）**否决**（叠加全局态）。施工图 §1.2.1/§2.1/§6 R18。
 
 ## 交叉引用
 - 锁版 → **ADR-0021**；工具链/MSRV → **ADR-0022**；排程 → **ADR-0023**

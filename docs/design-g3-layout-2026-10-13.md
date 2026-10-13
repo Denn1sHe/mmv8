@@ -118,8 +118,9 @@
 > 复用 P-3/P-10 的 `fontique`/`skrifa` 集合 + **内嵌回退字体 Tuffy**；**与 S9 文本整形无重复**）——已登记 §1.1/§1.2/§2.1。
 > **⛔ S7-b③ 阻断（R18）**：stylo 要求 `TElement` 句柄 `E` **8 字节**（`SharingCache<E>` 断言 `size_of` 相等，
 > `stylo/sharing/mod.rs:605`；typeless 占位 `_element: usize`；对照 blitz `type BlitzNode<'a> = &'a Node`）——
-> `NodeRef<'a>{tree,id}`（≥24B）违反 ⇒ **handle 改 `&'a ElementSlot`（架构师建议 = A，与 blitz 同构）**，
-> **S6-1（`stylo_host/{mod,dom}.rs`）需重构一次**；**待 team-lead 定 (A)/(B)**（当前树绿 17/17，WIP 已回滚）。
+> `NodeRef<'a>{tree,id}`（≥24B）违反 ⇒ **handle 改 `&'a ElementSlot`（主理人已裁 = A，与 blitz 同构）**，
+> **S6-1（`stylo_host/{mod,dom}.rs`）需重构一次**；**(B) 否决**（`usize` + 线程局部 = **叠加全局态**）。
+> 工程师已按 (A) 重构 `stylo_host/{mod,dom}.rs`；**③-a WIP 已按纪律回滚（树保持 17/17）**。
 >
 > **探针门总账（2026-10-13）—— 100% 收口**：**全 8 项 ✅** —— **P-1 机制 ✅**（零 unsafe+反查命中；**总判随落档**，= E′+R / ADR-0024）、
 > **P-1b ✅**（信封 = 5 声明 + 0 腔体，终值）、**P-2 ✅**（「样式改⇒布局盒变」**非恒真 + 负对照**，`128dee9`）、
@@ -193,7 +194,7 @@
 | | `src/backend.rs`（新） | **门面 trait**（`LayoutBackend` **`: Debug`**）+ 工厂 + 错误 | `LayoutBackend` / `LayoutError` / `LayoutErrorKind`（**9 变体**，含 `UnsupportedProperty`） | 零 |
 | | `src/geometry.rs`（新） | 几何查询类型 + 坐标口径 | `Size` / `Rect` / `NodeGeometry` | 零 |
 | | `src/opaque.rs`（新） | **线程局部 opaque 侧表**（§1.2.1；零 unsafe） | `OpaqueSideTable` / `NodeAnchor` / `SIDE` | 零（待 P-1） |
-| | `src/stylo_host/mod.rs`（新，**目录模块**） | **核心**：`impl style::dom::{TDocument,TNode,TElement,TShadowRoot}` + `selectors::Element` over `web-dom`；**unsafe 白名单桥（ADR-0024）** | `StyloHost<'a>` / `NodeRef<'a>` | 5 `unsafe fn`（**桥内具名；ADR-0024**） |
+| | `src/stylo_host/mod.rs`（新，**目录模块**） | **核心**：`impl style::dom::{TDocument,TNode,TElement,TShadowRoot}` + `selectors::Element` over `web-dom`；**unsafe 白名单桥（ADR-0024）**；**句柄形态 as-built = `&'a ElementSlot<'a>`（8B，R18）** | `StyloHost<'a>` / `NodeRef<'a> = &'a ElementSlot<'a>` | 5 `unsafe fn`（**桥内具名；ADR-0024**） |
 | | `src/style_system.rs`（新） | `Stylist` 持有 + 样式表加载 + 计算值查询 | `StyleSystem` / `StyleSheetHandle` | 零 |
 | | `src/serialize.rs`（新） | **`computed_value` 序列化**：**属性白名单**（G3-B12③）→ stylo 值字符串 | `PropertyWhitelist` | 零 |
 | | `src/font_metrics.rs`（新，**S7-b 子组件**） | **最小 `FontMetricsProvider`**（stylo `Device::new` 所需；复用 P-3/P-10 的 fontique/skrifa 集合 + **内嵌回退字体**；确定性口径 = 测试内嵌 / 真实页系统发现+内嵌回退，对齐 D7） | `FontMetricsProvider` | 零 |
@@ -315,6 +316,12 @@ impl LayoutBackend for StyloBackend { /* … */ }
 
 ##### 1.2.1 **opaque/rehydrate 线程局部侧表**（G3-B1；**零 unsafe 为准**）
 
+> **句柄薄化不变量（S7-b③ as-built）**：元素类型 `E` **恰 8 字节**（== `usize`，同 align）——stylo 样式共享缓存
+> `SharingCache<E>` 与 `TypelessSharingCache`（占位 `FakeCandidate { _element: usize }`）**等尺寸/等 align 断言**
+> （`stylo-0.20.0/sharing/mod.rs:605`）；`ThreadLocalStyleContext::new()` **无条件**构造该缓存 ⇒ 违反即 **panic**
+> （`disable_style_sharing_cache` **救不了构造**）。**形式 = 单引用** `NodeRef<'a> = &'a ElementSlot<'a>`
+> （与 blitz `type BlitzNode<'a> = &'a Node` 同构）⇒ **类 `RefCell` 活口 / 多字段句柄 `E` 一律不适用**。**主理人已裁 (A)**。
+
 > **为什么必须设计它**：`selectors::Element::opaque(&self) -> OpaqueElement` 是**必需方法、无默认实现**
 > （`selectors-0.40.0/tree.rs:50`）；`OpaqueElement(NonNull<()>)`（同文件 `:17`）**唯一反解**是
 > `unsafe fn as_const_ptr`（`:41`）；而 Shadow 作用域经**无 `self` 的关联函数**
@@ -373,7 +380,7 @@ pub struct StyloHost<'a> { tree: &'a web_dom::tree::NodeTree, style: &'a StyleSy
 /// 对照 blitz：`type BlitzNode<'a> = &'a Node;`（单引用，8 字节，满足）。
 /// **架构师建议 =（A）**：`NodeRef<'a> = &'a ElementSlot<'a>`（**单引用**；`tree`/`id` 下移进按
 /// `NodeId::index()` 对齐的**每节点 slot**，与 blitz 同构，改动集中 `stylo_host/`）。
-/// **弃（B）**：单 `usize` 句柄 + 线程局部 tree/slots（tree 访问需经 TLS，状态面更大）。**待 team-lead 确认后工程师执行。**
+/// **弃（B）**：单 `usize` 句柄 + 线程局部 tree/slots（tree 访问需经 TLS，状态面更大）。**已定（主理人裁决 2026-10-13）=（A）。**
 #[derive(Clone, Copy, Debug)]
 pub struct NodeRef<'a>(&'a ElementSlot<'a>);   // 8 字节（单引用）
 // impl style::dom::TNode    for NodeRef<'_> { … }   // TNode: Copy+Clone+Debug+NodeInfo+PartialEq
@@ -549,6 +556,9 @@ impl BrowsingContext {
 >
 > **字体链口径（D7，§2.1 注）**：**G3 = 内嵌确定集合**（`system_fonts = false` + **Tuffy 回退**）；
 > **系统字体发现接线随 S13 / 真实页面**（届时 `fontique` 系统发现 + **内嵌回退**）。
+>
+> **句柄薄化不变量（§2.1 注）**：元素类型 `E` **恰 8 字节**（**单引用** `NodeRef<'a> = &'a ElementSlot<'a>`）——见 §1.2.1；
+> 任何使 `E` >8B 的封装（多字段 / `RefCell` 活口）都会触发 stylo 样式共享缓存 **panic**；**主理人已裁 (A)**。
 
 #### 2.2 `resolve` 的两级失效 + **变更→脏级映射**（G3-B8）
 
@@ -741,7 +751,7 @@ shadow 隔离**必须有负对照**；`layout-backend` 目标 **≥80% lines**�
 | **S3（探针 B）** ✅ | **P-4**（真实 `web-dom` 模型上 shadow 作用域 + opaque 机制）/ **P-3**（字体发现）/ **P-10**（内嵌字体度量）。**已收口（2026-10-13）** | `layout-backend/tests/probe_*.rs` | S1,S2 | P-3/P-4/P-10 判定 ✅ | P0 |
 | **S4（骨架）** | `backend`（trait **`: Debug`**）+ `geometry` + `error`（**`LayoutErrorKind` 9 变体，含 `UnsupportedProperty`**）+ **`assets/ua.css`**。**偏离（已受理）**：`web_style::SheetOrigin` 于本步**提前落位**（门面签名编译所需） | `layout-backend/src/{lib,backend,geometry,error}.rs`、`assets/ua.css`、`Cargo.toml` | S1 | 门面编译 + `ua_default_display_block` + Debug 断言 | P0 |
 | **S5（web-style）** | `Stylesheet` + `ComputedStyle`（+ remove 语义）。**注**：`SheetOrigin` 已于 **S4 提前落位**，本步续扩 `sheet.rs` | `web-style/src/{sheet,computed,error,lib}.rs` | S0 | §3.1 登记/往返/remove | P0 |
-| **S6（stylo_host）** ✅ | `impl style::dom::{TNode,TElement,TShadowRoot}` + `selectors::Element`（`opaque()` 走 §1.2.1 侧表）+ `src/opaque.rs`；**落目录模块 `src/stylo_host/`**；`layout-backend` 本地 `deny` + 逐 `fn` `#[allow]`+`SAFETY`（**5 声明 + 0 腔体**，P-1b 终值）。**前置（R17）已解**（E′+R，ADR-0024）。**✅ 已完成；四态注入首验通过**（证据 `.workbuddy/refs/g3-s6-whitelist-evidence/`）；**S6-G：`cargo geiger` 顺延 S14** | `layout-backend/src/stylo_host/`、`src/opaque.rs` | S4 | P-1 回填 + P-1b 定形 + 编译 ✅ | P0 |
+| **S6（stylo_host）** ✅ | `impl style::dom::{TNode,TElement,TShadowRoot}` + `selectors::Element`（`opaque()` 走 §1.2.1 侧表）+ `src/opaque.rs`；**落目录模块 `src/stylo_host/`**；**句柄形态 as-built = `&'a ElementSlot<'a>`（8B，R18）**；`layout-backend` 本地 `deny` + 逐 `fn` `#[allow]`+`SAFETY`（**5 声明 + 0 腔体**，P-1b 终值）。**前置（R17）已解**（E′+R，ADR-0024）。**✅ 已完成；四态注入首验通过**（证据 `.workbuddy/refs/g3-s6-whitelist-evidence/`）；**S6-G：`cargo geiger` 顺延 S14** | `layout-backend/src/stylo_host/`、`src/opaque.rs` | S4 | P-1 回填 + P-1b 定形 + 编译 ✅ | P0 |
 | **S7（级联 + 失效）** | `style_system` + `invalidate`（**变更→脏级映射** + restyle root）+ `serialize`（**属性白名单**）+ **`font_metrics` 子组件（S7-b；stylo `Device` 的 `FontMetricsProvider`）**。**S7-a ✅**（`a885eb6`，`invalidate.rs` 两级失效簿记 + §2.2 映射；layout-backend 14/14、workspace **185**）；**S7-b（级联 + font_metrics）在途** | `layout-backend/src/{style_system,invalidate,serialize,font_metrics}.rs` | S5,S6 | §3.1 六条 + §3.3 四条（几何条**与 S8/S12 合验**） | P0 |
 | **S8（盒树）** | `box_tree`（Taffy 建树/匿名盒/内联） | `layout-backend/src/box_tree.rs` | S7 | §3.2 五条 + **§3.3 `layout_invalidation_changes_geometry` 合验**（依赖本步几何） | P0 |
 | **S9（文本）** | `text`（Parley 整形 + fontique 回退 + 内嵌字体）。**注**：文本整形另属本步，**与 S7-b 的 `font_metrics` 无重复**（S7-b = Device 度量；S9 = 逐字 advance/换行） | `layout-backend/src/text.rs` | S7 | §3.6 三条（钉死值） | P0 |
