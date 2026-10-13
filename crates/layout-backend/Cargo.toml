@@ -51,10 +51,9 @@ selectors = "=0.40.0"
 skrifa = "=0.44.0"
 fontique = "=0.11.1"
 # `SelectorImpl::{BorrowedLocalName,BorrowedNamespaceUrl} = web_atoms::{LocalName,Namespace}`（interned atom）
-# ⇒ `TElement::local_name()/namespace()` 需返回 `&web_atoms::*`（stylo 未再导出，故直接依赖；版本随 stylo servo 栈）。
-web_atoms = "0.2"
-# `TElement::id()` 返回 `&WeakAtom`（servo 下 = `stylo_atoms::Atom`，stylo 未 `pub use`）；`query_container_size`
-# 返回 `euclid::Size2D<Option<app_units::Au>>`。三者均为 stylo 传递依赖（版本从锁图取），此处直接引用以命名类型。
-stylo_atoms = "=0.20.0"
-euclid = "0.22"
-app_units = "0.7.8"
+# ⇒ `TElement::local_name()/namespace()` 需返回 `&web_atoms::*`（stylo 未再导出，故直接依赖；`=` 精确版，锁组同源）。
+web_atoms = "=0.2.6"
+# `TElement::id()` 返回 `&style::Atom`（= `stylo_atoms::Atom`，`style` 已 `pub use`，无需直依赖 stylo_atoms）；
+# `query_container_size` 返回 `euclid::Size2D<Option<app_units::Au>>`（均 stylo 传递依赖，`=` 精确版，仅用于命名类型）。
+euclid = "=0.22.14"
+app_units = "=0.7.8"

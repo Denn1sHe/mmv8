@@ -851,7 +851,6 @@ dependencies = [
  "selectors",
  "skrifa",
  "stylo",
- "stylo_atoms",
  "stylo_dom",
  "stylo_taffy",
  "stylo_traits",

@@ -19,8 +19,7 @@ use style::stylesheets::scope_rule::ImplicitScopeRoot;
 use style::stylist::CascadeData;
 use style::values::AtomIdent;
 use style::values::computed::Display;
-use style::{LocalName, Namespace};
-use stylo_atoms::Atom as WeakAtom;
+use style::{Atom as WeakAtom, LocalName, Namespace};
 use stylo_dom::ElementState;
 use web_dom::node::NodeKind;
 
