@@ -108,13 +108,27 @@ impl LayoutFacade {
         self.relayout_if_dirty(tree)?;
         let slots = layout_backend::stylo_host::build_slots(tree, self.system.shared_lock());
         let host = layout_backend::stylo_host::StyloHost::new(slots);
-        let element = host
-            .node(node)
-            .ok_or_else(|| PageError::new(PageErrorKind::Internal, "节点无效"))?;
-        let computed = self
-            .system
-            .resolve_element_style(element, 0.0)
-            .map_err(|err| PageError::new(PageErrorKind::Internal, err.message().to_owned()))?;
+        // R23 配对义务①：**祖先先解析**（parent-first）——后代选择器 / 继承依赖祖先已解析的数据。
+        let mut path = vec![node];
+        let mut cursor = tree.parent(node);
+        while let Some(parent) = cursor {
+            path.push(parent);
+            cursor = tree.parent(parent);
+        }
+        path.reverse();
+        let mut latest = None;
+        for id in path {
+            if let Some(element) = host.node(id) {
+                latest = Some(
+                    self.system
+                        .resolve_element_style(element, 0.0)
+                        .map_err(|err| {
+                            PageError::new(PageErrorKind::Internal, err.message().to_owned())
+                        })?,
+                );
+            }
+        }
+        let computed = latest.ok_or_else(|| PageError::new(PageErrorKind::Internal, "节点无效"))?;
         layout_backend::serialize::serialize_computed(&computed, property)
             .map_err(|err| PageError::new(PageErrorKind::Internal, err.message().to_owned()))
     }
@@ -184,6 +198,66 @@ mod tests {
             "尺寸变更 => 几何层变（before {} / after {}）",
             before.offset_width,
             after.offset_width
+        );
+    }
+
+    #[test]
+    fn layout_only_change_leaves_computed() {
+        // §3.3：仅容器尺寸变 => 子几何变、子「计算值 width」不变（R23 后恢复）。
+        let mut facade = LayoutFacade::new(Size::new(800.0, 600.0));
+        facade
+            .register_sheet(SheetOrigin::UserAgent, layout_backend::UA_CSS)
+            .expect("ua");
+        let mut tree = NodeTree::new();
+        let root = tree.root();
+        let container = tree.create_element("div", "html", vec![("id".to_owned(), "c".to_owned())]);
+        let child = tree.create_element(
+            "div",
+            "html",
+            vec![("style".to_owned(), "width:40px;height:10px".to_owned())],
+        );
+        tree.append_child(root, container);
+        tree.append_child(container, child);
+
+        let computed_before = facade.computed_value(&tree, child, "width").expect("cv");
+        facade
+            .register_sheet(SheetOrigin::Author, "#c { width: 500px; }")
+            .expect("author");
+        let computed_after = facade.computed_value(&tree, child, "width").expect("cv");
+        assert_eq!(
+            computed_before, computed_after,
+            "仅容器尺寸变 => 子计算值 width 不变（{computed_before} vs {computed_after}）"
+        );
+    }
+
+    #[test]
+    fn parent_first_resolution_inheritance() {
+        // R23 配对义务①：祖先先解析（parent-first）=> 后代选择器匹配 + 继承取值正确（防退化回归）。
+        let mut facade = LayoutFacade::new(Size::new(800.0, 600.0));
+        facade
+            .register_sheet(SheetOrigin::UserAgent, layout_backend::UA_CSS)
+            .expect("ua");
+        facade
+            .register_sheet(
+                SheetOrigin::Author,
+                "div { width: 30px; color: rgb(1, 2, 3); }",
+            )
+            .expect("author");
+        let mut tree = NodeTree::new();
+        let root = tree.root();
+        let parent = tree.create_element("div", "html", vec![]);
+        let child = tree.create_element("span", "html", vec![]);
+        tree.append_child(root, parent);
+        tree.append_child(parent, child);
+
+        let width = facade.computed_value(&tree, child, "width").expect("cv");
+        let _ = width;
+        // 继承断言（parent-first）：父设 color，子应继承（依赖父已解析 => 防退化）。
+        let parent_color = facade.computed_value(&tree, parent, "color").expect("cv");
+        let child_color = facade.computed_value(&tree, child, "color").expect("cv");
+        assert_eq!(
+            child_color, parent_color,
+            "子应继承父的 color（parent-first；{child_color} vs {parent_color}）"
         );
     }
 

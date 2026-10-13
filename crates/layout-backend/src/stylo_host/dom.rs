@@ -310,11 +310,14 @@ impl<'a> TElement for &'a ElementSlot<'a> {
     }
 
     fn has_data(&self) -> bool {
-        true
+        // R23·I1：由 `styles.primary.is_some()` 派生（出生未解析 ⇒ false）。
+        ElementSlot::has_styles(self)
     }
 
     fn borrow_data(&self) -> Option<ElementDataRef<'_>> {
-        Some(ElementSlot::borrow_data(self))
+        // R23·I2：无有效主样式 ⇒ `None`（不把「空数据」当有效数据外泄）。
+        let data = ElementSlot::borrow_data(self);
+        if data.has_styles() { Some(data) } else { None }
     }
 
     fn mutate_data(&self) -> Option<ElementDataMut<'_>> {

@@ -202,6 +202,13 @@ impl<'a> ElementSlot<'a> {
         self.data.borrow()
     }
 
+    /// 是否已持**有效主样式**（R23·I1：`has_data`/`borrow_data`/`clear_data` 一致，
+    /// 均由 `styles.primary.is_some()` 派生）。
+    #[must_use]
+    pub fn has_styles(&self) -> bool {
+        self.data.borrow().has_styles()
+    }
+
     /// 清空数据（覆盖为 `ElementData::default()`；`DerefMut` 安全写）。
     pub fn clear_data(&self) {
         *self.data.borrow_mut() = ElementData::default();

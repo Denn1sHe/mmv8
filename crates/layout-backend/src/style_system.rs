@@ -224,7 +224,11 @@ impl StyleSystem {
                 PseudoElementResolution::IfApplicable,
             );
             let element_styles = resolver.resolve_style_with_default_parents();
-            element_styles.primary_style().clone()
+            // R23·I4 写回：`resolve_style*` 只返回不写回 ⇒ 显式 `set_styles`（否则槽「出生即违约」，
+            // 父为元素的解析会命中 `ElementStyles::primary().unwrap()` on None）。
+            let primary = element_styles.primary_style().clone();
+            element.ensure_data().set_styles(element_styles);
+            primary
         };
         thread_state::exit(ThreadState::LAYOUT);
         Ok(style)
