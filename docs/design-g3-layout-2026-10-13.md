@@ -113,6 +113,8 @@
 > + **S6-1c 556 行**（`dom.rs` **484 行为最小可编译单元**）—— **单一 API 面不可分割**，故不拆。
 > **S6-G（geiger）顺延 S14**：`cargo geiger` ≥0.13 需 rustc ≥1.94~1.97 > 钉版 1.92 ⇒ 仅**远程 S14** 跑，
 > 属**基线观测（非门禁）**。**S7-a ✅**（`a885eb6`，`invalidate.rs` 两级失效簿记 + §2.2 映射；layout-backend **14/14**、workspace **185**）；**S7-b（级联）在途**。
+> **S7-b 新增子组件 `font_metrics.rs`**（stylo `Device` 所需 **`Box<dyn FontMetricsProvider>`** 的**最小实现**；
+> 复用 P-3/P-10 的 `fontique`/`skrifa` 集合 + **内嵌回退字体**；**与 S9 文本整形无重复**）——已登记 §1.1/§1.2/§2.1。
 >
 > **探针门总账（2026-10-13）—— 100% 收口**：**全 8 项 ✅** —— **P-1 机制 ✅**（零 unsafe+反查命中；**总判随落档**，= E′+R / ADR-0024）、
 > **P-1b ✅**（信封 = 5 声明 + 0 腔体，终值）、**P-2 ✅**（「样式改⇒布局盒变」**非恒真 + 负对照**，`128dee9`）、
@@ -189,6 +191,7 @@
 | | `src/stylo_host/mod.rs`（新，**目录模块**） | **核心**：`impl style::dom::{TDocument,TNode,TElement,TShadowRoot}` + `selectors::Element` over `web-dom`；**unsafe 白名单桥（ADR-0024）** | `StyloHost<'a>` / `NodeRef<'a>` | 5 `unsafe fn`（**桥内具名；ADR-0024**） |
 | | `src/style_system.rs`（新） | `Stylist` 持有 + 样式表加载 + 计算值查询 | `StyleSystem` / `StyleSheetHandle` | 零 |
 | | `src/serialize.rs`（新） | **`computed_value` 序列化**：**属性白名单**（G3-B12③）→ stylo 值字符串 | `PropertyWhitelist` | 零 |
+| | `src/font_metrics.rs`（新，**S7-b 子组件**） | **最小 `FontMetricsProvider`**（stylo `Device::new` 所需；复用 P-3/P-10 的 fontique/skrifa 集合 + **内嵌回退字体**；确定性口径 = 测试内嵌 / 真实页系统发现+内嵌回退，对齐 D7） | `FontMetricsProvider` | 零 |
 | | `src/box_tree.rs`（新） | 样式树 → Taffy 盒树（块级 + 内联文本；匿名盒） | `BoxTree` / `BoxId` | 零 |
 | | `src/text.rs`（新） | Parley 整形桥 + 字体上下文（`fontique`）+ 内嵌字体注册 | `TextShaper` / `FontChain` | 零 |
 | | `src/shadow.rs`（新） | **最小 Shadow**：stylo `TShadowRoot` 作用域 + slot 分发 | `ShadowSupport` | 零（待 P-4） |
@@ -382,6 +385,20 @@ pub struct Stylesheet { pub origin: web_style::SheetOrigin, pub text: String }
 pub struct ComputedStyle { entries: Vec<(String, String)> }   // 见 web-style::computed
 ```
 
+##### `layout-backend::font_metrics`（**S7-b 子组件**）
+
+> **为什么需要**：级联需 `style::device::servo::Device::new(...)`，其参数含 **`Box<dyn FontMetricsProvider>`**
+> （stylo **无内置实现**）⇒ 本仓提供**最小**实现：复用 **P-3/P-10 的 `fontique`/`skrifa` 集合** + **内嵌回退字体**。
+
+```rust
+/// 最小字体度量提供者（stylo `Device` 的 `FontMetricsProvider` 实现）。
+/// **确定性口径（对齐 D7）**：测试/门禁走**内嵌字体**；真实页走 `fontique` 系统发现 + **内嵌回退**。
+pub struct FontMetricsProvider { fonts: fontique::Collection /* + 内嵌回退字体 */ }
+// impl style::device::servo::FontMetricsProvider for FontMetricsProvider { … }
+```
+> **与 S9 的边界**：本组件只提供 **Device 度量**（stylo 级联所需）；**文本整形**（Parley 逐字 advance/换行）
+> 另属 **S9**（`text.rs`）——**二者无重复**。
+
 ##### `web-dom` 增量（最小 Shadow 支撑）
 
 ```rust
@@ -499,6 +516,7 @@ impl BrowsingContext {
    │      ├── opaque::OpaqueSideTable    ── 线程局部侧表（零 unsafe）    │
    │      ├── stylo_host::StyloHost/NodeRef ── DOM→stylo 投影（只读）   │
    │      ├── serialize::PropertyWhitelist ── computed_value 序列化     │
+   │      ├── font_metrics::FontMetricsProvider ── stylo Device 度量（S7-b）│
    │      ├── box_tree::BoxTree          ── 样式树→Taffy（匿名盒/内联）  │
    │      ├── text::TextShaper           ── Parley/fontique 整形        │
    │      ├── shadow::ShadowSupport      ── 影子作用域 + slot 分发      │
@@ -700,9 +718,9 @@ shadow 隔离**必须有负对照**；`layout-backend` 目标 **≥80% lines**�
 | **S4（骨架）** | `backend`（trait **`: Debug`**）+ `geometry` + `error`（**`LayoutErrorKind` 9 变体，含 `UnsupportedProperty`**）+ **`assets/ua.css`**。**偏离（已受理）**：`web_style::SheetOrigin` 于本步**提前落位**（门面签名编译所需） | `layout-backend/src/{lib,backend,geometry,error}.rs`、`assets/ua.css`、`Cargo.toml` | S1 | 门面编译 + `ua_default_display_block` + Debug 断言 | P0 |
 | **S5（web-style）** | `Stylesheet` + `ComputedStyle`（+ remove 语义）。**注**：`SheetOrigin` 已于 **S4 提前落位**，本步续扩 `sheet.rs` | `web-style/src/{sheet,computed,error,lib}.rs` | S0 | §3.1 登记/往返/remove | P0 |
 | **S6（stylo_host）** ✅ | `impl style::dom::{TNode,TElement,TShadowRoot}` + `selectors::Element`（`opaque()` 走 §1.2.1 侧表）+ `src/opaque.rs`；**落目录模块 `src/stylo_host/`**；`layout-backend` 本地 `deny` + 逐 `fn` `#[allow]`+`SAFETY`（**5 声明 + 0 腔体**，P-1b 终值）。**前置（R17）已解**（E′+R，ADR-0024）。**✅ 已完成；四态注入首验通过**（证据 `.workbuddy/refs/g3-s6-whitelist-evidence/`）；**S6-G：`cargo geiger` 顺延 S14** | `layout-backend/src/stylo_host/`、`src/opaque.rs` | S4 | P-1 回填 + P-1b 定形 + 编译 ✅ | P0 |
-| **S7（级联 + 失效）** | `style_system` + `invalidate`（**变更→脏级映射** + restyle root）+ `serialize`（**属性白名单**）。**S7-a ✅**（`a885eb6`，`invalidate.rs` 两级失效簿记 + §2.2 映射；layout-backend 14/14、workspace **185**）；**S7-b（级联）在途** | `layout-backend/src/{style_system,invalidate,serialize}.rs` | S5,S6 | §3.1 六条 + §3.3 四条（几何条**与 S8/S12 合验**） | P0 |
+| **S7（级联 + 失效）** | `style_system` + `invalidate`（**变更→脏级映射** + restyle root）+ `serialize`（**属性白名单**）+ **`font_metrics` 子组件（S7-b；stylo `Device` 的 `FontMetricsProvider`）**。**S7-a ✅**（`a885eb6`，`invalidate.rs` 两级失效簿记 + §2.2 映射；layout-backend 14/14、workspace **185**）；**S7-b（级联 + font_metrics）在途** | `layout-backend/src/{style_system,invalidate,serialize,font_metrics}.rs` | S5,S6 | §3.1 六条 + §3.3 四条（几何条**与 S8/S12 合验**） | P0 |
 | **S8（盒树）** | `box_tree`（Taffy 建树/匿名盒/内联） | `layout-backend/src/box_tree.rs` | S7 | §3.2 五条 + **§3.3 `layout_invalidation_changes_geometry` 合验**（依赖本步几何） | P0 |
-| **S9（文本）** | `text`（Parley 整形 + fontique 回退 + 内嵌字体） | `layout-backend/src/text.rs` | S7 | §3.6 三条（钉死值） | P0 |
+| **S9（文本）** | `text`（Parley 整形 + fontique 回退 + 内嵌字体）。**注**：文本整形另属本步，**与 S7-b 的 `font_metrics` 无重复**（S7-b = Device 度量；S9 = 逐字 advance/换行） | `layout-backend/src/text.rs` | S7 | §3.6 三条（钉死值） | P0 |
 | **S10（web-dom Shadow JS 面）** | `attachShadow`/`shadowRoot` 原生原语 + shim（`querySelector` 不做→G4） | `web-dom/src/document.rs`、`navigation/src/binding.rs` | S2,S8 | §3.5 `shadow_root_open_only_via_js` | P0 |
 | **S11（shadow 作用域 + slot→布局）** | `layout-backend::shadow`（`:host`/`::slotted` + slot 参与布局） | `layout-backend/src/shadow.rs` | S8,S9 | §3.5（Rust 层五条） | P0 |
 | **S12（几何真值接线 + 同步读）** | `binding`：`offset*`/`client*`/`gBCR`/`getComputedStyle` + §2.5 同步读 | `navigation/src/binding.rs`、`Cargo.toml` | S8,S9 | §3.4 七条 + **§3.3 `layout_invalidation_changes_geometry` 合验** | P0 |
