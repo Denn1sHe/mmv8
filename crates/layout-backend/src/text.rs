@@ -78,7 +78,14 @@ impl TextShaper {
     }
 
     /// 用给定家族整形 `text` 并返回**布局宽度**（px）。
+    ///
+    /// **D7 回退**：请求家族未注册 ⇒ 落到**内嵌回退字体**（`EMBEDDED_FAMILY`）。
     pub fn shape_width(&mut self, text: &str, family: &str, size: f32) -> f32 {
+        let family = if self.font_context.collection.family_id(family).is_some() {
+            family
+        } else {
+            EMBEDDED_FAMILY
+        };
         let mut layout_context: LayoutContext<NoBrush> = LayoutContext::new();
         let mut builder = layout_context.ranged_builder(&mut self.font_context, text, 1.0, false);
         builder.push_default(StyleProperty::FontFamily(FontFamily::Source(
@@ -95,6 +102,29 @@ impl TextShaper {
     pub fn embedded_sample_width(&mut self) -> f32 {
         self.shape_width(SAMPLE_TEXT, EMBEDDED_FAMILY, SAMPLE_SIZE)
     }
+
+    /// **逐字形 advance 之和**（`text_shaping_width_matches_advance` 用；内嵌字体逐字校验）。
+    pub fn glyph_advance_sum(&mut self, text: &str, family: &str, size: f32) -> f32 {
+        let mut layout_context: LayoutContext<NoBrush> = LayoutContext::new();
+        let mut builder = layout_context.ranged_builder(&mut self.font_context, text, 1.0, false);
+        builder.push_default(StyleProperty::FontFamily(FontFamily::Source(
+            Cow::Borrowed(family),
+        )));
+        builder.push_default(StyleProperty::FontSize(size));
+        let mut layout = builder.build(text);
+        layout.break_all_lines(None);
+        let mut sum = 0.0_f32;
+        for line in layout.lines() {
+            for item in line.items() {
+                if let parley::layout::PositionedLayoutItem::GlyphRun(glyph_run) = item {
+                    for glyph in glyph_run.glyphs() {
+                        sum += glyph.advance;
+                    }
+                }
+            }
+        }
+        sum
+    }
 }
 
 #[cfg(test)]
@@ -106,6 +136,37 @@ mod tests {
         let mut shaper = TextShaper::new();
         assert!(shaper.has_embedded_family(), "内嵌家族须注册");
         assert!(shaper.embedded_sample_width() > 0.0, "整形宽度必须 > 0");
+    }
+
+    #[test]
+    fn embedded_font_is_used() {
+        // §3.6：内嵌字体 ⇒ 文本度量 == 钉死值（P-10 回填）。
+        let mut shaper = TextShaper::new();
+        let width = shaper.embedded_sample_width();
+        assert!(
+            (width - PINNED_EMBEDDED_ADVANCE_PX).abs() <= CROSS_ARCH_TOLERANCE_PX,
+            "内嵌字体度量应命中钉死值 {PINNED_EMBEDDED_ADVANCE_PX}：实测 {width}"
+        );
+    }
+
+    #[test]
+    fn font_fallback_metrics_nonzero() {
+        // §3.6：不存在家族 ⇒ 回退，且度量 > 0（唯一保留 `>0` 的负对照类）。
+        let mut shaper = TextShaper::new();
+        let width = shaper.shape_width("Hamburgefonstiv", "__iv8_missing_family__", 16.0);
+        assert!(width > 0.0, "缺失家族应回退且度量 > 0：实测 {width}");
+    }
+
+    #[test]
+    fn text_shaping_width_matches_advance() {
+        // §3.6：整形宽度 == 字形 advance 之和（内嵌字体逐字校验）。
+        let mut shaper = TextShaper::new();
+        let width = shaper.embedded_sample_width();
+        let advance_sum = shaper.glyph_advance_sum("Hamburgefonstiv", "Tuffy", 16.0);
+        assert!(
+            (width - advance_sum).abs() < 0.01,
+            "整形宽度应 == advance 之和：width={width} sum={advance_sum}"
+        );
     }
 
     #[test]
