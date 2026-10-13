@@ -14,6 +14,7 @@
 pub mod backend;
 pub mod error;
 pub mod geometry;
+pub mod invalidate;
 pub mod opaque;
 pub mod stylo_host;
 
