@@ -278,6 +278,74 @@ mod tests {
     }
 
     #[test]
+    fn stylesheet_remove_invalidates() {
+        use crate::stylo_host::{StyloHost, build_slots};
+        use web_dom::tree::NodeTree;
+
+        let mut system = StyleSystem::new(Size::new(800.0, 600.0));
+        // 负对照来源：内嵌 UA 表（UA_CSS 含 div{display:block}）。
+        system
+            .add_stylesheet(SheetOrigin::UserAgent, crate::UA_CSS)
+            .expect("ua sheet");
+        let handle = system
+            .add_stylesheet(SheetOrigin::Author, "#box { width: 120px; }")
+            .expect("author sheet");
+        system.flush();
+        let sheets_before = system.stylesheet_count();
+        let rebuilds_before = system.stylist().num_rebuilds();
+
+        let mut tree = NodeTree::new();
+        let root = tree.root();
+        let div = tree.create_element("div", "html", vec![("id".to_owned(), "box".to_owned())]);
+        tree.append_child(root, div);
+        let slots = build_slots(&tree, system.shared_lock());
+        let host = StyloHost::new(slots);
+
+        let before = system
+            .resolve_element_style(host.node(div).expect("div slot"), 0.0)
+            .expect("cascade");
+        assert_eq!(
+            crate::serialize::serialize_computed(&before, "width").expect("width"),
+            "120px",
+            "移除前：author #box width:120px 生效"
+        );
+        assert_eq!(
+            crate::serialize::serialize_computed(&before, "display").expect("display"),
+            "block",
+            "负对照前置：UA div display:block"
+        );
+
+        system
+            .remove_stylesheet(handle)
+            .expect("remove should not panic");
+
+        // 诊断：记账减一 + 规则树重建计数递增。
+        assert_eq!(
+            system.stylesheet_count(),
+            sheets_before - 1,
+            "sheet 记账 2->1"
+        );
+        assert!(
+            system.stylist().num_rebuilds() > rebuilds_before,
+            "flush 应触发规则树重建"
+        );
+
+        let after = system
+            .resolve_element_style(host.node(div).expect("div slot"), 0.0)
+            .expect("cascade");
+        assert_eq!(
+            crate::serialize::serialize_computed(&after, "width").expect("width"),
+            "auto",
+            "移除后：author width:120px 应失效回落初始 auto（判别性观测）"
+        );
+        assert_eq!(
+            crate::serialize::serialize_computed(&after, "display").expect("display"),
+            "block",
+            "负对照：UA 表仍在 => display 仍 block"
+        );
+    }
+
+    #[test]
     fn style_invalidation_changes_computed() {
         use crate::stylo_host::{StyloHost, build_slots};
         use web_dom::tree::NodeTree;
