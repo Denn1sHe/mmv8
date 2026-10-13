@@ -107,6 +107,10 @@
 > 编译所需；`sheet.rs` 其余面由 S5 续扩）；② **`LayoutErrorKind` 由 8 → 9 变体**（新增 `UnsupportedProperty`，
 > 供 §3.4 `computed_value_unsupported_property_errors` 契约）——类图错误枚举同步 9 项。
 >
+> **S5/S6 进度回填（2026-10-13）**：**S5**（web-style `Stylesheet` / `ComputedStyle` + remove 语义）已完成（`473514a`）；
+> **S6 进行中**。**S6-1 偏离（已裁定受理，具名登记；与 S2 447 行同类）**：S6-1 单提交 **572 行**
+> （`stylo_host/mod.rs` **433 > 400** —— **单一 API 面不可分割**，故不拆）。
+>
 > **探针门总账（2026-10-13）—— 100% 收口**：**全 8 项 ✅** —— **P-1 机制 ✅**（零 unsafe+反查命中；**总判随落档**，= E′+R / ADR-0024）、
 > **P-1b ✅**（信封 = 5 声明 + 0 腔体，终值）、**P-2 ✅**（「样式改⇒布局盒变」**非恒真 + 负对照**，`128dee9`）、
 > **P-3 ✅**、**P-4 ✅**（三判据全过，含负对照 ⇒ **R1 解除**）、**P-8 ✅**、**P-10 ✅**、**P-11 ✅**。
@@ -541,6 +545,9 @@ parley       = "=0.11.1"
 selectors    = "=0.40.0"
 skrifa       = "=0.44.0"
 fontique     = "=0.11.1"
+# S6 直依赖（interned atom）：SelectorImpl 的 LocalName/Namespace/Prefix（stylo-0.20.0/lib.rs:153/156/159）
+web_atoms    = "=0.2.6"
+stylo_atoms  = "=0.20.0"   # 兄弟（stylo 通用 Atom，lib.rs:149）；按 S6 实际所需
 ```
 
 - 版本取 = `poc/t2_4_blitz_probe/Cargo.lock` 中**经 blitz 传递编译通过**的整组；
