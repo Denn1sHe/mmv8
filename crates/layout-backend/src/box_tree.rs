@@ -97,25 +97,66 @@ impl BoxTree {
             shaper: TextShaper::new(),
         };
 
-        let root_id = tree.root();
-        let root_taffy = box_tree.build_node(tree, &host, system, root_id)?;
+        let root_dom = tree.root();
+        let root_taffy = box_tree.build_node(tree, &host, system, root_dom)?;
         box_tree.root = Some(root_taffy);
+        box_tree.append_children(tree, &host, system, root_dom, root_taffy)?;
+        Ok(box_tree)
+    }
 
-        // 逐元素建树 + 挂父。
-        for element in elements_in_document_order(tree) {
-            let taffy_node = box_tree.build_node(tree, &host, system, element)?;
-            if let Some(parent) = tree
-                .parent(element)
-                .filter(|p| box_tree.map.contains_key(p))
-            {
-                let parent_taffy = box_tree.map[&parent];
-                box_tree
-                    .taffy
+    /// 递归挂子：**连续内联级子元素包进匿名块盒**（CSS 2.1 §9.2.1.1；§5 S8）。
+    fn append_children(
+        &mut self,
+        tree: &NodeTree,
+        host: &StyloHost<'_>,
+        system: &StyleSystem,
+        parent_dom: NodeId,
+        parent_taffy: taffy::NodeId,
+    ) -> Result<(), LayoutError> {
+        let children: Vec<NodeId> = tree.children(parent_dom).collect();
+        let mut inline_run: Vec<taffy::NodeId> = Vec::new();
+        for child in children {
+            if !is_element(tree, child) {
+                continue;
+            }
+            let taffy_node = self.build_node(tree, host, system, child)?;
+            if is_inline_level(tree, host, system, child)? {
+                inline_run.push(taffy_node);
+            } else {
+                self.flush_inline_run(parent_taffy, &mut inline_run)?;
+                self.taffy
                     .add_child(parent_taffy, taffy_node)
                     .map_err(map_taffy_error)?;
+                self.append_children(tree, host, system, child, taffy_node)?;
             }
         }
-        Ok(box_tree)
+        self.flush_inline_run(parent_taffy, &mut inline_run)
+    }
+
+    /// 把一段**连续内联级**子盒包进一个**匿名块盒**再挂到父（无合法空跑）。
+    fn flush_inline_run(
+        &mut self,
+        parent_taffy: taffy::NodeId,
+        inline_run: &mut Vec<taffy::NodeId>,
+    ) -> Result<(), LayoutError> {
+        if inline_run.is_empty() {
+            return Ok(());
+        }
+        let anonymous = self
+            .taffy
+            .new_leaf(TaffyStyle {
+                display: taffy::Display::Block,
+                ..TaffyStyle::default()
+            })
+            .map_err(map_taffy_error)?;
+        for child in inline_run.drain(..) {
+            self.taffy
+                .add_child(anonymous, child)
+                .map_err(map_taffy_error)?;
+        }
+        self.taffy
+            .add_child(parent_taffy, anonymous)
+            .map_err(map_taffy_error)
     }
 
     fn build_node(
@@ -206,20 +247,21 @@ fn is_element(tree: &NodeTree, id: NodeId) -> bool {
         .is_some_and(|node| node.kind == NodeKind::Element)
 }
 
-/// 文档序的所有元素（先序）。
-fn elements_in_document_order(tree: &NodeTree) -> Vec<NodeId> {
-    let mut out = Vec::new();
-    let mut stack: Vec<NodeId> = tree.children(tree.root()).collect();
-    stack.reverse();
-    while let Some(id) = stack.pop() {
-        if is_element(tree, id) {
-            out.push(id);
-        }
-        let mut children: Vec<NodeId> = tree.children(id).collect();
-        children.reverse();
-        stack.extend(children);
-    }
-    out
+/// 元素是否**内联级**（计算 `display` ∈ {inline, inline-block, inline-flex, inline-grid}）。
+fn is_inline_level(
+    _tree: &NodeTree,
+    host: &StyloHost<'_>,
+    system: &StyleSystem,
+    id: NodeId,
+) -> Result<bool, LayoutError> {
+    let Some(node) = host.node(id) else {
+        return Ok(false);
+    };
+    let computed = system.resolve_element_style(node, 0.0)?;
+    Ok(matches!(
+        computed.clone_display(),
+        style::values::computed::Display::Inline | style::values::computed::Display::InlineBlock
+    ))
 }
 
 #[allow(clippy::needless_pass_by_value)] // `map_err` 需按值签名。
@@ -349,6 +391,40 @@ mod tests {
             crate::text::PINNED_EMBEDDED_ADVANCE_PX.round(),
             geometry.offset_width
         );
+    }
+
+    #[test]
+    fn anonymous_box_wraps_inline_run() {
+        let system = ua_system();
+        let mut tree = NodeTree::new();
+        let root = tree.root();
+        let block = tree.create_element(
+            "div",
+            "html",
+            vec![("style".to_owned(), "height:20px".to_owned())],
+        );
+        let span = tree.create_element(
+            "span",
+            "html",
+            vec![("style".to_owned(), "height:30px".to_owned())],
+        );
+        let tail = tree.create_element(
+            "div",
+            "html",
+            vec![("style".to_owned(), "height:20px".to_owned())],
+        );
+        tree.append_child(root, block);
+        tree.append_child(root, span);
+        tree.append_child(root, tail);
+
+        let mut boxes = BoxTree::build(&tree, &system).expect("build");
+        boxes.compute_layout(VIEWPORT).expect("compute");
+        let block_rect = boxes.geometry(block).expect("block");
+        let span_rect = boxes.geometry(span).expect("span");
+        let tail_rect = boxes.geometry(tail).expect("tail");
+        // 匿名盒把 span 归入块流：block(0) < span(≥20) < tail(≥span)。
+        assert!(block_rect.top < span_rect.top, "块首 < 内联片");
+        assert!(span_rect.top < tail_rect.top, "内联片 < 后续块（顺序保持）");
     }
 
     #[test]
