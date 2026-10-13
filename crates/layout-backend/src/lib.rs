@@ -12,6 +12,7 @@
 //! - 上层只依赖 [`LayoutBackend`]（接口不随后端变化，ADR-0011·C14）。
 
 pub mod backend;
+pub mod box_tree;
 pub mod error;
 pub mod font_metrics;
 pub mod geometry;
