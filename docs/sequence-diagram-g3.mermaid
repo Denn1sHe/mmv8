@@ -1,0 +1,100 @@
+%% G3 布局复用验证 —— 关键调用时序图（2026-10-13 · 裁决修订版 R1）
+%% 依据 docs/design-g3-layout-2026-10-13.md §2 与 §3；ADR-0020~0023。
+%% 说明：resolve 期间 stylo 通过 trait 回调只读 DOM（&NodeTree），**不跨 V8 回调边界**（ADR-0016·D2）。
+%%       resolve 必须在释放 NodeTree 可变借用之后调用（技术方案 §7 docx:189）。
+%%       trait 路径 = style::dom::{TNode,TElement,TShadowRoot} + selectors::Element（G3-B5）。
+%%       opaque 经**线程局部侧表**（零 unsafe；不 deref 指针）（ADR-0020 决策 2）。
+
+sequenceDiagram
+    autonumber
+    participant Py as Python 控制面 (PyPage)
+    participant Ctx as BrowsingContext (navigation::page)
+    participant Bind as PageBinding (navigation::binding)
+    participant LB as LayoutBackend (StyloBackend)
+    participant SS as StyleSystem (Stylo)
+    participant OP as OpaqueSideTable (线程局部)
+    participant BT as BoxTree (Taffy)
+    participant TX as TextShaper (Parley)
+    participant Tree as NodeTree (web-dom)
+
+    Note over Py,Tree: 一、加载页面（page.load）→ 首次样式+布局
+    Py->>Ctx: load(snapshot: PageSnapshot)
+    Ctx->>Tree: 解析 HTML 建节点树（既有 G2 路径）
+    Note over Ctx: 释放 NodeTree 可变借用
+    Ctx->>LB: set_viewport(Size{800,600})
+    Ctx->>LB: add_stylesheet(UserAgent, ua_css)
+    Ctx->>LB: add_stylesheet(Author, page_css)
+    Ctx->>LB: mark_style_dirty(root)
+    Ctx->>LB: resolve(&Tree, now=0.0)
+    LB->>SS: 级联 + 计算值（经 StyloHost/NodeRef 回读 Tree）
+    SS->>Tree: parent/children/attributes/namespace（只读）
+    SS->>OP: Element::opaque() 取稳定键 / implicit_scope... 反查（零 unsafe）
+    OP-->>SS: OpaqueElement ↔ NodeId（纯查表）
+    SS-->>LB: ComputedStyle（逐节点）
+    LB->>BT: 样式树 → Taffy 盒树（匿名盒/内联）
+    LB->>TX: 整形内联文本（字体回退）
+    TX-->>BT: 文本度量
+    BT->>BT: compute layout（root available space）
+    LB->>LB: 缓存 NodeId→BoxId + 几何
+    LB-->>Ctx: Ok(())
+    Ctx-->>Py: 页面就绪（readyState → Complete）
+
+    Note over Py,Tree: 二、读几何（getBoundingClientRect / offsetWidth；§2.5 同步读 = 读即 flush）
+    Py->>Bind: 页面内 JS: el.offsetWidth
+    Bind->>LB: geometry(node) → NodeGeometry
+    Note over Bind,LB: 若为脏 ⇒ 隐式 relayout_if_dirty()（sync flush）后读数（G3-B10）
+    LB-->>Bind: NodeGeometry{border_box, offset, client}
+    Bind-->>Py: Number（offset.width 取整）
+
+    Note over Py,Tree: 三、动态失效（脚本改 class → style 级）+ 重算
+    Py->>Ctx: run_until(...)（脚本任务在页面线程执行）
+    Ctx->>Tree: el.setAttribute("class","big")（可变更借用）
+    Note over Ctx: 释放可变借用
+    Ctx->>LB: mark_style_dirty(node)
+    Ctx->>Ctx: relayout_if_dirty()
+    Ctx->>LB: resolve(&Tree, 0.0)
+    LB->>SS: 重算受影响子树（style 级失效）
+    SS->>Tree: 只读回读
+    SS-->>LB: 新的 ComputedStyle
+    LB->>BT: 更新盒树 + 重排（layout 级跟随）
+    LB-->>Ctx: Ok(())
+    Py->>Bind: 读 computed_value(node,"width")
+    Bind->>LB: computed_value(...)
+    LB-->>Bind: "300px"（真实计算值）
+
+    Note over Py,Tree: 四、动态失效（改 inline width → layout 级）
+    Ctx->>Tree: el.style.width = "200px"
+    Note over Ctx: 释放可变借用
+    Ctx->>LB: mark_layout_dirty(node)
+    Ctx->>LB: resolve(&Tree, 0.0)
+    LB->>BT: 仅重排（计算值 width 不变）→ 几何变
+    LB-->>Ctx: Ok(())
+    Py->>Bind: 读 el.offsetWidth
+    Bind->>LB: geometry(node)
+    LB-->>Bind: offset.width == 200（layout 层变化）
+
+    Note over Py,Tree: 五、Shadow 用例（attachShadow + slot + 作用域隔离；Rust 层为主 + JS 最小面）
+    Py->>Ctx: 页面内 JS: host.attachShadow({mode:'open'})
+    Ctx->>Tree: attach_shadow(host, Open)（同 mode 幂等；mode 不同 ⇒ Err，G3-B13）
+    Tree-->>Ctx: shadow_root id
+    Ctx->>Tree: 建影子树（slot 元素）
+    Ctx->>LB: mark_style_dirty(host)
+    Ctx->>LB: resolve(&Tree, 0.0)
+    LB->>OP: implicit_scope... 反查宿主（opaque 侧表）
+    LB->>LB: ShadowSupport: :host / ::slotted 作用域 + slot 分发
+    LB->>Tree: flattened_children(host)（跨 shadow 边界的布局树）
+    LB-->>Ctx: Ok(())（影子节点参与布局）
+    Note over Bind,Tree: 作用域隔离断言（**Rust 层**；querySelector 属 G4 不做）
+    Bind->>Tree: light 遍历（children）**不含**影子内节点
+    Tree-->>Bind: 空（作用域隔离成立）
+    Py->>Bind: 读 shadow 内节点几何
+    Bind->>LB: geometry(shadow_node)
+    LB-->>Bind: 真实 rect（参与布局）
+
+    Note over Py,Tree: 六、导航（清几何/样式缓存；NodeId 不别名，ADR-0018·D2）
+    Py->>Ctx: load(snapshot2)
+    Ctx->>Tree: 重建 NodeTree（generation 基线单调）
+    Ctx->>LB: reset()  （清 node_slots / 几何 / 样式缓存）
+    Ctx->>LB: mark_style_dirty(root) + resolve(&Tree, 0.0)
+    LB-->>Ctx: Ok(())
+    Note over Bind: 旧 NodeId 在新文档被拒（stale_document_node_rejected）

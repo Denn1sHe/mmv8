@@ -1,0 +1,267 @@
+classDiagram
+    %% G3 布局复用验证 —— 类图（2026-10-13）
+    %% 依据 docs/design-g3-layout-2026-10-13.md §1.2 / §2.1
+    %% 术语：trait ≈「一组约定的行为」；&NodeTree ≈「节点树的只读借用」；
+    %%       Rc<RefCell<T>> ≈「单线程共享可变容器」（非线程安全，页面单线程）。
+
+    %% ============ layout-backend（本轮首次落地）============
+    class LayoutBackend {
+        <<trait>>
+        +set_viewport(viewport Size)
+        +add_stylesheet(origin, css) StylesheetHandle_or_Error
+        +remove_stylesheet(handle StylesheetHandle) Unit_or_Error
+        +resolve(tree, now) Unit_or_Error
+        +geometry(node) NodeGeometry_or_Error
+        +computed_value(node, prop) String_or_Error
+        +mark_style_dirty(node NodeId)
+        +mark_layout_dirty(node NodeId)
+        +is_dirty() DirtyState
+        +reset()
+    }
+
+    class StyloBackend {
+        -style StyleSystem
+        -boxes BoxTree
+        -text TextShaper
+        -shadow ShadowSupport
+        -invalidate Invalidation
+        -viewport Size
+        -node_slots Map_u64_to_SlotRef
+        +new(viewport Size) StyloBackend
+    }
+
+    class OpaqueSideTable {
+        <<thread_local>>
+        -anchors MapNodeId_to_BoxAnchor
+        -by_opaque Map_opaque_to_NodeId
+        -active_tree TreeId
+        +opaque_for(id NodeId) OpaqueElement
+        +node_of(opaque OpaqueElement) Option~NodeId~
+    }
+
+    class StyleSystem {
+        -stylist Stylist
+        -sheets StylesheetList
+        +add(origin, css) StyleSheetHandle
+        +remove(handle) Unit_or_Error
+        +computed(node NodeRef) ComputedStyle
+    }
+
+    class StyloHost {
+        -tree &NodeTree
+        -style &StyleSystem
+        +element(id NodeId) NodeRef
+    }
+
+    class NodeRef {
+        -tree &NodeTree
+        -id NodeId
+        +parent() Option~NodeRef~
+        +children() Vec~NodeRef~
+        +attributes() &AttributeMap
+        +opaque() OpaqueElement
+        +as_shadow_root() Option~NodeRef~
+    }
+
+    class BoxTree {
+        -taffy TaffyTree
+        -map BoxIdMap
+        +build(tree &NodeTree, computed &StyleSystem)
+        +layout(viewport Size)
+        +geometry(id u64) Option~NodeGeometry~
+    }
+
+    class TextShaper {
+        -fonts fontique.Collection
+        +register_embedded(bytes &[u8])
+        +shape(text &str, family &str) ShapedText
+    }
+
+    class ShadowSupport {
+        +scope_for(sheet &Stylesheet, root NodeId) Scope
+        +is_slotted(node NodeRef) bool
+        +flatten(tree &NodeTree, node NodeId) Vec~NodeId~
+    }
+
+    class Invalidation {
+        -dirty_nodes DirtySet
+        -style_dirty bool
+        -layout_dirty bool
+        +mark_style(node NodeId)
+        +mark_layout(node NodeId)
+        +take() DirtyState
+        +state() DirtyState
+    }
+
+    class DirtyState {
+        <<struct>>
+        +style bool
+        +layout bool
+    }
+
+    class NodeGeometry {
+        <<struct>>
+        +border_box Rect
+        +offset Size
+        +client Size
+    }
+    class Size {
+        <<struct>>
+        +width f32
+        +height f32
+    }
+    class Rect {
+        <<struct>>
+        +x f32
+        +y f32
+        +width f32
+        +height f32
+    }
+
+    class LayoutError {
+        <<struct>>
+        +kind LayoutErrorKind
+        +message String
+    }
+    class LayoutErrorKind {
+        <<enum>>
+        StyleSheet
+        Cascade
+        Stylo
+        Taffy
+        Font
+        UnknownNode
+        NotLaidOut
+        UnsupportedProperty
+        Internal
+    }
+
+    %% ============ web-style（CSSOM 长成）============
+    class Stylesheet {
+        <<struct>>
+        +origin SheetOrigin
+        +text String
+    }
+    class SheetOrigin {
+        <<enum>>
+        UserAgent
+        Author
+    }
+    class ComputedStyle {
+        <<struct>>
+        +set(prop &str, value &str)
+        +get(prop &str) Option~&str~
+        +to_css_text() String
+    }
+    class InlineStyle {
+        <<struct>>
+        +set_property(name &str, value &str)
+        +get_property(name &str) Option~&str~
+    }
+
+    %% ============ web-dom（最小 Shadow 支撑）============
+    class NodeTree {
+        -nodes NodeArena
+        -generations Vec~u32~
+        -free Vec~u32~
+        -root NodeId
+        +attach_shadow(host NodeId, mode ShadowMode) ShadowRootIdOrError
+        +shadow_root(host NodeId) Option~NodeId~
+        +assigned_nodes(slot NodeId) Vec~NodeId~
+        +flattened_children(node NodeId) Vec~NodeId~
+        +dispose(id NodeId)
+    }
+    class NodeId {
+        <<struct>>
+        +index() u32
+        +generation() u32
+        +raw() u64
+    }
+    class NodeData {
+        <<struct>>
+        +kind NodeKind
+        +parent Option~NodeId~
+        +first_child Option~NodeId~
+        +element Option~ElementData~
+    }
+    class NodeKind {
+        <<enum>>
+        Document
+        DocumentType
+        Element
+        Text
+        Comment
+        ShadowRoot
+    }
+    class ElementData {
+        <<struct>>
+        +name String
+        +namespace String
+        +attrs AttributeMap
+        +style InlineStyle
+        +shadow Option~NodeId~
+    }
+    class ShadowMode {
+        <<enum>>
+        Open
+        Closed
+    }
+
+    %% ============ navigation（几何 stub → 真实）============
+    class BrowsingContext {
+        -plane ControlPlane
+        -shared PageShared
+        -layout SharedLayoutBackend
+        +relayout_if_dirty() UnitOrPageError
+        +capabilities() Capabilities
+    }
+    class BindingInputs {
+        <<struct>>
+        +tree SharedNodeTree
+        +mutations SharedMutationBuffer
+        +layout SharedLayoutBackend
+    }
+    class Capabilities {
+        <<struct>>
+        +geometry &str
+        +shadow_dom bool
+    }
+
+    %% ============ 关系 ============
+    LayoutBackend <|.. StyloBackend : implements
+    StyloBackend *-- StyleSystem
+    StyloBackend *-- BoxTree
+    StyloBackend *-- TextShaper
+    StyloBackend *-- ShadowSupport
+    StyloBackend *-- Invalidation
+    StyloBackend ..> NodeGeometry : returns
+    Invalidation ..> DirtyState : returns
+    LayoutError *-- LayoutErrorKind
+    StyleSystem o-- Stylesheet
+    Stylesheet *-- SheetOrigin
+    StyloHost ..> StyleSystem : reads
+    StyloHost ..> NodeRef : creates
+    NodeRef ..> NodeTree : reads (borrow)
+    NodeRef ..> OpaqueSideTable : opaque() 取键 / 反查
+    StyleSystem ..> ComputedStyle : returns
+    note for LayoutBackend "trait 约束 : std::fmt::Debug (G3-B6)"
+    note for OpaqueSideTable "线程局部；零 unsafe（不 deref 指针，仅作 Eq+Hash 键）(G3-B1)"
+
+    BoxTree ..> NodeTree : reads
+    BoxTree ..> NodeGeometry : produces
+    ShadowSupport ..> NodeTree : flattens
+    TextShaper ..> ComputedStyle : reads font
+
+    NodeTree o-- NodeData
+    NodeTree ..> NodeId : keys
+    NodeTree ..> ShadowMode : uses
+    NodeData *-- NodeKind
+    NodeData o-- ElementData
+    ElementData *-- InlineStyle
+    ElementData ..> NodeId : shadow ptr
+
+    BrowsingContext o-- BindingInputs : builds
+    BrowsingContext *-- Capabilities : reports
+    BrowsingContext ..> LayoutBackend : holds (dyn)
+    BindingInputs ..> LayoutBackend : holds (dyn)
+    StyloBackend ..> NodeTree : reads (resolve)
