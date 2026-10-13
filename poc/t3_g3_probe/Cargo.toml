@@ -1,0 +1,54 @@
+[workspace]
+
+[package]
+name = "g3probe"
+version = "0.0.0"
+edition = "2021"
+# 探针不参与分发（对齐 crates/* 的 publish = false）。
+publish = false
+license = "MIT OR Apache-2.0"
+description = "G3 S1 探针：直连 Stylo+Taffy+Parley 路线可行性 + opaque 侧表（ADR-0020/0021）"
+
+[[bin]]
+name = "g3probe"
+path = "src/main.rs"
+
+[lib]
+name = "g3probe"
+path = "src/lib.rs"
+
+# ===========================================================================
+# 依赖 = ADR-0021 决策 1 的**精确锁版整组**（`=` 语义）。
+# 取值 = `poc/t2_4_blitz_probe/Cargo.lock` 中经 blitz 传递编译通过的那一组
+# （主理人亲验一致）。**直连后须以 P-1/P-8 复验**（G3-B4(i)）。
+#
+# - `style` = 包名 `stylo` 的 import 名；`servo` 为 default feature（无需显式写）。
+# - 本探针**不依赖 blitz-dom**（直连路线，ADR-0020 决策 1）。
+#
+# ⚠️ P-8 更正（实测，须回填 ADR-0021 的 Cargo.toml 片段）：
+#   `taffy` **必须 `default-features = false`**。taffy 0.14.0 的 default features 含
+#   `float_layout` 与 `flexbox_balance`，它们会给 `taffy::Style` **增加字段**
+#   （`float`/`clear`/`flex_line_count`，`taffy-0.14.0/src/style/mod.rs:625/628/708`），
+#   而 `stylo_taffy-0.3.0-beta.2/src/convert.rs:723` 的 `Style` 字面量**未初始化**这些字段
+#   （它以 stylo_taffy 自身的 `floats` feature 门控，默认**不开**）⇒ **E0063 编译失败**。
+#   特性统一（feature unification）把 default-feature 的 taffy 与 stylo_taffy 的 taffy 合并，
+#   触发上述缺字段错误。故此处显式 `default-features = false` 并只开**兼容**特性集。
+[dependencies]
+style = { version = "=0.20.0", package = "stylo" }   # import 名 style
+stylo_dom = "=0.20.0"                                # 仅 ElementState / DocumentState
+stylo_traits = "=0.20.0"
+stylo_taffy = "=0.3.0-beta.2"
+taffy = { version = "=0.14.0", default-features = false, features = [
+    "std",
+    "taffy_tree",
+    "flexbox",
+    "grid",
+    "block_layout",
+    "content_size",
+    "calc",
+    "detailed_layout_info",
+] }
+parley = "=0.11.1"
+selectors = "=0.40.0"
+skrifa = "=0.44.0"
+fontique = "=0.11.1"
