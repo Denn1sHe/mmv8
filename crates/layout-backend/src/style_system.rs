@@ -9,23 +9,32 @@
 use std::collections::HashMap;
 
 use euclid::{Scale, Size2D};
-use style::context::QuirksMode;
+use style::context::{
+    QuirksMode, RegisteredSpeculativePainter, RegisteredSpeculativePainters, SharedStyleContext,
+    StyleContext, StyleSystemOptions, ThreadLocalStyleContext,
+};
 use style::device::Device;
 use style::media_queries::{MediaList, MediaType};
 use style::properties::ComputedValues;
 use style::properties::style_structs::Font;
 use style::queries::values::PrefersColorScheme;
+use style::servo::animation::DocumentAnimationSet;
 use style::servo::media_features::PointerCapabilities;
+use style::servo::selector_parser::SnapshotMap;
 use style::servo_arc::Arc;
 use style::shared_lock::{SharedRwLock, StylesheetGuards};
+use style::style_resolver::{PseudoElementResolution, StyleResolverForElement};
 use style::stylesheets::{AllowImportRules, DocumentStyleSheet, Origin, Stylesheet, UrlExtraData};
-use style::stylist::Stylist;
+use style::stylist::{RuleInclusion, Stylist};
+use style::thread_state::{self, ThreadState};
+use style::traversal_flags::TraversalFlags;
 use style_traits::{CSSPixel, DevicePixel};
 use web_style::SheetOrigin;
 
 use crate::error::{LayoutError, LayoutErrorKind};
 use crate::font_metrics::FontChain;
 use crate::geometry::Size;
+use crate::stylo_host::NodeRef;
 
 /// 把 `web-style::SheetOrigin` 映射到 stylo `Origin`（UA < author）。
 fn to_stylo_origin(origin: SheetOrigin) -> Origin {
@@ -155,6 +164,64 @@ impl StyleSystem {
     pub const fn stylist(&self) -> &Stylist {
         &self.stylist
     }
+
+    /// 逐元素级联：解析 `element` 的**计算值**（`getComputedStyle` 的语义源）。
+    ///
+    /// # Errors
+    /// 级联失败 ⇒ [`LayoutErrorKind::Cascade`]。
+    pub fn resolve_element_style(
+        &self,
+        element: NodeRef<'_>,
+        now: f64,
+    ) -> Result<Arc<ComputedValues>, LayoutError> {
+        thread_state::enter(ThreadState::LAYOUT);
+        // 块作用域：确保 `thread_local`（含 `SequentialTaskList`）在 **LAYOUT 态内** drop
+        // （stylo `SequentialTaskList::drop` 断言 `ThreadState::LAYOUT`）。
+        let style = {
+            let guard = self.lock.read();
+            let guards = StylesheetGuards::same(&guard);
+            let snapshot_map = SnapshotMap::new();
+            let animations = DocumentAnimationSet::default();
+            let painters = NoSpeculativePainters;
+            let shared = SharedStyleContext {
+                stylist: &self.stylist,
+                visited_styles_enabled: false,
+                options: StyleSystemOptions::default(),
+                guards,
+                current_time_for_animations: now,
+                traversal_flags: TraversalFlags::empty(),
+                snapshot_map: &snapshot_map,
+                animations,
+                registered_speculative_painters: &painters,
+            };
+            let mut thread_local: ThreadLocalStyleContext<NodeRef<'_>> =
+                ThreadLocalStyleContext::new();
+            let mut context = StyleContext {
+                shared: &shared,
+                thread_local: &mut thread_local,
+            };
+            let mut resolver = StyleResolverForElement::new(
+                element,
+                &mut context,
+                RuleInclusion::All,
+                PseudoElementResolution::IfApplicable,
+            );
+            let element_styles = resolver.resolve_style_with_default_parents();
+            element_styles.primary_style().clone()
+        };
+        thread_state::exit(ThreadState::LAYOUT);
+        Ok(style)
+    }
+}
+
+/// G3 无绘制 ⇒ 无注册的推测性画笔（no-op；零 unsafe）。
+#[derive(Debug, Default)]
+struct NoSpeculativePainters;
+
+impl RegisteredSpeculativePainters for NoSpeculativePainters {
+    fn get(&self, _name: &style::Atom) -> Option<&dyn RegisteredSpeculativePainter> {
+        None
+    }
 }
 
 #[cfg(test)]
@@ -162,6 +229,34 @@ mod tests {
     use super::StyleSystem;
     use crate::geometry::Size;
     use web_style::SheetOrigin;
+
+    #[test]
+    fn cascade_author_rule_changes_computed_display() {
+        use crate::stylo_host::{StyloHost, build_slots};
+        use style::values::computed::Display as StyloDisplay;
+        use web_dom::tree::NodeTree;
+
+        let mut system = StyleSystem::new(Size::new(800.0, 600.0));
+        system
+            .add_stylesheet(SheetOrigin::Author, "div { display: block; }")
+            .expect("author sheet");
+        system.flush();
+
+        let mut tree = NodeTree::new();
+        let root = tree.root();
+        let div = tree.create_element("div", "html", vec![]);
+        tree.append_child(root, div);
+        let slots = build_slots(&tree);
+        let host = StyloHost::new(slots);
+        let style = system
+            .resolve_element_style(host.node(div).expect("div slot"), 0.0)
+            .expect("cascade should succeed");
+        assert_eq!(
+            style.clone_display(),
+            StyloDisplay::Block,
+            "author rule div display:block 应反映到计算值"
+        );
+    }
 
     #[test]
     fn style_system_registers_and_dedups_sheets() {
