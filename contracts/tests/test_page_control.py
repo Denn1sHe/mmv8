@@ -81,7 +81,7 @@ def test_capabilities_keys_match_rust_struct() -> None:
     assert rust == py, f"Capabilities 字段名两侧不相等：Rust={rust} Python={py}"
 
 
-def capabilities_reports_g3_surface() -> None:
+def test_capabilities_reports_g3_surface() -> None:
     """G3 能力面口径（G3-B16：geometry=computed、shadow_dom=on；原 `page_geometry_is_documented_stub` 更名）。"""
     values = page_control.CAPABILITY_VALUES
     assert set(values) == page_control.CAPABILITY_KEYS
