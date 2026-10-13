@@ -1,0 +1,16 @@
+/* iv8 G3 最小 UA 样式表（内嵌；G3-B7）。
+ *
+ * 用途：为「默认 display / margin」提供**内嵌**基线，否则几何真值系统性偏（施工图 §1.1 / §3.1）。
+ * 加载：`layout-backend/src/lib.rs` 的 `UA_CSS = include_str!("../assets/ua.css")`。
+ * 约束：G3 只覆盖 `html/body/div/p/h1/ul/li/span` 的最小面；完整 UA 表属后续。
+ *
+ * 一行一规则（便于 `ua_default_display_block` 的规范化结构断言，S4；级联级断言在 S7）。
+ */
+html { display: block; }
+body { display: block; margin: 8px; }
+div { display: block; }
+p { display: block; margin: 1em 0; }
+h1 { display: block; margin: 0.67em 0; font-size: 2em; }
+ul { display: block; margin: 1em 0; padding-left: 40px; }
+li { display: block; }
+span { display: inline; }

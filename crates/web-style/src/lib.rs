@@ -6,7 +6,9 @@
 
 pub mod error;
 pub mod inline;
+pub mod sheet;
 
-// 类型面再导出（施工图 §1.2 以 `web_style::InlineStyle` 引用）。
+// 类型面再导出（施工图 §1.2 以 `web_style::InlineStyle` / `web_style::SheetOrigin` 引用）。
 pub use error::{StyleError, StyleErrorKind};
 pub use inline::{DeclMap, InlineStyle};
+pub use sheet::SheetOrigin;
