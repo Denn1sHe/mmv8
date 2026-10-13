@@ -242,6 +242,75 @@ mod tests {
     use web_style::SheetOrigin;
 
     #[test]
+    fn style_invalidation_changes_computed() {
+        use crate::stylo_host::{StyloHost, build_slots};
+        use web_dom::tree::NodeTree;
+
+        let mut system = StyleSystem::new(Size::new(800.0, 600.0));
+        system
+            .add_stylesheet(
+                SheetOrigin::Author,
+                "div { width: 1px; } .c { width: 2px; }",
+            )
+            .expect("sheet");
+        system.flush();
+
+        let mut tree = NodeTree::new();
+        let root = tree.root();
+        let div = tree.create_element("div", "html", vec![]);
+        tree.append_child(root, div);
+        let before = {
+            let slots = build_slots(&tree);
+            let style = system
+                .resolve_element_style(StyloHost::new(slots).node(div).expect("div slot"), 0.0)
+                .expect("cascade");
+            crate::serialize::serialize_computed(&style, "width").expect("width")
+        };
+        assert_eq!(before, "1px");
+
+        // 改 class（§2.2：class ⇒ style 级脏）→ 同元素重算应得新计算值。
+        tree.set_attribute(div, "class", "c");
+        let after = {
+            let slots = build_slots(&tree);
+            let style = system
+                .resolve_element_style(StyloHost::new(slots).node(div).expect("div slot"), 0.0)
+                .expect("cascade");
+            crate::serialize::serialize_computed(&style, "width").expect("width")
+        };
+        assert_eq!(
+            after, "2px",
+            "改 class 后 .c width:2px 应生效（style 级失效）"
+        );
+    }
+
+    #[test]
+    fn dynamic_dom_insert_then_read() {
+        use crate::stylo_host::{StyloHost, build_slots};
+        use web_dom::tree::NodeTree;
+
+        let mut system = StyleSystem::new(Size::new(800.0, 600.0));
+        system
+            .add_stylesheet(SheetOrigin::Author, "#box { width: 120px; }")
+            .expect("sheet");
+        system.flush();
+
+        let mut tree = NodeTree::new();
+        let root = tree.root();
+        // 动态插入新节点（append）→ 重建槽 → 读其计算值应为输入值。
+        let div = tree.create_element("div", "html", vec![("id".to_owned(), "box".to_owned())]);
+        tree.append_child(root, div);
+        let slots = build_slots(&tree);
+        let style = system
+            .resolve_element_style(StyloHost::new(slots).node(div).expect("div slot"), 0.0)
+            .expect("cascade");
+        assert_eq!(
+            crate::serialize::serialize_computed(&style, "width").expect("width"),
+            "120px",
+            "动态插入节点 resolve 后应与其输入一致"
+        );
+    }
+
+    #[test]
     fn computed_value_is_real() {
         use crate::stylo_host::{StyloHost, build_slots};
         use web_dom::tree::NodeTree;
