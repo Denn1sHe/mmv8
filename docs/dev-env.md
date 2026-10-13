@@ -43,9 +43,11 @@ ssh ubuntu@124.221.1.78 'export PATH=$HOME/.cargo/bin:$PATH; cd ~/mmv8 && cargo 
 uv venv && uv pip install -r requirements.txt && uv run pytest
 
 # ⚠️ sdk-python（含原生扩展 `iv8*.so`）：**plain `uv run pytest` 禁用**（uv sync 会用缓存解包
-#    回滚 .so，覆盖 maturin develop 成果——见踩坑 #9）。正确 recipe = maturin develop + --no-sync + hasattr 实证：
-cd crates/sdk-python && maturin develop && uv run --no-sync pytest
-python -c "import iv8; C=iv8.iv8.Context; print(hasattr(C,'page'),hasattr(C,'network'),hasattr(C,'input'))"  # 须三 True
+#    回滚 .so，覆盖 maturin develop 成果——见踩坑 #9）。
+#    **自检一律走硬化脚本 `scripts/check-sdk-python-env.sh`**（勿凭文字 recipe 手打）：
+bash scripts/check-sdk-python-env.sh   # hasattr 实证 → --no-sync pytest → recipe 打印；陈旧 ⇒ 非零退出
+# 0（脚本内部等价 recipe）：
+#   cd crates/sdk-python && uv run --active --with maturin maturin develop && uv run --no-sync pytest
 ```
 
 ## 镜像源配置（两机已配置）
@@ -113,10 +115,10 @@ registry = "sparse+https://rsproxy.cn/index/"
    刚装好的 `.so` **打回旧版（mtime 也随之还原）** ⇒ 表现为 API 缺失（`AttributeError: ...'page'`）。
    **决定性现场**：带 sync 的 `uv run pytest` 一跑，`site-packages/iv8/iv8*.so` 即被打回
    `59MB / 01:42` 旧件（**mtime 还原 = uv 缓存解包覆盖**）；干净重建后 `iv8.iv8.Context` 全 14 属性在位。
-   - **正确 recipe（sdk-python 专用）**：`maturin develop` → **`uv run --no-sync pytest`** → **`hasattr(新 API)` 实证**。
+   - **正确 recipe（sdk-python 专用，脚本内部）**：`uv run --active --with maturin maturin develop` → **`uv run --no-sync pytest`** → **`hasattr(新 API)` 实证**。
    - **plain `uv run pytest` 对本 crate 禁用**；**时间戳 / 大小 / `EXIT=0` 均不可信**（幽灵产物可时间戳新、
      `EXIT=0`、实为空壳）——**只信 `hasattr` 实证**。
-   - **硬化脚本**：`scripts/check-sdk-python-env.sh`（`hasattr` 实证 + recipe 打印）。
+   - **硬化脚本**：**`scripts/check-sdk-python-env.sh`**（`76dd538`；三步 = **`hasattr` 实证 → `--no-sync` pytest → recipe 打印**；**陈旧 ⇒ 非零退出**；**主理人亲跑通过**）。**自检引用此脚本路径，勿手打 recipe。**
 
 ## 内存注意事项（远程 3.6 GB）
 
