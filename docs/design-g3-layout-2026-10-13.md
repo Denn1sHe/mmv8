@@ -116,6 +116,10 @@
 > **S7-b① ✅**（`0b4d1d4`，`font_metrics.rs`；layout-backend **16/16**）+ **S7-b② ✅**（`6416c03`，`style_system` 最小面：Device/Stylist/表登记去重/remove/flush；**17/17**）；**S7-b③（逐元素级联）在途**。
 > **S7-b 子组件 `font_metrics.rs`**（stylo `Device` 所需 **`Box<dyn FontMetricsProvider>`** 的**最小实现**；
 > 复用 P-3/P-10 的 `fontique`/`skrifa` 集合 + **内嵌回退字体 Tuffy**；**与 S9 文本整形无重复**）——已登记 §1.1/§1.2/§2.1。
+> **⛔ S7-b③ 阻断（R18）**：stylo 要求 `TElement` 句柄 `E` **8 字节**（`SharingCache<E>` 断言 `size_of` 相等，
+> `stylo/sharing/mod.rs:605`；typeless 占位 `_element: usize`；对照 blitz `type BlitzNode<'a> = &'a Node`）——
+> `NodeRef<'a>{tree,id}`（≥24B）违反 ⇒ **handle 改 `&'a ElementSlot`（架构师建议 = A，与 blitz 同构）**，
+> **S6-1（`stylo_host/{mod,dom}.rs`）需重构一次**；**待 team-lead 定 (A)/(B)**（当前树绿 17/17，WIP 已回滚）。
 >
 > **探针门总账（2026-10-13）—— 100% 收口**：**全 8 项 ✅** —— **P-1 机制 ✅**（零 unsafe+反查命中；**总判随落档**，= E′+R / ADR-0024）、
 > **P-1b ✅**（信封 = 5 声明 + 0 腔体，终值）、**P-2 ✅**（「样式改⇒布局盒变」**非恒真 + 负对照**，`128dee9`）、
@@ -356,16 +360,25 @@ thread_local! { static SIDE: std::cell::RefCell<OpaqueSideTable> = std::cell::Re
 
 ```rust
 /// stylo 宿主视图：**只读借用** DOM + 提供 stylist 与映射。
-/// 形态对齐 `blitz-dom::stylo.rs`（`type BlitzNode<'a> = &'a Node`）：本仓取 `NodeRef<'a>{tree,id}`。
 /// **trait 路径（G3-B5 更正）**：`style::dom::{TDocument,TNode,TElement,TShadowRoot}`
 /// （`style` = 包名 `stylo`；`stylo_dom` 仅状态位）+ `selectors::Element`。
 pub struct StyloHost<'a> { tree: &'a web_dom::tree::NodeTree, style: &'a StyleSystem }
 
+/// ⚠️ **硬不变量（S7-b③ 实测）：元素句柄 `E` 必须 `usize` 大小（8 字节）+ 同 alignment。**
+/// 依据 `stylo-0.20.0/sharing/mod.rs:605`：`SharingCache::new()` 断言
+/// `size_of::<SharingCache<E>>() == size_of::<TypelessSharingCache>()`（且 align 相等）——
+/// `type SharingCache<E> = SharingCacheBase<StyleSharingCandidate<E>>`，候选内联存 `element: E`；
+/// typeless 版占位 `FakeCandidate { _element: usize, … }` ⇒ **`E ≅ usize`**。
+/// `ThreadLocalStyleContext::new()` **无条件**构造该缓存 ⇒ 违反即 **panic**（`disable_style_sharing_cache` 不救构造）。
+/// 对照 blitz：`type BlitzNode<'a> = &'a Node;`（单引用，8 字节，满足）。
+/// **架构师建议 =（A）**：`NodeRef<'a> = &'a ElementSlot<'a>`（**单引用**；`tree`/`id` 下移进按
+/// `NodeId::index()` 对齐的**每节点 slot**，与 blitz 同构，改动集中 `stylo_host/`）。
+/// **弃（B）**：单 `usize` 句柄 + 线程局部 tree/slots（tree 访问需经 TLS，状态面更大）。**待 team-lead 确认后工程师执行。**
 #[derive(Clone, Copy, Debug)]
-pub struct NodeRef<'a> { tree: &'a web_dom::tree::NodeTree, id: web_dom::node::NodeId }
+pub struct NodeRef<'a>(&'a ElementSlot<'a>);   // 8 字节（单引用）
 // impl style::dom::TNode    for NodeRef<'_> { … }   // TNode: Copy+Clone+Debug+NodeInfo+PartialEq
 // impl style::dom::TElement  for NodeRef<'_> { … }   // 含 selectors::Element（opaque() 走 §1.2.1 侧表）
-// impl selectors::Element    for NodeRef<'_> { fn opaque(&self) -> OpaqueElement { SIDE.opaque_for(self.id) } … }
+// impl selectors::Element    for NodeRef<'_> { fn opaque(&self) -> OpaqueElement { SIDE.opaque_for(self.id()) } … }
 // impl style::dom::TShadowRoot for ShadowRootRef<'_> { … }  // §1.5
 ```
 
@@ -769,6 +782,7 @@ shadow 隔离**必须有负对照**；`layout-backend` 目标 **≥80% lines**�
 | **R15** | **resolve 无增量 ⇒ 每次全量 restyle** | 未实现 restyle root | 性能/内存面 | **restyle root**（§2.2）；若退化为全树 ⇒ **具名登记**（ADR-0017 as-built 范式） | 工程师 |
 | **R16** | **stylo prefs/`servo` feature 初始化时机** | 无 GUI 环境下 prefs 初始化 | 启动失败 | **P-11 探针**（无 GUI 可运行性）；**S1 实测 PASS**；落 S4 | 工程师 |
 | **R17** ✅ | **`TElement` 5 个必需 `unsafe fn` vs 全仓 `forbid(unsafe_code)`**（P-1b 已定形：**5 声明 + 0 腔体**，见 §7 P-1b） | 实现 `TElement`（Stylo 级联必备） | 承载 crate 不能零 unsafe | **已落 = 「E′+R」**（**ADR-0024**；白名单形态 = 尾斜杠目录条目 `crates/layout-backend/src/stylo_host/` + Rust 门禁 a/b/c/d）；**守卫数据行已落地**（维护者 2026-10-13 18:10 批准）；**S6 门已解** | 架构师+主理人 |
+| **R18** | **`TElement` 句柄 `E` 必须 8 字节**（stylo `SharingCache<E>` 不变量；实测违反即 panic） | `ThreadLocalStyleContext::new()` **无条件**构造共享缓存（`stylo/sharing/mod.rs:605` 断言 `size/align`) | **级联 panic ⇒ S7-b③ / S6 受阻** | **改 handle = `&'a ElementSlot`（A）**（与 blitz `&'a Node` 同构；改动集中 `stylo_host/`）⇒ **S6-1 需重构一次**（trait impl 走 `self.tree()/self.id()`）；弃（B）`usize` + TLS | 架构师+工程师 |
 
 ---
 
