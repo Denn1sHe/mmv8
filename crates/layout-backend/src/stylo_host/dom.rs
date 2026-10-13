@@ -228,7 +228,7 @@ impl<'a> TElement for &'a ElementSlot<'a> {
     }
 
     fn id(&self) -> Option<&WeakAtom> {
-        None
+        self.id_atom()
     }
 
     fn each_class<F>(&self, mut callback: F)

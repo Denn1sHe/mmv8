@@ -231,6 +231,68 @@ mod tests {
     use web_style::SheetOrigin;
 
     #[test]
+    fn computed_value_is_real() {
+        use crate::stylo_host::{StyloHost, build_slots};
+        use web_dom::tree::NodeTree;
+
+        let mut system = StyleSystem::new(Size::new(800.0, 600.0));
+        system
+            .add_stylesheet(SheetOrigin::Author, "#box { width: 120px; }")
+            .expect("author sheet");
+        system.flush();
+
+        let mut tree = NodeTree::new();
+        let root = tree.root();
+        let div = tree.create_element("div", "html", vec![("id".to_owned(), "box".to_owned())]);
+        tree.append_child(root, div);
+        let slots = build_slots(&tree);
+        let style = system
+            .resolve_element_style(StyloHost::new(slots).node(div).expect("div slot"), 0.0)
+            .expect("cascade");
+        assert_eq!(
+            crate::serialize::serialize_computed(&style, "width").expect("width"),
+            "120px",
+            "#box width:120px => getComputedStyle width 应为 120px（已知值自证）"
+        );
+    }
+
+    #[test]
+    fn specificity_and_order_applied() {
+        use crate::stylo_host::{StyloHost, build_slots};
+        use web_dom::tree::NodeTree;
+
+        let mut system = StyleSystem::new(Size::new(800.0, 600.0));
+        system
+            .add_stylesheet(
+                SheetOrigin::Author,
+                "div { width: 1px; } .c { width: 2px; } #i { width: 3px; }",
+            )
+            .expect("author sheet");
+        system.flush();
+
+        let mut tree = NodeTree::new();
+        let root = tree.root();
+        let div = tree.create_element(
+            "div",
+            "html",
+            vec![
+                ("id".to_owned(), "i".to_owned()),
+                ("class".to_owned(), "c".to_owned()),
+            ],
+        );
+        tree.append_child(root, div);
+        let slots = build_slots(&tree);
+        let style = system
+            .resolve_element_style(StyloHost::new(slots).node(div).expect("div slot"), 0.0)
+            .expect("cascade");
+        assert_eq!(
+            crate::serialize::serialize_computed(&style, "width").expect("width"),
+            "3px",
+            "#id > .class > 元素（specificity）"
+        );
+    }
+
+    #[test]
     fn cascade_author_over_user_agent() {
         use crate::stylo_host::{StyloHost, build_slots};
         use style::values::computed::Display as StyloDisplay;

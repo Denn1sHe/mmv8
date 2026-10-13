@@ -43,6 +43,7 @@ pub struct ElementSlot<'a> {
     dirty_descendants: Cell<bool>,
     local_name: web_atoms::LocalName,
     namespace: web_atoms::Namespace,
+    id_atom: Option<style::Atom>,
 }
 
 impl std::fmt::Debug for ElementSlot<'_> {
@@ -160,6 +161,12 @@ impl<'a> ElementSlot<'a> {
         &self.namespace
     }
 
+    /// interned `id` 原子（`TElement::id` 的返回；无 `id` ⇒ `None`）。
+    #[must_use]
+    pub fn id_atom(&self) -> Option<&style::Atom> {
+        self.id_atom.as_ref()
+    }
+
     /// 急切借出可变数据（安全：`borrow_mut` 内部互斥）。
     pub fn ensure_data(&self) -> ElementDataMut<'_> {
         self.data.borrow_mut()
@@ -237,23 +244,24 @@ pub fn build_slots(tree: &NodeTree) -> &[ElementSlot<'_>] {
             break;
         };
         let id = NodeId::new(index_u32, 0);
-        let (local_name, namespace) = tree
-            .get(id)
-            .and_then(|node| node.element.as_ref())
-            .map_or_else(
-                || {
-                    (
-                        web_atoms::LocalName::from(""),
-                        web_atoms::Namespace::from(""),
-                    )
-                },
-                |element| {
-                    (
-                        web_atoms::LocalName::from(element.name.as_str()),
-                        web_atoms::Namespace::from(element.namespace.as_str()),
-                    )
-                },
-            );
+        let element = tree.get(id).and_then(|node| node.element.as_ref());
+        let id_atom = element
+            .and_then(|element| element.attrs.get("id"))
+            .map(style::Atom::from);
+        let (local_name, namespace) = element.map_or_else(
+            || {
+                (
+                    web_atoms::LocalName::from(""),
+                    web_atoms::Namespace::from(""),
+                )
+            },
+            |element| {
+                (
+                    web_atoms::LocalName::from(element.name.as_str()),
+                    web_atoms::Namespace::from(element.namespace.as_str()),
+                )
+            },
+        );
         slots.push(ElementSlot {
             tree,
             id,
@@ -263,6 +271,7 @@ pub fn build_slots(tree: &NodeTree) -> &[ElementSlot<'_>] {
             dirty_descendants: Cell::new(false),
             local_name,
             namespace,
+            id_atom,
         });
     }
 
@@ -479,8 +488,11 @@ impl<'a> SelectorsElement for &'a ElementSlot<'a> {
         })
     }
 
-    fn add_element_unique_hashes(&self, _filter: &mut BloomFilter) -> bool {
-        false
+    fn add_element_unique_hashes(&self, filter: &mut BloomFilter) -> bool {
+        style::bloom::each_relevant_element_hash(*self, |hash| {
+            filter.insert_hash(hash & selectors::bloom::BLOOM_HASH_MASK);
+        });
+        true
     }
 }
 
