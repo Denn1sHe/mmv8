@@ -117,13 +117,19 @@ mod tests {
     fn shadow_isolated_from_light_traversal_real_model() {
         let report = run();
         assert!(report.isolated, "① light 遍历必须不含影子内容");
-        assert!(report.flattened_crosses, "flattened 必须跨 shadow 且展开 slot");
+        assert!(
+            report.flattened_crosses,
+            "flattened 必须跨 shadow 且展开 slot"
+        );
     }
 
     /// ③ opaque 机制步骤 + 反查命中（真实 `NodeId`）。
     #[test]
     fn opaque_implicit_scope_resolves_host_real_model() {
-        assert!(run().opaque_resolves_host, "③ opaque → 关联函数须反查命中宿主");
+        assert!(
+            run().opaque_resolves_host,
+            "③ opaque → 关联函数须反查命中宿主"
+        );
     }
 
     /// 模型自洽：影子根独立、slot 分发正确。
@@ -132,6 +138,9 @@ mod tests {
         let model = build_model();
         assert_ne!(model.host, model.shadow);
         assert_eq!(model.tree.shadow_host(model.shadow), Some(model.host));
-        assert_eq!(model.tree.assigned_nodes(model.slot), vec![model.light_span]);
+        assert_eq!(
+            model.tree.assigned_nodes(model.slot),
+            vec![model.light_span]
+        );
     }
 }
