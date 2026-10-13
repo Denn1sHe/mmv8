@@ -29,6 +29,7 @@
 
 pub mod fonts;
 pub mod opaque;
+pub mod p2;
 pub mod p4;
 pub mod p4_match;
 pub mod pins;

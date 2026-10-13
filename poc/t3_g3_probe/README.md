@@ -12,7 +12,7 @@
 | **P-1-机制**（opaque 侧表） | **PASS** | `#![forbid(unsafe_code)]` 下编译通过 + `OpaqueElement` 反查命中（零 unsafe） |
 | **P-1-总**（投影编译+级联+零 unsafe） | **BLOCK ⛔** | `style::dom::TElement` 的 **5 个必需 `unsafe fn`** 与全仓 `unsafe_code = "forbid"` **冲突** |
 | **P-1b**（`TElement` unsafe 定形） | **零 unsafe 体** | 急切 `ElementDataWrapper`（非 Option、无 `UnsafeCell`）⇒ 5 个 `unsafe fn` **函数体零 unsafe**：`signatures:5 bodies:0` |
-| **P-2**（stylo→taffy 桥） | PENDING | 依赖 P-1 投影（`TElement`）成立；P-1 阻断 ⇒ 未执行 |
+| **P-2**（stylo→taffy 桥） | **PASS** | 真实 `ComputedValues` 经 `to_taffy_style` + taffy 布局：`width` auto/120/200 ⇒ **300/120/200**（互异，非恒真） |
 | **P-3**（字体发现路径） | **PASS（本地）** | `fontique` 系统发现 667 家族 + 内嵌 Tuffy 注册 + 回退非 0 且不 panic（远程复验归 S14） |
 | **P-10**（内嵌字体度量确定） | **PASS（本地）** | 内嵌 Tuffy `"Hamburgefonstiv"`@16px ⇒ **112.625 px**（同架构逐位相等；跨架构 ≤0.5px） |
 | **P-4**（真实模型 shadow 作用域） | **PASS** | `p4.rs`+`p4_match.rs`：light 隔离 + `:host`/`::slotted` 命中（`selectors::matching`）+ opaque 反查，**零 unsafe** |
