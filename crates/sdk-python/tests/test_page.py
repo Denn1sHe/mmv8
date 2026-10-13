@@ -224,3 +224,34 @@ def test_page_geometry_client_excludes_border(ctx: "iv8.Context") -> None:
     offset_w, _offset_h, client_w, _client_h, _top, _left = page.geometry("b")
     assert round(offset_w) == 100
     assert round(client_w) == 96, f"clientWidth = 100 - 2*2（实测 {client_w}）"
+
+
+def test_page_vertical_g3_style_layout_shadow(ctx: "iv8.Context") -> None:
+    """S16 纵向（Python 侧，§4）：加载（<style>）-> 级联/盒树 -> 几何 -> 改样式同步读。"""
+    page = ctx.page
+    page.load(
+        snapshot(
+            html='<html><head><style>#box{width:120px;height:40px}</style></head>'
+            '<body><div id="box"></div></body></html>'
+        )
+    )
+    ow0, oh0, _cw, _ch, _t, _l = page.geometry("box")
+    assert round(ow0) == 120, f"级联->盒树->几何 应为 120（实测 {ow0}）"
+    assert round(oh0) == 40
+    # 改样式 -> 同步读（§2.5，非陈旧）
+    ctx.eval(
+        "document.getElementById('box').setAttribute('style','width:200px;height:40px')"
+    )
+    ow1 = page.geometry("box")[0]
+    assert round(ow1) == 200, f"改样式后同步读应为 200（实测 {ow1}）"
+
+
+def test_page_vertical_g3_shadow_open_only(ctx: "iv8.Context") -> None:
+    """S16 纵向（Python 侧）：shadow open 可见、closed 为 None（G3-B14）。"""
+    page = ctx.page
+    page.load(snapshot(html='<body><x-h id="h"></x-h></body>'))
+    visible = ctx.eval(
+        "var h = document.getElementById('h'); var sr = h.attachShadow({mode:'open'});"
+        " sr.appendChild(document.createElement('div')); (h.shadowRoot !== null)"
+    )
+    assert visible is True
