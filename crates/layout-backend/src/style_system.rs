@@ -9,6 +9,7 @@
 use std::collections::HashMap;
 
 use euclid::{Scale, Size2D};
+use selectors::Element as SelectorsElement;
 use style::context::{
     QuirksMode, RegisteredSpeculativePainter, RegisteredSpeculativePainters, SharedStyleContext,
     StyleContext, StyleSystemOptions, ThreadLocalStyleContext,
@@ -213,6 +214,14 @@ impl StyleSystem {
             };
             let mut thread_local: ThreadLocalStyleContext<NodeRef<'_>> =
                 ThreadLocalStyleContext::new();
+            // R24：**匹配前填充祖先 bloom**（仿 traversal.rs:288-289）。绕过 traversal 时 bloom 为空
+            // ⇒ 组合器（如 `div span`）被 fast-reject（matching.rs:294-301）而静默不命中。
+            if let Some(parent) =
+                <&crate::stylo_host::ElementSlot as SelectorsElement>::parent_element(&element)
+            {
+                thread_local.bloom_filter.rebuild(parent);
+                thread_local.bloom_filter.push(parent);
+            }
             let mut context = StyleContext {
                 shared: &shared,
                 thread_local: &mut thread_local,
@@ -346,6 +355,38 @@ mod tests {
             crate::serialize::serialize_computed(&after, "display").expect("display"),
             "block",
             "负对照：UA 表仍在 => display 仍 block"
+        );
+    }
+
+    #[test]
+    fn descendant_combinator_matches() {
+        // R24：祖先 bloom 填充 ⇒ `div span`（后代组合器）命中。
+        use crate::stylo_host::{StyloHost, build_slots};
+        use web_dom::tree::NodeTree;
+
+        let mut system = StyleSystem::new(Size::new(800.0, 600.0));
+        system
+            .add_stylesheet(SheetOrigin::Author, "div span { width: 30px; }")
+            .expect("author");
+        system.flush();
+        let mut tree = NodeTree::new();
+        let root = tree.root();
+        let parent = tree.create_element("div", "html", vec![]);
+        let child = tree.create_element("span", "html", vec![]);
+        tree.append_child(root, parent);
+        tree.append_child(parent, child);
+        let slots = build_slots(&tree, system.shared_lock());
+        let host = StyloHost::new(slots);
+        let _ = system
+            .resolve_element_style(host.node(parent).expect("div"), 0.0)
+            .expect("p");
+        let child_style = system
+            .resolve_element_style(host.node(child).expect("span"), 0.0)
+            .expect("c");
+        assert_eq!(
+            crate::serialize::serialize_computed(&child_style, "width").expect("width"),
+            "30px",
+            "后代组合器应命中"
         );
     }
 
