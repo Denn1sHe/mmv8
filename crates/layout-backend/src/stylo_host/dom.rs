@@ -3,6 +3,8 @@
 //! 含 `TElement` 的 **5 个必需 `unsafe fn`**（`stylo-0.20.0/dom.rs:648/675/680/739/744`）：
 //! 逐方法 `#[allow(unsafe_code)]` + `// SAFETY:`，**函数体零 unsafe**（P-1b 定形）。
 //! `opaque()` / `implicit_scope_for_sheet_in_shadow_root` 走 [`crate::opaque`] 侧表（§1.2.1）。
+//!
+//! 元素句柄 = `&'a ElementSlot<'a>`（8B；见 [`crate::stylo_host`] 模块头）。
 
 use selectors::OpaqueElement;
 use selectors::matching::ElementSelectorFlags;
@@ -25,20 +27,20 @@ use web_dom::node::NodeKind;
 
 use crate::opaque;
 
-use super::NodeRef;
+use super::ElementSlot;
 
-impl NodeInfo for NodeRef<'_> {
+impl NodeInfo for &ElementSlot<'_> {
     fn is_element(&self) -> bool {
-        NodeRef::is_element(self)
+        ElementSlot::is_element(self)
     }
 
     fn is_text_node(&self) -> bool {
-        NodeRef::is_text_node(self)
+        ElementSlot::is_text_node(self)
     }
 }
 
-impl<'a> TDocument for NodeRef<'a> {
-    type ConcreteNode = NodeRef<'a>;
+impl<'a> TDocument for &'a ElementSlot<'a> {
+    type ConcreteNode = Self;
 
     fn as_node(&self) -> Self::ConcreteNode {
         *self
@@ -57,8 +59,8 @@ impl<'a> TDocument for NodeRef<'a> {
     }
 }
 
-impl<'a> TShadowRoot for NodeRef<'a> {
-    type ConcreteNode = NodeRef<'a>;
+impl<'a> TShadowRoot for &'a ElementSlot<'a> {
+    type ConcreteNode = Self;
 
     fn as_node(&self) -> Self::ConcreteNode {
         *self
@@ -66,10 +68,10 @@ impl<'a> TShadowRoot for NodeRef<'a> {
 
     fn host(&self) -> <Self::ConcreteNode as TNode>::ConcreteElement {
         let host = self
-            .tree
-            .shadow_host(self.id)
+            .tree()
+            .shadow_host(self.node_id())
             .expect("shadow root must have a host");
-        NodeRef::new(self.tree, self.slots, host)
+        self.resolve(host).expect("host slot must exist")
     }
 
     fn style_data<'b>(&self) -> Option<&'b CascadeData>
@@ -81,47 +83,45 @@ impl<'a> TShadowRoot for NodeRef<'a> {
     }
 }
 
-impl<'a> TNode for NodeRef<'a> {
-    type ConcreteElement = NodeRef<'a>;
-    type ConcreteDocument = NodeRef<'a>;
-    type ConcreteShadowRoot = NodeRef<'a>;
+impl<'a> TNode for &'a ElementSlot<'a> {
+    type ConcreteElement = Self;
+    type ConcreteDocument = Self;
+    type ConcreteShadowRoot = Self;
 
     fn parent_node(&self) -> Option<Self> {
-        self.tree
-            .parent(self.id)
-            .map(|id| NodeRef::new(self.tree, self.slots, id))
+        let id = self.tree().parent(self.node_id())?;
+        self.resolve(id)
     }
 
     fn first_child(&self) -> Option<Self> {
-        self.tree
-            .children(self.id)
-            .next()
-            .map(|id| NodeRef::new(self.tree, self.slots, id))
+        let id = self.tree().children(self.node_id()).next()?;
+        self.resolve(id)
     }
 
     fn last_child(&self) -> Option<Self> {
-        self.tree
-            .children(self.id)
-            .last()
-            .map(|id| NodeRef::new(self.tree, self.slots, id))
+        let id = self.tree().children(self.node_id()).last()?;
+        self.resolve(id)
     }
 
     fn prev_sibling(&self) -> Option<Self> {
-        self.tree
-            .get(self.id)
-            .and_then(|node| node.prev_sibling)
-            .map(|id| NodeRef::new(self.tree, self.slots, id))
+        let id = self
+            .tree()
+            .get(self.node_id())
+            .and_then(|node| node.prev_sibling)?;
+        self.resolve(id)
     }
 
     fn next_sibling(&self) -> Option<Self> {
-        self.tree
-            .get(self.id)
-            .and_then(|node| node.next_sibling)
-            .map(|id| NodeRef::new(self.tree, self.slots, id))
+        let id = self
+            .tree()
+            .get(self.node_id())
+            .and_then(|node| node.next_sibling)?;
+        self.resolve(id)
     }
 
     fn owner_doc(&self) -> Self::ConcreteDocument {
-        NodeRef::new(self.tree, self.slots, self.tree.root())
+        self.resolve(self.tree().root())
+            .expect("root slot must exist")
     }
 
     fn is_in_document(&self) -> bool {
@@ -133,66 +133,64 @@ impl<'a> TNode for NodeRef<'a> {
     }
 
     fn opaque(&self) -> OpaqueNode {
-        OpaqueNode(usize::try_from(self.id.raw()).unwrap_or(usize::MAX))
+        OpaqueNode(usize::try_from(self.node_id().raw()).unwrap_or(usize::MAX))
     }
 
     fn debug_id(self) -> usize {
-        usize::try_from(self.id.raw()).unwrap_or(usize::MAX)
+        usize::try_from(self.node_id().raw()).unwrap_or(usize::MAX)
     }
 
     fn as_element(&self) -> Option<Self::ConcreteElement> {
-        (self
-            .tree
-            .get(self.id)
-            .is_some_and(|n| n.kind == NodeKind::Element))
-        .then_some(*self)
+        self.tree()
+            .get(self.node_id())
+            .is_some_and(|n| n.kind == NodeKind::Element)
+            .then_some(*self)
     }
 
     fn as_document(&self) -> Option<Self::ConcreteDocument> {
-        (self
-            .tree
-            .get(self.id)
-            .is_some_and(|n| n.kind == NodeKind::Document))
-        .then_some(*self)
+        self.tree()
+            .get(self.node_id())
+            .is_some_and(|n| n.kind == NodeKind::Document)
+            .then_some(*self)
     }
 
     fn as_shadow_root(&self) -> Option<Self::ConcreteShadowRoot> {
-        self.tree.is_shadow_root(self.id).then_some(*self)
+        self.tree().is_shadow_root(self.node_id()).then_some(*self)
     }
 }
 
-impl<'a> TElement for NodeRef<'a> {
-    type ConcreteNode = NodeRef<'a>;
-    type TraversalChildrenIterator = std::vec::IntoIter<NodeRef<'a>>;
+impl<'a> TElement for &'a ElementSlot<'a> {
+    type ConcreteNode = Self;
+    type TraversalChildrenIterator = std::vec::IntoIter<Self>;
 
     fn as_node(&self) -> Self::ConcreteNode {
         *self
     }
 
     fn traversal_children(&self) -> LayoutIterator<Self::TraversalChildrenIterator> {
-        let children: Vec<NodeRef<'a>> = self
-            .tree
-            .children(self.id)
+        let children: Vec<Self> = self
+            .tree()
+            .children(self.node_id())
             .filter(|id| {
-                self.tree
+                self.tree()
                     .get(*id)
                     .is_some_and(|n| n.kind == NodeKind::Element)
             })
-            .map(|id| NodeRef::new(self.tree, self.slots, id))
+            .filter_map(|id| self.resolve(id))
             .collect();
         LayoutIterator(children.into_iter())
     }
 
     fn is_html_element(&self) -> bool {
-        self.namespace() == Some("html")
+        self.namespace_str() == Some("html")
     }
 
     fn is_mathml_element(&self) -> bool {
-        self.namespace() == Some("mathml")
+        self.namespace_str() == Some("mathml")
     }
 
     fn is_svg_element(&self) -> bool {
-        self.namespace() == Some("svg")
+        self.namespace_str() == Some("svg")
     }
 
     fn style_attribute(&self) -> Option<ArcBorrow<'_, Locked<PropertyDeclarationBlock>>> {
@@ -264,8 +262,7 @@ impl<'a> TElement for NodeRef<'a> {
     }
 
     fn has_dirty_descendants(&self) -> bool {
-        self.slot()
-            .is_some_and(super::ElementSlot::has_dirty_descendants)
+        ElementSlot::has_dirty_descendants(self)
     }
 
     fn has_snapshot(&self) -> bool {
@@ -273,32 +270,25 @@ impl<'a> TElement for NodeRef<'a> {
     }
 
     fn handled_snapshot(&self) -> bool {
-        self.slot()
-            .is_some_and(super::ElementSlot::snapshot_handled)
+        ElementSlot::snapshot_handled(self)
     }
 
-    // SAFETY: trait 签名强制 `unsafe`；实现仅置 `Cell<bool>`，无内存风险（P-1b 定形：函数体零 unsafe）。
+    // SAFETY: 签名强制 unsafe；函数体零 unsafe（仅置 Cell<bool>，无内存风险；P-1b 定形）。
     #[allow(unsafe_code)]
     unsafe fn set_handled_snapshot(&self) {
-        if let Some(slot) = self.slot() {
-            slot.set_snapshot_handled();
-        }
+        ElementSlot::set_snapshot_handled(self);
     }
 
-    // SAFETY: trait 签名强制 `unsafe`；实现仅置 `Cell<bool>`，无内存风险。
+    // SAFETY: 签名强制 unsafe；函数体零 unsafe（仅置 Cell<bool>，无内存风险）。
     #[allow(unsafe_code)]
     unsafe fn set_dirty_descendants(&self) {
-        if let Some(slot) = self.slot() {
-            slot.set_dirty_descendants();
-        }
+        ElementSlot::set_dirty_descendants(self);
     }
 
-    // SAFETY: trait 签名强制 `unsafe`；实现仅清 `Cell<bool>`，无内存风险。
+    // SAFETY: 签名强制 unsafe；函数体零 unsafe（仅清 Cell<bool>，无内存风险）。
     #[allow(unsafe_code)]
     unsafe fn unset_dirty_descendants(&self) {
-        if let Some(slot) = self.slot() {
-            slot.unset_dirty_descendants();
-        }
+        ElementSlot::unset_dirty_descendants(self);
     }
 
     fn store_children_to_process(&self, _n: isize) {}
@@ -310,29 +300,25 @@ impl<'a> TElement for NodeRef<'a> {
     // SAFETY: 签名强制 unsafe；函数体零 unsafe（内部互斥由 stylo borrow_mut 保证，不 deref 裸指针）。
     #[allow(unsafe_code)]
     unsafe fn ensure_data(&self) -> ElementDataMut<'_> {
-        self.slot()
-            .expect("stylo_host: element slot must exist for ensure_data")
-            .ensure_data()
+        ElementSlot::ensure_data(self)
     }
 
     // SAFETY: 签名强制 unsafe；函数体零 unsafe（「清空」= DerefMut 写 ElementData::default()，安全）。
     #[allow(unsafe_code)]
     unsafe fn clear_data(&self) {
-        if let Some(slot) = self.slot() {
-            slot.clear_data();
-        }
+        ElementSlot::clear_data(self);
     }
 
     fn has_data(&self) -> bool {
-        self.slot().is_some()
+        true
     }
 
     fn borrow_data(&self) -> Option<ElementDataRef<'_>> {
-        Some(self.slot()?.borrow_data())
+        Some(ElementSlot::borrow_data(self))
     }
 
     fn mutate_data(&self) -> Option<ElementDataMut<'_>> {
-        Some(self.slot()?.ensure_data())
+        Some(ElementSlot::ensure_data(self))
     }
 
     fn skip_item_display_fixup(&self) -> bool {
@@ -364,15 +350,13 @@ impl<'a> TElement for NodeRef<'a> {
     }
 
     fn shadow_root(&self) -> Option<<Self::ConcreteNode as TNode>::ConcreteShadowRoot> {
-        self.tree
-            .element_shadow(self.id)
-            .map(|root| NodeRef::new(self.tree, self.slots, root))
+        let root = self.tree().element_shadow(self.node_id())?;
+        self.resolve(root)
     }
 
     fn containing_shadow(&self) -> Option<<Self::ConcreteNode as TNode>::ConcreteShadowRoot> {
-        self.tree
-            .containing_shadow_root(self.id)
-            .map(|root| NodeRef::new(self.tree, self.slots, root))
+        let root = self.tree().containing_shadow_root(self.node_id())?;
+        self.resolve(root)
     }
 
     fn lang_attr(&self) -> Option<style::selector_parser::AttrValue> {
@@ -388,7 +372,7 @@ impl<'a> TElement for NodeRef<'a> {
     }
 
     fn is_html_document_body_element(&self) -> bool {
-        self.local_name() == Some("body")
+        self.name() == Some("body")
     }
 
     fn synthesize_presentational_hints_for_legacy_attributes<V>(
@@ -401,15 +385,11 @@ impl<'a> TElement for NodeRef<'a> {
     }
 
     fn local_name(&self) -> &<SelectorImpl as selectors::SelectorImpl>::BorrowedLocalName {
-        self.slot()
-            .expect("stylo_host: element slot must exist for local_name")
-            .local_name()
+        self.local_name_atom()
     }
 
     fn namespace(&self) -> &<SelectorImpl as selectors::SelectorImpl>::BorrowedNamespaceUrl {
-        self.slot()
-            .expect("stylo_host: element slot must exist for namespace")
-            .namespace()
+        self.namespace_atom()
     }
 
     fn query_container_size(
@@ -444,7 +424,7 @@ impl<'a> TElement for NodeRef<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::stylo_host::{NodeRef, StyloHost, build_slots};
+    use crate::stylo_host::{StyloHost, build_slots};
     use web_dom::node::ShadowMode;
     use web_dom::tree::NodeTree;
 
@@ -458,23 +438,23 @@ mod tests {
         assert!(tree.is_shadow_root(shadow));
 
         let slots = build_slots(&tree);
-        let host_ctx = StyloHost::new(&tree, &slots);
-        let host_ref = host_ctx.node(host);
+        let host_ctx = StyloHost::new(slots);
+        let host_ref = host_ctx.node(host).expect("host slot");
 
-        // `TElement::local_name` 走 interned atom 槽（注意：与 `NodeRef::local_name` 异名同参，须全限定）。
+        // `TElement::local_name` 走 interned atom 槽。
         assert_eq!(
-            <NodeRef as TElement>::local_name(&host_ref),
+            <&ElementSlot as TElement>::local_name(&host_ref),
             &web_atoms::LocalName::from("x-host")
         );
         assert!(TElement::is_html_element(&host_ref));
-        // `shadow_root()` 投影出影子根。
         assert!(TElement::shadow_root(&host_ref).is_some());
 
         // `opaque()` → `implicit_scope_for_sheet_in_shadow_root`（无 self 关联函数）经侧表反查（§1.2.1）。
         crate::opaque::reset();
         crate::opaque::with_side(|side| side.set_active_tree(1));
-        let opaque_host = <NodeRef as selectors::Element>::opaque(&host_ref);
-        let scope = <NodeRef as TElement>::implicit_scope_for_sheet_in_shadow_root(opaque_host, 0);
+        let opaque_host = <&ElementSlot as selectors::Element>::opaque(&host_ref);
+        let scope =
+            <&ElementSlot as TElement>::implicit_scope_for_sheet_in_shadow_root(opaque_host, 0);
         assert!(
             matches!(scope, Some(ImplicitScopeRoot::ShadowHost(_))),
             "影子表的作用域根应为宿主（经 opaque 侧表反查）"

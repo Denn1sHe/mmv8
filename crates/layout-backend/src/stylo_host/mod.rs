@@ -1,12 +1,16 @@
 //! `stylo_host` —— **stylo FFI 薄桥**：把 `web-dom::NodeTree` **只读**投影成 stylo 消费的类型
-//! （施工图 §1.2 / §2.1；ADR-0024 目录级白名单 `crates/layout-backend/src/stylo_host/`）。
+//! （施工图 §1.2 / §2.1 / §6 R18；ADR-0024 目录级白名单 `crates/layout-backend/src/stylo_host/`）。
 //!
-//! - [`selectors::Element`]（匹配面；**无 `unsafe` 方法**）——本文件。
-//! - `style::dom::{TDocument,TNode,TElement,TShadowRoot}`——见 `dom` 子模块（含 5 个必需 `unsafe fn`）。
+//! ## 元素句柄 = `&'a ElementSlot<'a>`（8 字节）
+//! stylo 的样式共享缓存断言 `size_of::<SharingCache<E>>() == size_of::<TypelessSharingCache>()`
+//! （`stylo-0.20.0/sharing/mod.rs:605`）⇒ **`TElement` 类型 `E` 必须指针大小（8B）**。
+//! 故元素 = **对槽的引用** `NodeRef<'a> = &'a ElementSlot<'a>`（同 blitz 的 `&'a Node`）。
+//!
+//! **安全两阶段构造**（[`build_slots`]）：先建 `Vec<ElementSlot>` → `Box::leak` 得**稳定锚** →
+//! 用 `Cell` 内层可变性把「槽数组自引用」回填（**全共享借用，零 unsafe**）。
+//! **一次性泄漏、跨 resolve 复用、重建即重分配**（登记；G5 前如需回收另立优化项）。
 //!
 //! `opaque()` 走线程局部侧表（[`crate::opaque`]，§1.2.1；**零 unsafe**）。
-//! **投影只读**（DOM 树）；每节点 stylo 元素数据（[`ElementSlot`]）**急切持有**（P-1b 定形），
-//! 由宿主按节点数一次性分配、`NodeRef` 持 `&'a [ElementSlot]` ⇒ `ensure_data` 返回值的生命周期挂 `'a`。
 
 pub mod dom;
 
@@ -23,13 +27,17 @@ use web_dom::tree::NodeTree;
 
 use crate::opaque;
 
-/// 每节点 stylo 元素数据槽（**急切持有** `ElementDataWrapper`；P-1b 定形 `signatures:5 bodies:0`）。
+/// 元素句柄：**对槽的引用**（8 字节；见模块头的不变量说明）。
+pub type NodeRef<'a> = &'a ElementSlot<'a>;
+
+/// 每节点槽：stylo 元素数据 + 归属（`tree`/`id`）+ **自引用槽数组**（导航用）。
 ///
-/// 由宿主 [`StyloHost`] 按节点数一次性分配；`NodeRef` 持 `&'a [ElementSlot]` ⇒
-/// `ensure_data(&self) -> ElementDataMut<'_>` 返回生命周期挂 `'a` —— **零 unsafe**
-/// （stylo `ElementDataWrapper::borrow_mut(&self)` 为安全方法；`ElementData: Default`）。
-#[derive(Debug, Default)]
-pub struct ElementSlot {
+/// - **急切持有** `ElementDataWrapper`（P-1b 定形：`ensure_data`/`clear_data` 函数体零 unsafe）；
+/// - `slots` 经 `Cell` 回填（安全两阶段构造）；父/子/兄弟导航据此解析。
+pub struct ElementSlot<'a> {
+    tree: &'a NodeTree,
+    id: NodeId,
+    slots: Cell<Option<&'a [ElementSlot<'a>]>>,
     data: ElementDataWrapper,
     snapshot_handled: Cell<bool>,
     dirty_descendants: Cell<bool>,
@@ -37,134 +45,57 @@ pub struct ElementSlot {
     namespace: web_atoms::Namespace,
 }
 
-impl ElementSlot {
-    /// 建一个空槽。
-    #[must_use]
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    /// 为一个元素建槽（interned `LocalName`/`Namespace`；`SelectorImpl::Borrowed*` 需它们）。
-    #[must_use]
-    pub fn for_element(name: &str, namespace: &str) -> Self {
-        Self {
-            data: ElementDataWrapper::default(),
-            snapshot_handled: Cell::new(false),
-            dirty_descendants: Cell::new(false),
-            local_name: web_atoms::LocalName::from(name),
-            namespace: web_atoms::Namespace::from(namespace),
-        }
-    }
-
-    /// interned 标签名（`TElement::local_name` 的返回）。
-    #[must_use]
-    pub fn local_name(&self) -> &web_atoms::LocalName {
-        &self.local_name
-    }
-
-    /// interned 命名空间（`TElement::namespace` 的返回）。
-    #[must_use]
-    pub fn namespace(&self) -> &web_atoms::Namespace {
-        &self.namespace
-    }
-
-    /// 急切借出可变数据（安全：`borrow_mut` 内部互斥）。
-    pub fn ensure_data(&self) -> ElementDataMut<'_> {
-        self.data.borrow_mut()
-    }
-
-    /// 只读借出数据。
-    #[must_use]
-    pub fn borrow_data(&self) -> ElementDataRef<'_> {
-        self.data.borrow()
-    }
-
-    /// 清空数据（覆盖为 `ElementData::default()`；`DerefMut` 安全写）。
-    pub fn clear_data(&self) {
-        *self.data.borrow_mut() = ElementData::default();
-    }
-
-    /// 置/取「已处理快照」位。
-    pub fn set_snapshot_handled(&self) {
-        self.snapshot_handled.set(true);
-    }
-
-    /// 「已处理快照」位。
-    #[must_use]
-    pub fn snapshot_handled(&self) -> bool {
-        self.snapshot_handled.get()
-    }
-
-    /// 置/清「有脏后代」位。
-    pub fn set_dirty_descendants(&self) {
-        self.dirty_descendants.set(true);
-    }
-
-    /// 清「有脏后代」位。
-    pub fn unset_dirty_descendants(&self) {
-        self.dirty_descendants.set(false);
-    }
-
-    /// 「有脏后代」位。
-    #[must_use]
-    pub fn has_dirty_descendants(&self) -> bool {
-        self.dirty_descendants.get()
+impl std::fmt::Debug for ElementSlot<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ElementSlot")
+            .field("id", &self.id)
+            .field("local_name", &format_args!("{}", self.local_name))
+            .finish_non_exhaustive()
     }
 }
 
-/// 桥：持节点树 + 每节点 stylo 元素数据槽。
-#[derive(Debug)]
-pub struct StyloHost<'a> {
-    tree: &'a NodeTree,
-    slots: &'a [ElementSlot],
+impl PartialEq for ElementSlot<'_> {
+    fn eq(&self, other: &Self) -> bool {
+        std::ptr::eq(self.tree, other.tree) && self.id == other.id
+    }
 }
 
-impl<'a> StyloHost<'a> {
-    /// 由节点树与按节点数分配的 [`ElementSlot`] 切片构造桥。
-    #[must_use]
-    pub const fn new(tree: &'a NodeTree, slots: &'a [ElementSlot]) -> Self {
-        Self { tree, slots }
-    }
+impl Eq for ElementSlot<'_> {}
 
-    /// 节点树（只读）。
+impl std::hash::Hash for ElementSlot<'_> {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.id.hash(state);
+    }
+}
+
+impl<'a> ElementSlot<'a> {
+    /// 归属树。
     #[must_use]
     pub const fn tree(&self) -> &'a NodeTree {
         self.tree
     }
 
-    /// 取一个节点引用。
-    #[must_use]
-    pub const fn node(&self, id: NodeId) -> NodeRef<'a> {
-        NodeRef {
-            tree: self.tree,
-            slots: self.slots,
-            id,
-        }
-    }
-}
-
-/// `web-dom` 节点上的**只读**视图（`selectors::Element` + stylo `dom` 投影）。
-#[derive(Clone, Copy, Debug)]
-pub struct NodeRef<'a> {
-    /// 节点树（只读借用）。
-    pub tree: &'a NodeTree,
-    /// 每节点 stylo 元素数据槽（按 `NodeId::index()` 索引）。
-    pub slots: &'a [ElementSlot],
     /// 节点身份。
-    pub id: NodeId,
-}
-
-impl<'a> NodeRef<'a> {
-    /// 构造。
     #[must_use]
-    pub const fn new(tree: &'a NodeTree, slots: &'a [ElementSlot], id: NodeId) -> Self {
-        Self { tree, slots, id }
+    pub const fn node_id(&self) -> NodeId {
+        self.id
     }
 
-    /// 本节点的数据槽（`index` 越界 ⇒ `None`）。
+    /// 槽数组（构造期回填；导航用）。
+    ///
+    /// # Panics
+    /// 槽未回填（未经 [`build_slots`] 构造）时 panic。
     #[must_use]
-    pub fn slot(&self) -> Option<&'a ElementSlot> {
-        self.slots.get(self.id.index() as usize)
+    pub fn slots(&self) -> &'a [ElementSlot<'a>] {
+        self.slots
+            .get()
+            .expect("stylo_host: slot array must be filled after build_slots")
+    }
+
+    /// 按 `NodeId` 取同树槽（越界 ⇒ `None`）。
+    #[must_use]
+    pub fn resolve(&self, id: NodeId) -> Option<NodeRef<'a>> {
+        self.slots().get(id.index() as usize)
     }
 
     /// 元素数据（非元素 ⇒ `None`）。
@@ -177,13 +108,13 @@ impl<'a> NodeRef<'a> {
 
     /// 标签名（小写）。
     #[must_use]
-    pub fn local_name(&self) -> Option<&'a str> {
+    pub fn name(&self) -> Option<&'a str> {
         self.element_data().map(|element| element.name.as_str())
     }
 
     /// 命名空间。
     #[must_use]
-    pub fn namespace(&self) -> Option<&'a str> {
+    pub fn namespace_str(&self) -> Option<&'a str> {
         self.element_data()
             .map(|element| element.namespace.as_str())
     }
@@ -213,39 +144,147 @@ impl<'a> NodeRef<'a> {
 
     /// 是否 `<slot>` 元素。
     #[must_use]
-    pub fn is_slot(&self) -> bool {
-        self.local_name() == Some("slot")
+    pub fn is_slot_element(&self) -> bool {
+        self.name() == Some("slot")
+    }
+
+    /// interned 标签名（`TElement::local_name` 的返回）。
+    #[must_use]
+    pub fn local_name_atom(&self) -> &web_atoms::LocalName {
+        &self.local_name
+    }
+
+    /// interned 命名空间。
+    #[must_use]
+    pub fn namespace_atom(&self) -> &web_atoms::Namespace {
+        &self.namespace
+    }
+
+    /// 急切借出可变数据（安全：`borrow_mut` 内部互斥）。
+    pub fn ensure_data(&self) -> ElementDataMut<'_> {
+        self.data.borrow_mut()
+    }
+
+    /// 只读借出数据。
+    #[must_use]
+    pub fn borrow_data(&self) -> ElementDataRef<'_> {
+        self.data.borrow()
+    }
+
+    /// 清空数据（覆盖为 `ElementData::default()`；`DerefMut` 安全写）。
+    pub fn clear_data(&self) {
+        *self.data.borrow_mut() = ElementData::default();
+    }
+
+    /// 置「已处理快照」位。
+    pub fn set_snapshot_handled(&self) {
+        self.snapshot_handled.set(true);
+    }
+
+    /// 「已处理快照」位。
+    #[must_use]
+    pub fn snapshot_handled(&self) -> bool {
+        self.snapshot_handled.get()
+    }
+
+    /// 置「有脏后代」位。
+    pub fn set_dirty_descendants(&self) {
+        self.dirty_descendants.set(true);
+    }
+
+    /// 清「有脏后代」位。
+    pub fn unset_dirty_descendants(&self) {
+        self.dirty_descendants.set(false);
+    }
+
+    /// 「有脏后代」位。
+    #[must_use]
+    pub fn has_dirty_descendants(&self) -> bool {
+        self.dirty_descendants.get()
     }
 }
 
-impl PartialEq for NodeRef<'_> {
-    fn eq(&self, other: &Self) -> bool {
-        self.id == other.id
+/// 桥：持**稳定锚**槽数组（[`build_slots`] 产出）。
+#[derive(Debug)]
+pub struct StyloHost<'a> {
+    slots: &'a [ElementSlot<'a>],
+}
+
+impl<'a> StyloHost<'a> {
+    /// 由槽数组构造桥。
+    #[must_use]
+    pub const fn new(slots: &'a [ElementSlot<'a>]) -> Self {
+        Self { slots }
+    }
+
+    /// 取一个节点句柄（越界 ⇒ `None`）。
+    #[must_use]
+    pub fn node(&self, id: NodeId) -> Option<NodeRef<'a>> {
+        self.slots.get(id.index() as usize)
     }
 }
 
-impl Eq for NodeRef<'_> {}
-
-impl std::hash::Hash for NodeRef<'_> {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.id.hash(state);
+/// **安全两阶段**构建槽数组（`Box::leak` 得稳定锚 → `Cell` 自填自引用）。
+///
+/// **前提**：一次 `resolve` 内不 `dispose`（`NodeId::generation` 保持 0）；槽位按 `NodeId::index()` 对齐。
+/// **泄漏登记**：每 host 一次性（跨 resolve 复用；重建即重分配）；G5 前如需回收另立优化项。
+#[must_use]
+pub fn build_slots(tree: &NodeTree) -> &[ElementSlot<'_>] {
+    let len = tree.len();
+    let mut slots: Vec<ElementSlot<'_>> = Vec::with_capacity(len);
+    for index in 0..len {
+        let Ok(index_u32) = u32::try_from(index) else {
+            break;
+        };
+        let id = NodeId::new(index_u32, 0);
+        let (local_name, namespace) = tree
+            .get(id)
+            .and_then(|node| node.element.as_ref())
+            .map_or_else(
+                || {
+                    (
+                        web_atoms::LocalName::from(""),
+                        web_atoms::Namespace::from(""),
+                    )
+                },
+                |element| {
+                    (
+                        web_atoms::LocalName::from(element.name.as_str()),
+                        web_atoms::Namespace::from(element.namespace.as_str()),
+                    )
+                },
+            );
+        slots.push(ElementSlot {
+            tree,
+            id,
+            slots: Cell::new(None),
+            data: ElementDataWrapper::default(),
+            snapshot_handled: Cell::new(false),
+            dirty_descendants: Cell::new(false),
+            local_name,
+            namespace,
+        });
     }
+
+    let leaked: &mut [ElementSlot<'_>] = Box::leak(slots.into_boxed_slice());
+    let slots: &[ElementSlot<'_>] = leaked;
+    for slot in slots {
+        slot.slots.set(Some(slots));
+    }
+    slots
 }
 
-impl SelectorsElement for NodeRef<'_> {
+impl<'a> SelectorsElement for &'a ElementSlot<'a> {
     type Impl = SelectorImpl;
 
     fn opaque(&self) -> OpaqueElement {
-        // §1.2.1：`OpaqueElement::new(&*anchor)`；从不 deref 指针 ⇒ 零 unsafe。
+        // §1.2.1：经线程局部侧表取稳定锚（零 unsafe）。
         opaque::with_side(|side| side.opaque_for(self.id))
     }
 
     fn parent_element(&self) -> Option<Self> {
         let parent = self.tree.parent(self.id)?;
-        self.tree
-            .get(parent)
-            .filter(|node| node.kind == NodeKind::Element)
-            .map(|_| NodeRef::new(self.tree, self.slots, parent))
+        self.resolve(parent).filter(|slot| slot.is_element())
     }
 
     fn parent_node_is_shadow_root(&self) -> bool {
@@ -256,9 +295,8 @@ impl SelectorsElement for NodeRef<'_> {
 
     fn containing_shadow_host(&self) -> Option<Self> {
         let root = self.tree.containing_shadow_root(self.id)?;
-        self.tree
-            .shadow_host(root)
-            .map(|host| NodeRef::new(self.tree, self.slots, host))
+        let host = self.tree.shadow_host(root)?;
+        self.resolve(host)
     }
 
     fn is_pseudo_element(&self) -> bool {
@@ -270,7 +308,7 @@ impl SelectorsElement for NodeRef<'_> {
         while let Some(id) = prev {
             let node = self.tree.get(id)?;
             if node.kind == NodeKind::Element {
-                return Some(NodeRef::new(self.tree, self.slots, id));
+                return self.resolve(id);
             }
             prev = node.prev_sibling;
         }
@@ -282,7 +320,7 @@ impl SelectorsElement for NodeRef<'_> {
         while let Some(id) = next {
             let node = self.tree.get(id)?;
             if node.kind == NodeKind::Element {
-                return Some(NodeRef::new(self.tree, self.slots, id));
+                return self.resolve(id);
             }
             next = node.next_sibling;
         }
@@ -297,29 +335,29 @@ impl SelectorsElement for NodeRef<'_> {
                     .get(*child)
                     .is_some_and(|n| n.kind == NodeKind::Element)
             })
-            .map(|child| NodeRef::new(self.tree, self.slots, child))
+            .and_then(|child| self.resolve(child))
     }
 
     fn is_html_element_in_html_document(&self) -> bool {
-        self.namespace() == Some("html")
+        self.namespace_str() == Some("html")
     }
 
     fn has_local_name(
         &self,
         local_name: &<Self::Impl as selectors::SelectorImpl>::BorrowedLocalName,
     ) -> bool {
-        self.local_name() == Some(local_name.as_ref())
+        self.name() == Some(local_name.as_ref())
     }
 
     fn has_namespace(
         &self,
         ns: &<Self::Impl as selectors::SelectorImpl>::BorrowedNamespaceUrl,
     ) -> bool {
-        self.namespace() == Some(ns.as_ref())
+        self.namespace_str() == Some(ns.as_ref())
     }
 
     fn is_same_type(&self, other: &Self) -> bool {
-        self.local_name() == other.local_name() && self.namespace() == other.namespace()
+        self.name() == other.name() && self.namespace_str() == other.namespace_str()
     }
 
     fn attr_matches(
@@ -360,7 +398,7 @@ impl SelectorsElement for NodeRef<'_> {
     }
 
     fn is_html_slot_element(&self) -> bool {
-        self.is_slot()
+        self.is_slot_element()
     }
 
     fn assigned_slot(&self) -> Option<Self> {
@@ -372,7 +410,7 @@ impl SelectorsElement for NodeRef<'_> {
                 .get(slot)
                 .is_some_and(|n| n.element.as_ref().is_some_and(|e| e.name == "slot"));
             if is_slot && self.tree.assigned_nodes(slot).contains(&self.id) {
-                return Some(NodeRef::new(self.tree, self.slots, slot));
+                return self.resolve(slot);
             }
         }
         None
@@ -446,48 +484,46 @@ impl SelectorsElement for NodeRef<'_> {
     }
 }
 
-/// 按节点数构建元素数据槽（元素节点 ⇒ interned 名/命名空间；其余 ⇒ 空槽）。
-///
-/// **前提**：一次 `resolve` 内不 `dispose`（`NodeId::generation` 保持 0）；槽位按 `NodeId::index()` 对齐。
-#[must_use]
-pub fn build_slots(tree: &NodeTree) -> Vec<ElementSlot> {
-    let mut slots: Vec<ElementSlot> = (0..tree.len()).map(|_| ElementSlot::new()).collect();
-    for (index, slot) in slots.iter_mut().enumerate() {
-        let Ok(index_u32) = u32::try_from(index) else {
-            break;
-        };
-        let id = NodeId::new(index_u32, 0);
-        if let Some(element) = tree.get(id).and_then(|node| node.element.as_ref()) {
-            *slot = ElementSlot::for_element(&element.name, &element.namespace);
-        }
-    }
-    slots
-}
-
 #[cfg(test)]
 mod tests {
-    use super::{ElementSlot, StyloHost};
+    use super::{NodeRef, StyloHost, build_slots};
     use selectors::Element as _;
     use web_dom::tree::NodeTree;
 
     #[test]
-    fn host_projects_elements_selectors_surface() {
+    fn element_handle_is_pointer_sized() {
+        // stylo 共享缓存不变量：E 必须 8 字节。
+        assert_eq!(
+            std::mem::size_of::<NodeRef<'_>>(),
+            std::mem::size_of::<usize>(),
+            "TElement 句柄必须指针大小"
+        );
+    }
+
+    #[test]
+    fn host_projects_elements_and_navigates() {
         let mut tree = NodeTree::new();
         let root = tree.root();
         let html = tree.create_element("html", "html", vec![]);
+        let body = tree.create_element("body", "html", vec![]);
         let div = tree.create_element("div", "html", vec![("id".to_owned(), "box".to_owned())]);
         tree.append_child(root, html);
-        tree.append_child(html, div);
+        tree.append_child(html, body);
+        tree.append_child(body, div);
 
-        let slots: Vec<ElementSlot> = (0..8).map(|_| ElementSlot::new()).collect();
-        let host = StyloHost::new(&tree, &slots);
+        let slots = build_slots(&tree);
+        let host = StyloHost::new(slots);
 
-        let node = host.node(div);
+        let node = host.node(div).expect("div slot");
         assert!(node.is_element());
-        assert_eq!(node.local_name(), Some("div"));
+        assert_eq!(node.name(), Some("div"));
         assert_eq!(node.attr("id"), Some("box"));
-        assert!(!node.is_root(), "div 非根元素");
-        assert!(host.node(html).is_root(), "html 的父是 Document ⇒ 根元素");
-        assert!(!host.node(root).is_root(), "Document 自身非根元素");
+        // 导航完整：父 = body。
+        assert_eq!(
+            node.parent_element().map(super::ElementSlot::name),
+            Some(Some("body"))
+        );
+        assert!(!node.is_root());
+        assert!(host.node(html).expect("html slot").is_root());
     }
 }
