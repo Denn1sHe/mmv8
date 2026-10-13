@@ -150,28 +150,28 @@ def test_input_dispatch_click_from_python(ctx: "iv8.Context") -> None:
     assert ctx.eval("globalThis.__trusted") is True
 
 
-def test_capabilities_reports_g2_surface(ctx: "iv8.Context") -> None:
-    """`capabilities_reports_g2_surface`：键集合与值逐项断言。"""
+def test_capabilities_reports_g3_surface(ctx: "iv8.Context") -> None:
+    """`capabilities_reports_g3_surface`（G3-B16）：geometry 升为 computed、shadow_dom 开启。"""
     caps = ctx.capabilities()
     assert caps["parsing"] == "streaming"
     assert caps["document_write"] is True
     assert caps["navigation"] is True
     assert caps["network"] == "offline"
     assert caps["input"] == "explicit_target"
-    assert caps["geometry"] == "stub"
-    assert caps["shadow_dom"] is False
+    assert caps["geometry"] == "computed"
+    assert caps["shadow_dom"] is True
     assert caps["script_interruptible"] is True
     assert caps["input_user_activation"] == "sticky_only"
     assert caps["single_realm_navigation"] is True
 
 
-def test_page_geometry_is_documented_stub(ctx: "iv8.Context") -> None:
-    """`page_geometry_is_documented_stub`：几何读取返回确定值且 geometry == 'stub'。"""
-    ctx.page.load(snapshot())
-    assert ctx.capabilities()["geometry"] == "stub"
-    assert ctx.eval("document.createElement('div').offsetWidth") == 0.0
-    assert ctx.eval("document.createElement('div').offsetHeight") == 0.0
-    assert ctx.eval("document.createElement('div').getBoundingClientRect().width") == 0.0
+def test_page_geometry_is_computed(ctx: "iv8.Context") -> None:
+    """`page_geometry_is_computed`（G3-B16 更名自 `page_geometry_is_documented_stub`）：
+    几何面 = computed（非 stub）。"""
+    ctx.page.load(snapshot(html='<body><div id="g" style="width:50px;height:20px"></div></body>'))
+    assert ctx.capabilities()["geometry"] == "computed"
+    assert ctx.eval("document.getElementById('g').offsetWidth") == 50.0
+    assert ctx.eval("document.getElementById('g').offsetHeight") == 20.0
 
 
 def test_py_control_reentry_is_error(ctx: "iv8.Context") -> None:
@@ -197,3 +197,30 @@ def test_close_after_navigation_idempotent(ctx: "iv8.Context") -> None:
     ctx.page.load(snapshot("https://a.example/two", "<body></body>"))
     ctx.close()
     ctx.close()
+
+
+def test_page_geometry_real_roundtrip(ctx: "iv8.Context") -> None:
+    """S15 / §3.7：Python 侧读几何得**真实值**（与 §3.2 口径一致）。"""
+    page = ctx.page
+    page.load(
+        snapshot(
+            html='<body><div id="box" style="width:120px;height:40px"></div></body>'
+        )
+    )
+    offset_w, offset_h, _client_w, _client_h, top, left = page.geometry("box")
+    assert round(offset_w) == 120, f"offsetWidth 应为 120（实测 {offset_w}）"
+    assert round(offset_h) == 40, f"offsetHeight 应为 40（实测 {offset_h}）"
+    assert round(top) == 0 and round(left) == 0
+
+
+def test_page_geometry_client_excludes_border(ctx: "iv8.Context") -> None:
+    """S15：client 读数排除 border（border-box 口径）。"""
+    page = ctx.page
+    page.load(
+        snapshot(
+            html='<body><div id="b" style="width:100px;height:50px;border:2px solid"></div></body>'
+        )
+    )
+    offset_w, _offset_h, client_w, _client_h, _top, _left = page.geometry("b")
+    assert round(offset_w) == 100
+    assert round(client_w) == 96, f"clientWidth = 100 - 2*2（实测 {client_w}）"

@@ -526,6 +526,44 @@ impl BrowsingContext {
         layout.relayout_if_dirty(&tree)
     }
 
+    /// 按 `id` 属性查元素节点（深度优先；未命中 ⇒ `None`）。
+    #[must_use]
+    pub fn element_by_id(&self, id: &str) -> Option<NodeId> {
+        let tree = self.shared.tree.try_borrow().ok()?;
+        fn walk(tree: &NodeTree, node: NodeId, id: &str) -> Option<NodeId> {
+            for child in tree.children(node) {
+                if tree.get_attribute(child, "id") == Some(id) {
+                    return Some(child);
+                }
+                if let Some(found) = walk(tree, child, id) {
+                    return Some(found);
+                }
+            }
+            None
+        }
+        walk(&tree, tree.root(), id)
+    }
+
+    /// 节点几何（**先隐式 flush**，§2.5 / S15）。
+    ///
+    /// # Errors
+    /// 借用冲突 / 未布局 ⇒ [`PageErrorKind::Internal`]。
+    pub fn node_geometry(
+        &mut self,
+        node: NodeId,
+    ) -> Result<layout_backend::box_tree::NodeGeometry, PageError> {
+        let tree = Rc::clone(&self.shared.tree);
+        let tree = tree
+            .try_borrow()
+            .map_err(|_| PageError::new(PageErrorKind::Internal, "NodeTree 借用冲突"))?;
+        let mut layout = self
+            .shared
+            .layout
+            .try_borrow_mut()
+            .map_err(|_| PageError::new(PageErrorKind::Internal, "LayoutFacade 借用冲突"))?;
+        layout.geometry(&tree, node)
+    }
+
     /// G3 能力面口径（§3.8）：`geometry = "computed"`、`shadow_dom = true`。
     #[must_use]
     pub fn capabilities(&self) -> Capabilities {

@@ -223,6 +223,32 @@ impl PyPage {
             .map_err(|_| crate::reentrant_pyerr())?;
         Ok(browser.origin_string())
     }
+
+    /// 按 element `id` 读**真实几何**（S15 / §3.7）：
+    /// `(offset_width, offset_height, client_width, client_height, top, left)`。
+    ///
+    /// # Errors
+    /// 未找到该 `id` ⇒ `KeyError`；重入 ⇒ [`crate::ReentrantEvalError`]；布局失败 ⇒ [`crate::Iv8Error`]。
+    fn geometry(&self, element_id: &str) -> PyResult<(f64, f64, f64, f64, f64, f64)> {
+        let mut browser = self
+            .browser
+            .try_borrow_mut()
+            .map_err(|_| crate::reentrant_pyerr())?;
+        let node = browser.element_by_id(element_id).ok_or_else(|| {
+            pyo3::exceptions::PyKeyError::new_err(format!("未找到 id={element_id} 的元素"))
+        })?;
+        let g = browser
+            .node_geometry(node)
+            .map_err(crate::page_error_to_pyerr)?;
+        Ok((
+            f64::from(g.offset_width),
+            f64::from(g.offset_height),
+            f64::from(g.client_width()),
+            f64::from(g.client_height()),
+            f64::from(g.top),
+            f64::from(g.left),
+        ))
+    }
 }
 
 /// `network` 子对象：列出 pending、回填响应、导出 netLog。
