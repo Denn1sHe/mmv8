@@ -534,6 +534,9 @@ impl BrowsingContext {
             activation: Rc::clone(&self.shared.activation),
             active_element: Rc::clone(&self.shared.active_element),
             parser_active: Rc::clone(&self.shared.parser_active),
+            layout: Rc::new(RefCell::new(crate::layout::LayoutFacade::new(
+                layout_backend::geometry::Size::new(800.0, 600.0),
+            ))),
         };
         let binding = PageBinding::install(self.plane.realm_mut(), inputs).map_err(map_js)?;
         self.binding = Some(binding);

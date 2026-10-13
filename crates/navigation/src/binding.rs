@@ -31,6 +31,8 @@ use web_dom::tree::NodeTree;
 use web_events::{ListenerOptions, ListenerRegistry, UserActivation};
 
 use crate::input::{self, DispatchDeps, InputKind};
+use crate::layout::LayoutFacade;
+use layout_backend::invalidate::DomChange;
 
 /// wrapper 对象上存放「node 原始 `u64`」的隐藏属性名（原生原语据此反查 `NodeId`）。
 const NODE_KEY: &str = "__iv8_node";
@@ -60,6 +62,8 @@ pub struct BindingInputs {
     pub active_element: Rc<Cell<Option<NodeId>>>,
     /// parser 是否活跃（`readyState == Loading`）；`document.write` post-load 据此呈具名错误。
     pub parser_active: Rc<Cell<bool>>,
+    /// 布局门面（S12：几何真值 + `getComputedStyle`；§2.5 同步读）。
+    pub layout: Rc<RefCell<LayoutFacade>>,
 }
 
 /// 手写最小 JS `document` / 元素桥。
@@ -459,6 +463,100 @@ impl PageBinding {
             )?;
         }
 
+        // —— 原生原语：几何真值 + 计算值（S12-b；§1.3 口径 / §2.5 同步读）——
+        {
+            let tree = Rc::clone(&inputs.tree);
+            let layout = Rc::clone(&inputs.layout);
+            install_global_fn(
+                realm,
+                "__iv8_geom",
+                2,
+                Box::new(move |realm, args| {
+                    let node = node_of(realm, args.first())?
+                        .ok_or_else(|| JsError::new(JsErrorKind::Exception, "geom: 非法节点"))?;
+                    let prop = arg_str(args, 1).unwrap_or_default();
+                    let value = {
+                        let tree = tree
+                            .try_borrow()
+                            .map_err(|_| refcell_conflict("NodeTree"))?;
+                        let mut layout = layout
+                            .try_borrow_mut()
+                            .map_err(|_| refcell_conflict("LayoutFacade"))?;
+                        layout.geometry(&tree, node).map_err(|err| {
+                            JsError::new(JsErrorKind::Exception, err.message().to_owned())
+                        })?
+                    };
+                    let number = match prop.as_str() {
+                        // §1.3：border-box 取整（81.5 => 82）。
+                        "offsetWidth" => value.offset_width.round(),
+                        "offsetHeight" => value.offset_height.round(),
+                        "clientWidth" => value.client_width().round(),
+                        "clientHeight" => value.client_height().round(),
+                        "rectTop" => value.top,
+                        "rectLeft" => value.left,
+                        "rectWidth" => value.offset_width,
+                        "rectHeight" => value.offset_height,
+                        _ => {
+                            return Err(JsError::new(JsErrorKind::Exception, "geom: 未知属性"));
+                        }
+                    };
+                    Ok(HostValue::Number(f64::from(number)))
+                }),
+            )?;
+        }
+        {
+            let tree = Rc::clone(&inputs.tree);
+            let layout = Rc::clone(&inputs.layout);
+            install_global_fn(
+                realm,
+                "__iv8_get_computed",
+                2,
+                Box::new(move |realm, args| {
+                    let node = node_of(realm, args.first())?.ok_or_else(|| {
+                        JsError::new(JsErrorKind::Exception, "getComputedStyle: 非法节点")
+                    })?;
+                    let prop = arg_str(args, 1).unwrap_or_default();
+                    let value = {
+                        let tree = tree
+                            .try_borrow()
+                            .map_err(|_| refcell_conflict("NodeTree"))?;
+                        let mut layout = layout
+                            .try_borrow_mut()
+                            .map_err(|_| refcell_conflict("LayoutFacade"))?;
+                        layout.computed_value(&tree, node, &prop).map_err(|err| {
+                            JsError::new(JsErrorKind::Exception, err.message().to_owned())
+                        })?
+                    };
+                    Ok(HostValue::Str(value))
+                }),
+            )?;
+        }
+
+        // —— 原生原语：标脏（§2.5；DOM 变更 ⇒ 布局脏）——
+        {
+            let layout = Rc::clone(&inputs.layout);
+            install_global_fn(
+                realm,
+                "__iv8_mark_dirty",
+                2,
+                Box::new(move |_realm, args| {
+                    let kind = arg_str(args, 0).unwrap_or_default();
+                    let property = arg_str(args, 1).unwrap_or_default();
+                    let mut layout = layout
+                        .try_borrow_mut()
+                        .map_err(|_| refcell_conflict("LayoutFacade"))?;
+                    match kind.as_str() {
+                        "attribute" => layout.mark_dirty(DomChange::Attribute),
+                        "style" => layout.mark_dirty(DomChange::InlineStyle {
+                            property: &property,
+                        }),
+                        _ => layout.mark_dirty(DomChange::ChildList),
+                    }
+                    Ok(HostValue::Undefined)
+                }),
+            )?;
+        }
+
         realm.eval(SHIM)?;
         Ok(Self { inputs, node_map })
     }
@@ -622,6 +720,9 @@ const SHIM: &str = r"
   var nWrite = g.__iv8_dom_write;
   var nAttachShadow = g.__iv8_dom_attach_shadow;
   var nShadowRoot = g.__iv8_dom_shadow_root;
+  var nGeom = g.__iv8_geom;
+  var nGetComputed = g.__iv8_get_computed;
+  var nDirty = g.__iv8_mark_dirty;
   var nEvAdd = g.__iv8_ev_add;
   var nEvRemove = g.__iv8_ev_remove;
   var nEvClick = g.__iv8_ev_click;
@@ -638,6 +739,9 @@ const SHIM: &str = r"
   delete g.__iv8_dom_write;
   delete g.__iv8_dom_attach_shadow;
   delete g.__iv8_dom_shadow_root;
+  delete g.__iv8_geom;
+  delete g.__iv8_get_computed;
+  delete g.__iv8_mark_dirty;
   delete g.__iv8_ev_add;
   delete g.__iv8_ev_remove;
   delete g.__iv8_ev_click;
@@ -666,7 +770,7 @@ const SHIM: &str = r"
             return v === null ? '' : v;
           },
           set: function (_t, prop, val) {
-            if (typeof prop === 'string') { nSetStyle(self, prop, String(val)); }
+            if (typeof prop === 'string') { nSetStyle(self, prop, String(val)); nDirty('style', String(prop)); }
             return true;
           }
         });
@@ -674,8 +778,8 @@ const SHIM: &str = r"
         return proxy;
       }
     });
-    node.appendChild = function (child) { nAppend(this, child); return child; };
-    node.setAttribute = function (name, value) { nSetAttr(this, String(name), String(value)); };
+    node.appendChild = function (child) { nAppend(this, child); nDirty('child', ''); return child; };
+    node.setAttribute = function (name, value) { nSetAttr(this, String(name), String(value)); nDirty('attribute', ''); };
     node.getAttribute = function (name) { return nGetAttr(this, String(name)); };
     node.attachShadow = function (init) {
       var mode = (init && typeof init.mode === 'string') ? init.mode : '';
@@ -700,13 +804,15 @@ const SHIM: &str = r"
       if (ev && typeof ev.type === 'string') { nEvDispatch(this, ev.type); }
       return true;
     };
-    // 几何口径 G2 = stub（§2.2 / R1）：确定值 0 / 空 rect，capabilities.geometry == 'stub'。
-    Object.defineProperty(node, 'offsetWidth', { configurable: true, enumerable: true, value: 0 });
-    Object.defineProperty(node, 'offsetHeight', { configurable: true, enumerable: true, value: 0 });
-    Object.defineProperty(node, 'clientWidth', { configurable: true, enumerable: true, value: 0 });
-    Object.defineProperty(node, 'clientHeight', { configurable: true, enumerable: true, value: 0 });
+    // 几何真值（S12；border-box 取整口径 §1.3；§2.5 同步读由宿主门面保证）。
+    Object.defineProperty(node, 'offsetWidth', { configurable: true, enumerable: true, get: function () { return nGeom(this, 'offsetWidth'); } });
+    Object.defineProperty(node, 'offsetHeight', { configurable: true, enumerable: true, get: function () { return nGeom(this, 'offsetHeight'); } });
+    Object.defineProperty(node, 'clientWidth', { configurable: true, enumerable: true, get: function () { return nGeom(this, 'clientWidth'); } });
+    Object.defineProperty(node, 'clientHeight', { configurable: true, enumerable: true, get: function () { return nGeom(this, 'clientHeight'); } });
     node.getBoundingClientRect = function () {
-      return { x: 0, y: 0, width: 0, height: 0, top: 0, right: 0, bottom: 0, left: 0 };
+      var x = nGeom(this, 'rectLeft'); var y = nGeom(this, 'rectTop');
+      var w = nGeom(this, 'rectWidth'); var h = nGeom(this, 'rectHeight');
+      return { x: x, y: y, width: w, height: h, top: y, right: x + w, bottom: y + h, left: x };
     };
     return node;
   }
@@ -722,6 +828,12 @@ const SHIM: &str = r"
     configurable: true, enumerable: true,
     get: function () { var b = nBody(); return b === null ? null : decorate(b); }
   });
+  g.getComputedStyle = function (el, pseudo) {
+    if (pseudo) { return null; }
+    return {
+      getPropertyValue: function (prop) { return nGetComputed(el, String(prop)); }
+    };
+  };
   g.document = doc;
 
   g.Event = function Event(type, init) {
@@ -750,6 +862,8 @@ mod tests {
     use web_events::{ListenerRegistry, UserActivation};
 
     /// 建 Realm + binding（含空树）。
+    use crate::layout::LayoutFacade;
+
     fn setup() -> (Realm, PageBinding, Rc<RefCell<NodeTree>>) {
         let mut realm = AgentRuntime::new()
             .expect("runtime")
@@ -764,6 +878,14 @@ mod tests {
             activation: Rc::new(RefCell::new(UserActivation::default())),
             active_element: Rc::new(Cell::new(None)),
             parser_active: Rc::new(Cell::new(true)),
+            layout: {
+                let mut facade =
+                    LayoutFacade::new(layout_backend::geometry::Size::new(800.0, 600.0));
+                facade
+                    .register_sheet(web_style::SheetOrigin::UserAgent, layout_backend::UA_CSS)
+                    .expect("ua sheet");
+                Rc::new(RefCell::new(facade))
+            },
         };
         let binding = PageBinding::install(&mut realm, inputs).expect("install");
         (realm, binding, tree)
@@ -847,6 +969,81 @@ mod tests {
             realm.eval("globalThis.__closedOk").unwrap(),
             HostValue::Bool(true),
             "closed 应返回 null（G3-B14）"
+        );
+    }
+
+    #[test]
+    fn offset_size_is_border_box_int() {
+        // §3.4：border-box 取整（81.5 => 82）。
+        let (mut realm, _binding, _tree) = setup();
+        realm
+            .eval("var d = document.createElement('div'); d.setAttribute('style','width:81.5px;height:12px'); document.appendChild(d); globalThis.__w = d.offsetWidth;")
+            .expect("eval");
+        assert_eq!(
+            realm.eval("globalThis.__w").unwrap(),
+            HostValue::Number(82.0),
+            "81.5px 应取整为 82"
+        );
+    }
+
+    #[test]
+    fn client_size_excludes_border() {
+        // §3.4：clientWidth == offsetWidth - 左右 border。
+        let (mut realm, _binding, _tree) = setup();
+        realm
+            .eval("var d = document.createElement('div'); d.setAttribute('style','width:100px;height:50px;border:2px solid'); document.appendChild(d); globalThis.__c = d.clientWidth;")
+            .expect("eval");
+        assert_eq!(
+            realm.eval("globalThis.__c").unwrap(),
+            HostValue::Number(96.0),
+            "clientWidth = 100 - 2*2"
+        );
+    }
+
+    #[test]
+    fn computed_style_via_js() {
+        // §3.4：getComputedStyle 经 JS 桥返回真值。
+        let (mut realm, _binding, _tree) = setup();
+        realm
+            .eval("var d = document.createElement('div'); d.setAttribute('style','width:120px'); document.appendChild(d); globalThis.__cv = getComputedStyle(d).getPropertyValue('width');")
+            .expect("eval");
+        assert_eq!(
+            realm.eval("globalThis.__cv").unwrap(),
+            HostValue::Str("120px".to_owned()),
+            "getComputedStyle width 应为 120px"
+        );
+    }
+
+    #[test]
+    fn geometry_after_mutation_updated() {
+        // §3.4/§2.5：改 style => 读几何同步反映新值（非陈旧）。
+        let (mut realm, _binding, _tree) = setup();
+        realm
+            .eval("var d = document.createElement('div'); d.setAttribute('style','width:100px;height:10px'); document.appendChild(d); globalThis.__before = d.offsetWidth; d.setAttribute('style','width:180px;height:10px'); globalThis.__after = d.offsetWidth;")
+            .expect("eval");
+        assert_eq!(
+            realm.eval("globalThis.__before").unwrap(),
+            HostValue::Number(100.0)
+        );
+        assert_eq!(
+            realm.eval("globalThis.__after").unwrap(),
+            HostValue::Number(180.0),
+            "变更后同步读应为 180（§2.5）"
+        );
+    }
+
+    #[test]
+    fn computed_value_unsupported_property_errors() {
+        // §3.4：白名单外属性 => 错误路径（JS 抛异常）。
+        let (mut realm, _binding, _tree) = setup();
+        let result = realm
+            .eval("var d = document.createElement('div'); document.appendChild(d); var threw = false; try { getComputedStyle(d).getPropertyValue('z-index'); } catch (e) { threw = true; } globalThis.__threw = threw;")
+            .expect("eval 应返回（不 panic）");
+        let _ = result;
+        assert_eq!(
+            realm.eval("globalThis.__threw").unwrap(),
+            HostValue::Bool(true),
+            "白名单外属性应抛错（G3-B12③）"
         );
     }
 
