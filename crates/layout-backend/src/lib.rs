@@ -14,6 +14,8 @@
 pub mod backend;
 pub mod error;
 pub mod geometry;
+pub mod opaque;
+pub mod stylo_host;
 
 pub use backend::{DirtyState, LayoutBackend, StyleSheetHandle};
 pub use error::{LayoutError, LayoutErrorKind};
