@@ -11,6 +11,7 @@
 | **P-11**（prefs 无 GUI） | **PASS** | stylo prefs 为**编译期静态**；`GLOBAL_STYLE_DATA`/`STYLE_THREAD_POOL` 为 `LazyLock`；无 GUI 依赖 |
 | **P-1-机制**（opaque 侧表） | **PASS** | `#![forbid(unsafe_code)]` 下编译通过 + `OpaqueElement` 反查命中（零 unsafe） |
 | **P-1-总**（投影编译+级联+零 unsafe） | **BLOCK ⛔** | `style::dom::TElement` 的 **5 个必需 `unsafe fn`** 与全仓 `unsafe_code = "forbid"` **冲突** |
+| **P-1b**（`TElement` unsafe 定形） | **零 unsafe 体** | 急切 `ElementDataWrapper`（非 Option、无 `UnsafeCell`）⇒ 5 个 `unsafe fn` **函数体零 unsafe**：`signatures:5 bodies:0` |
 | **P-2**（stylo→taffy 桥） | PENDING | 依赖 P-1 投影（`TElement`）成立；P-1 阻断 ⇒ 未执行 |
 | **P-3**（字体发现路径） | **PASS（本地）** | `fontique` 系统发现 667 家族 + 内嵌 Tuffy 注册 + 回退非 0 且不 panic（远程复验归 S14） |
 | **P-10**（内嵌字体度量确定） | **PASS（本地）** | 内嵌 Tuffy `"Hamburgefonstiv"`@16px ⇒ **112.625 px**（同架构逐位相等；跨架构 ≤0.5px） |
@@ -52,6 +53,18 @@ Rust 要求**实现**这些方法时也声明为 `unsafe fn`。而 `#![forbid(un
 - **③** 将 `TElement` 实现移入已白名单的 `engine-v8`（不推荐：违反类型面纪律的初衷）。
 
 > 详见回传主理人的报告；**P-1 未解前不得开工 S2+**（施工图 §5）。
+
+## P-1b（`TElement` `unsafe` 面定形）
+
+`examples/p1b_eager_data.rs`：以**急切持有** `style::data::ElementDataWrapper`（非 `Option`、我方无
+`UnsafeCell`）为载荷，`TElement` 的 5 个必需 `unsafe fn` 的**函数体可全部零 `unsafe`**
+（stylo `ElementDataWrapper::borrow`/`borrow_mut` 皆**安全方法**；`ElementData: Default`）。
+⇒ **unsafe 面 = 5 个签名 + 0 个 `unsafe {}` 块 + 0 腔体**。产物用 `#![deny(unsafe_code)]` +
+**逐方法** `#[allow(unsafe_code)]` 精确复现 R17 备选 ② 的最小许可面。
+
+```bash
+cargo run --example p1b_eager_data --offline   # P1B_UNSAFE_SURFACE=signatures:5 bodies:0
+```
 
 ## P-3 / P-10（字体，施工图 §1.4 / §7）
 
