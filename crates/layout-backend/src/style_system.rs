@@ -248,6 +248,36 @@ mod tests {
     use web_style::SheetOrigin;
 
     #[test]
+    fn inline_style_wins_over_author() {
+        use crate::stylo_host::{StyloHost, build_slots};
+        use web_dom::tree::NodeTree;
+
+        let mut system = StyleSystem::new(Size::new(800.0, 600.0));
+        system
+            .add_stylesheet(SheetOrigin::Author, "div { width: 1px; }")
+            .expect("author sheet");
+        system.flush();
+
+        let mut tree = NodeTree::new();
+        let root = tree.root();
+        let div = tree.create_element(
+            "div",
+            "html",
+            vec![("style".to_owned(), "width: 5px;".to_owned())],
+        );
+        tree.append_child(root, div);
+        let slots = build_slots(&tree, system.shared_lock());
+        let style = system
+            .resolve_element_style(StyloHost::new(slots).node(div).expect("div slot"), 0.0)
+            .expect("cascade");
+        assert_eq!(
+            crate::serialize::serialize_computed(&style, "width").expect("width"),
+            "5px",
+            "内联 style 应胜出 author 声明"
+        );
+    }
+
+    #[test]
     fn style_invalidation_changes_computed() {
         use crate::stylo_host::{StyloHost, build_slots};
         use web_dom::tree::NodeTree;
