@@ -995,6 +995,7 @@ version = "0.0.0"
 dependencies = [
  "engine-v8",
  "html5ever",
+ "layout-backend",
  "network",
  "policy",
  "scheduler",

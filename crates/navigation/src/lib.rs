@@ -12,6 +12,7 @@ pub mod controller;
 pub mod document_write;
 pub mod error;
 pub mod input;
+pub mod layout;
 pub mod page;
 pub mod parser;
 pub mod sink;

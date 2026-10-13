@@ -28,6 +28,8 @@ web-style = { path = "../web-style", version = "0.0.0" }
 scheduler = { path = "../scheduler", version = "0.0.0" }
 # 网络最小面（OfflineBundle / complete 语义）。
 network = { path = "../network", version = "0.0.0" }
+# 布局门面（S12：几何真值 + 同步读 §2.5）。
+layout-backend = { path = "../layout-backend", version = "0.0.0" }
 
 [dev-dependencies]
 # 测试期开启 `engine-v8` 的 `test-util`：暴露 `Realm::collect_garbage_for_testing`
