@@ -67,8 +67,14 @@
      （架构师复核事实：`page.rs` **12** 处 · `sink.rs` **7** 处 · `binding.rs` **0** 处 · `parser.rs` **0** 处 · `convert.rs` **1** 处。）
 ### §6-3 宿主驱动路径 · `.borrow()`（非 `try_borrow`）源级枚举（2026-10-14 回填）
 
-> 口径：仅**产品码**（`#[cfg(test)]` 之外）；枚举命令可复现：
-> `grep -rnE "\.borrow\(\)" crates/navigation/src/{page,binding,parser}.rs crates/sdk-python/src/*.rs`
+> 口径：仅**产品码**（各文件 `#[cfg(test)]` 之前）；**枚举 = 全仓扫查**（修正：初版 grep 仅列 4 个文件，
+> **漏 `sink.rs`/`stylo_host`**，由架构师核可时抓出 ⇒ 现改全仓，避免同类覆盖缺口）：
+> ```bash
+> for f in $(find crates -name "*.rs" -path "*/src/*" -not -path "*/tests/*"); do
+>   T=$(grep -n '#\[cfg(test)\]' "$f" | head -1 | cut -d: -f1); [ -z "$T" ] && T=999999
+>   grep -nE '\.borrow(_mut)?\(\)' "$f" | awk -F: -v t=$T '$1<t'
+> done
+> ```
 > 「宿主驱动」= 由宿主（Python/控制面/解析器/泵）**发起**且**可能重入**（JS 回调内再次触发宿主）的路径。
 
 | # | 路径（分类） | 站点（`文件:行`） | 宿主驱动 | 建议替代（`try_borrow` 化的错误呈现） |
@@ -79,7 +85,12 @@
 | 4 | defer/fetch 泵 | `page.rs:721`、`802`、`935`、`1193`、`1194` | 是（泵在宿主轮内被驱动） | 同上 |
 | 5 | Python 边界 | `sdk-python/src/convert.rs:181` | 是（Python↔JS 值转换在宿主调用内） | `try_borrow().map_err(reentrant_pyerr())` |
 
-**计数**：产品码 `.borrow()` = **13 处**（`page.rs` **12** + `convert.rs` **1**）；`binding.rs`/`parser.rs` 产品码 **0 处**（其 `.borrow()` 全在 `#[cfg(test)]` 内）。按 5 路径：**① 1 / ② 2 / ③ 4 / ④ 5 / ⑤ 1**。
+| 6 | **解析期 `TreeSink` 回调**（**架构师抓出，我初版遗漏**） | `sink.rs:32`、`57`、`147`、`184`、`206`、`224`、`231` | 是（`DomSink` 持 `Rc<RefCell<NodeTree>>`；**阻塞脚本在解析内就地执行 ⇒ 回调可重入**，与 ③ 同族） | `try_borrow().map_err(→ Internal("NodeTree 借用冲突"))` |
+| 7 | **stylo 桥 `ElementData` 借用**（**我本轮补扫发现**） | `layout-backend/src/stylo_host/mod.rs:312`、`319`（`ElementSlot::{borrow_data,has_styles}`） | 桥内回调面（stylo 回调期可能叠借；**跨 crate** ⇒ 是否纳入 `S3c` 范围**请架构师定**） | `try_borrow().map_err(→ Internal("ElementData 借用冲突"))` |
+
+**计数（修正后）**：产品码 `.borrow()` = **22 处** —— `page.rs` 12 + `sink.rs` **7** + `convert.rs` 1 + `stylo_host/mod.rs` **2**；`binding.rs`/`parser.rs` 产品码 **0 处**（全在 `#[cfg(test)]` 内）。按 7 路径：**① 1 / ② 2 / ③ 4 / ④ 5 / ⑤ 1 / ⑥ 7 / ⑦ 2 = 22**。
+
+**伴生族（`.borrow_mut()`，同属决策 3「任何 `Rc<RefCell>` 一律 `try_borrow`」）**：产品码 = **35 处** —— `page.rs` 14 + `sink.rs` **16** + `input.rs` 1 + `layout-backend/src/opaque.rs` 2 + `stylo_host/mod.rs` **2**（含 `ensure_data` 的 `self.data.borrow_mut()`）。**初版清单只枚举 `.borrow()`，本表补齐**（`borrow_mut` 与 `borrow` 叠加 = panic 面同源）。
 **与测试对账**：`§3.4 no_host_try_borrow_panic`（5 路径无 panic + 期望值）即按上表逐路径覆盖。
 **诚实边界**：站点为**源级枚举**（`grep` 可复现）；「是否宿主驱动」为**分类判断**（依据调用链与重入可能，非机器可判定）；如与架构师口径不符，**以架构师核可为准**。
 
