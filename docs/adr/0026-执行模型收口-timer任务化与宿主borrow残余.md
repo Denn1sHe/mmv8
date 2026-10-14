@@ -37,7 +37,7 @@
 | 3.1 | `timer_fires_after_n_rounds` | **第 N 轮**触发（N 钉死；**预算 `16`/轮 · 冲刷 ≤ `64`**，§6-1） | 同步实现 ⇒ 轮次不符 |
 | 3.2 | `timer_does_not_block_load` | `load` 期间**轮不抢**（预算生效） | 阻塞 ⇒ `load` 延后 |
 | 3.3 | `task_queue_ordering` | **严格按序** + 微任务边界 | 乱序 ⇒ 红 |
-| 3.4 | `no_host_try_borrow_panic` | **可改的 6 路径（`.borrow()`）全覆盖 + ⑦ 具名上游约束（非漏改）** + **宿主驱动面 `.borrow_mut()`（39 处全集）**；无 panic + 期望值 | 保留 `borrow` / `borrow_mut` ⇒ panic |
+| 3.4 | `no_host_try_borrow_panic` | **台账：`.borrow()` 20/22 转 + `.borrow_mut()` 37/39 转；⑦ 4 处具名上游约束（非漏改）**；无 panic + 期望值 | 保留 `borrow` / `borrow_mut` ⇒ panic |
 
 ## §4 风险
 
@@ -94,20 +94,22 @@
 
 > **方法学**（与「全仓扫查 + 可复现命令」同族）：行号随改造漂移（本批 S3a/S3b 后原表行号**已全数失效**），
 > 故站点一律以 **「符号（`fn` 名 + 行内特征）」** 为锚。**实现进度**：`S3c1`（`.borrow()`）已全数转换（**①–④⑥ + ⑤**；
-> **⑦ 具名上游约束**）＝ commit `e20da58`/`36a28bd`；`S3c2`（`.borrow_mut()`）首站 `input.rs` ＝ `3d91edc`；**`S3c2-b` ＝ `bfdc9e1`**（**`sink.rs` 16 站清零**：`tree_mut()`/`with_tree_mut`）⇒ **进度 `39 → 23`**（余 **`page` 18 / `opaque` 2 / `stylo_host` 2**）；**`S3c2-c` 续推**。
+> **⑦ 具名上游约束**）＝ commit `e20da58`/`36a28bd`；`S3c2`（`.borrow_mut()`）首站 `input.rs` ＝ `3d91edc`；**`S3c2-b` ＝ `bfdc9e1`**（**`sink.rs` 16 站清零**：`tree_mut()`/`with_tree_mut`）⇒ **进度 `39 → 4`**（**`S3c2-c` `2830c21`：`page.rs` 18 站清零**）—— 余 **`opaque` 2（`S3c2-d`）** + **`stylo_host` 2（⑦ 上游约束，不碰）**。
 
 | 路径 | 符号（`fn` + 行内特征） | `.borrow()` | `.borrow_mut()` |
 |---|---|---|---|
-| ① 导航/文档绑定 | `BrowsingContext::load`（`Rc::new(NodeTree…)` 后取 `root()`） | ✅ 已转 | 参与（见下） |
+| ① 导航/文档绑定 | `BrowsingContext::load`（`Rc::new(NodeTree…)` 后取 `root()`） | ✅ 已转 | ✅（`S3c2-c` 清零） |
 | ② 输入/派发 | `BrowsingContext::input_dispatch`（`is_valid`/`in_document` 块）｜`BrowsingContext::user_activation`（只读 getter） | ✅ 已转 | ✅ `input.rs`（`activation.activate()`） |
-| ③ 解析 sink | `BrowsingContext::drain_parse`（`get_attribute("src")`／`script_kind`／`text_content` ×2） | 4 处已转 | 参与（见下） |
-| ④ defer/fetch 泵 | `BrowsingContext::run_deferred_scripts`（`deferred` 克隆／`tree.text_content`／`deferred.len`）｜`pump_fetch`（`offline.resolve`）｜`PageExec::has_pending_io`（`fetch_queue`/`fetch_table`） | 5 处已转 | 参与（见下） |
+| ③ 解析 sink | `BrowsingContext::drain_parse`（`get_attribute("src")`／`script_kind`／`text_content` ×2） | 4 处已转 | ✅（`S3c2-c` 清零） |
+| ④ defer/fetch 泵 | `BrowsingContext::run_deferred_scripts`（`deferred` 克隆／`tree.text_content`／`deferred.len`）｜`pump_fetch`（`offline.resolve`）｜`PageExec::has_pending_io`（`fetch_queue`/`fetch_table`） | 5 处已转 | ✅（`S3c2-c` 清零） |
 | ⑤ Python 边界 | `convert.rs`（`PyJsRef` 分支 `js_ref`） | ✅ 已转（`JsError(ReentrantEval)`） | — |
 | ⑥ 解析期 `TreeSink` | `DomSink::new`／`append_text`／`append_based_on_parent_node`／`append_before_sibling`／`add_attrs_if_missing`／`remove_from_parent`／`reparent_children` | ✅ 7 处已转（**(β) 默认值语义各自独立**） | **16 处 ✅ `S3c2-b`（`bfdc9e1`）清零**（`tree_mut()`/`with_tree_mut`） |
 | ⑦ stylo 桥 | `ElementSlot::borrow_data`／`has_styles`／`ensure_data`（`ElementDataWrapper`） | **具名上游约束**（无 `try_borrow`；release 走 `unsafe { &*get() }` ⇒ UB、无护栏） | 同上（上游约束） |
 | ⑧ 其它宿主面 | `SharedBundle::send`（离线 transport）／`opaque.rs`（`opaque`／`rehydrate` 调用者 = `stylo_host`） | ✅ `send` 已转 | `opaque.rs` 2（**S3c2-d 待转**） |
 
-**计数（2026-10-15 实测）**：`.borrow()` 产品码 **22**（7 路径）；`.borrow_mut()` **39**（`page.rs` 18／`sink.rs` 16／`input.rs` 1✅／`opaque.rs` 2／`stylo_host` 2）——**较 2026-10-14 的 35 增 4，系 `G3X-S3b` 新增**（如实）。**进度（`bfdc9e1` 后）= `39 → 23`**（**`input` 1 ✅ + `sink` 16 ✅**）；余 **`page` 18 / `opaque` 2 / `stylo_host` 2**。
+**计数（2026-10-15 实测）**：`.borrow()` 产品码 **22**（7 路径）；`.borrow_mut()` **39**（`page.rs` 18／`sink.rs` 16／`input.rs` 1✅／`opaque.rs` 2／`stylo_host` 2）——**较 2026-10-14 的 35 增 4，系 `G3X-S3b` 新增**（如实）。**进度（`2830c21` 后）= `39 → 4`**（`input` 1 + `sink` 16 + `page` 18 = **35 已转**）；余 **`opaque` 2（`S3c2-d`）+ `stylo_host` 2（⑦ 上游约束）**。
+
+**📋 最终台账（**验收用**，2026-10-15）**：**`.borrow()` = 22 = **20 转 + 2 上游约束（⑦）**；**`.borrow_mut()` = 39 = **37 转 + 2 上游约束（⑦）**；⇒ **可改站点全部转换，⑦ 4 处具名上游约束（非漏改）**。
 **非 Result fallback 语义（具名）**：**不 panic + `debug_assert!` 可见 + 保守默认**（⑥/只读 getter）；各默认值**不合并**（"跳过属性" ≠ "空表" ≠ "视为有 pending"）。
 
 **伴生族（`.borrow_mut()`，同属决策 3「**宿主驱动路径上的任何 `Rc<RefCell>` 取借一律 `try_borrow`**」）**：产品码 = **39 处（全集）** —— `page.rs` **18** + `sink.rs` **16** + `input.rs` **1**（✅ 已转 `3d91edc`） + `layout-backend/src/opaque.rs` **2** + `stylo_host/mod.rs` **2**（含 `ensure_data`）。**注**：**较首版 35 处 **+4**，系 `S3b`（defer 任务化）新增 `page.rs` 站点**（**架构师源级复算 2026-10-15 = 38 待转 + 1 已转 = 39**）；**位置敏感 ⇒ 以「符号表」（`fn` + 行内特征）为准**。
