@@ -152,6 +152,11 @@ class Entry:
             raise ManifestError(
                 f"条目 {self.id} 标 stub（面级）但 evidence 含行为标记（禁止附行为证据）"
             )
+        if self.behavior_level is BehaviorLevel.CONTRACT and has_behaviour:
+            raise ManifestError(
+                f"条目 {self.id} 标 contract 但 evidence 含行为标记"
+                "（**行为证据应标 behaviour**——三态错标格不得留白）"
+            )
 
     def assert_schema_complete(self) -> None:
         """九字段完备性（`G4` `R-1`）：``test_ids`` / ``implementation_owner`` **必填**。"""

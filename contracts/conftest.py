@@ -19,8 +19,9 @@ import pytest
 #: 规则：**仅升**；任何下调都必须显式修改本常量**并写明理由**（不接受静默漂移）。
 #: 历史：2026-10-14 = 60（G2→G3 更名 + 新增后实测）；
 #:       2026-10-15 = 78（**G4-S0a**：manifest 九字段 schema + behavior_level 三态 + 完备性双门禁测试，
-#:       新增 18 条 ⇒ **只升**，理由见 docs/design-g4-真身-2026-10-15.md §6）。
-COLLECTION_FLOOR = 78
+#:       新增 18 条 ⇒ **只升**，理由见 docs/design-g4-真身-2026-10-15.md §6；
+#:       2026-10-16 = 80（**G4-S0a 补记**：三态错标格全覆盖 —— 补 `CONTRACT`×行为标记 ⇒ 红 + 其合法格正例）。
+COLLECTION_FLOOR = 80
 
 
 def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:

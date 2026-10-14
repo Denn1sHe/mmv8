@@ -104,6 +104,29 @@ def test_behaviour_with_timing_evidence_passes() -> None:
     entry.assert_behavior_evidence()
 
 
+def test_contract_must_not_carry_behaviour_evidence() -> None:
+    """**错标负对照 ③**：标 `contract` 却附行为证据 ⇒ 红（本应为 `behaviour`）。
+
+    与 ①② 合观 ⇒ **三态错标格全覆盖**：`behaviour`×无标记 / `stub`×有标记 / `contract`×有标记 皆红；
+    另三格（`behaviour`×有标记 / `stub`×无标记 / `contract`×无标记）为**合法格**（各有正例）。
+    """
+    entry = _complete_entry(
+        behavior_level=BehaviorLevel.CONTRACT,
+        evidence="timing: 某时序钉值",  # 行为证据 ⇒ 应标 behaviour
+    )
+    with pytest.raises(ManifestError):
+        entry.assert_behavior_evidence()
+
+
+def test_contract_with_contract_evidence_passes() -> None:
+    """正例：`contract` + 契约级证据（无行为标记）⇒ 通过。"""
+    entry = _complete_entry(
+        behavior_level=BehaviorLevel.CONTRACT,
+        evidence="契约：描述符 readonly attribute nodeType",
+    )
+    entry.assert_behavior_evidence()
+
+
 def test_stub_must_not_carry_behaviour_evidence() -> None:
     """**错标负对照 ②**：标 `stub`（面级）却附行为证据 ⇒ 红（面级禁止行为证据）。"""
     entry = _complete_entry(
