@@ -222,6 +222,8 @@ impl StyleSystem {
                 thread_local.bloom_filter.rebuild(parent);
                 thread_local.bloom_filter.push(parent);
             }
+            // S1a：debug 守卫 —— bloom 应已完整覆盖祖先（stylo 官方不变量；release 下为空操作）。
+            thread_local.bloom_filter.assert_complete(element);
             let mut context = StyleContext {
                 shared: &shared,
                 thread_local: &mut thread_local,
@@ -418,6 +420,45 @@ mod tests {
             crate::serialize::serialize_computed(&style, "width").expect("width"),
             "60px",
             "::slotted(span) 应经影子 `style_data()` 真通道生效（P-11）"
+        );
+    }
+
+    #[test]
+    fn display_contents_parent_child_resolves() {
+        // S1a：`display: contents` 祖先下的后代解析**不 panic**，且继承取值正确。
+        // （`TElement` 无 `layout_parent` 覆写点 ⇒ 保障由「祖先先解析 + I4 写回」给出；
+        //   负对照：若 I4 写回被移除，本路径回到 R23 的 `primary().unwrap()` on None panic。）
+        use crate::stylo_host::{StyloHost, build_slots};
+        use web_dom::tree::NodeTree;
+
+        let mut system = StyleSystem::new(Size::new(800.0, 600.0));
+        system
+            .add_stylesheet(
+                SheetOrigin::Author,
+                "div { display: contents; color: rgb(7, 8, 9); }",
+            )
+            .expect("author");
+        system.flush();
+
+        let mut tree = NodeTree::new();
+        let root = tree.root();
+        let contents = tree.create_element("div", "html", vec![]);
+        let child = tree.create_element("span", "html", vec![]);
+        tree.append_child(root, contents);
+        tree.append_child(contents, child);
+
+        let slots = build_slots(&tree, system.shared_lock());
+        let bridge = StyloHost::new(slots);
+        let _ = system
+            .resolve_element_style(bridge.node(contents).expect("div"), 0.0)
+            .expect("contents 祖先解析");
+        let child_style = system
+            .resolve_element_style(bridge.node(child).expect("span"), 0.0)
+            .expect("display:contents 祖先下的后代解析不应 panic");
+        assert_eq!(
+            crate::serialize::serialize_computed(&child_style, "color").expect("color"),
+            "rgb(7, 8, 9)",
+            "子应继承 contents 祖先的 color"
         );
     }
 
