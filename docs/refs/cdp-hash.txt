@@ -1,0 +1,8 @@
+# G4-S0b 源锁 · cdp-protocol
+source_version = devtools-protocol@dfad77069330a9188771bb64a32d18853a10b012
+source_sha256  = 9d68f571e5ac9c3394326112de9a93a2a2ec10ebaaedda41b5561d2a363f048a
+extracted_at   = 2026-10-14
+members        = 443
+needs_community_review = true
+method         = tools/extract_cdp_members.py /tmp/browser_protocol.json /tmp/js_protocol.json --out /tmp/cdp-members.json --source-version devtools-protocol@dfad77069330a9188771bb64a32d18853a10b012
+# 复核：按 method 重跑 ⇒ 应得同 source_sha256 与同 members 数（可证复现）。

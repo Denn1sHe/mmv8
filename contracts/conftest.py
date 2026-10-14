@@ -27,7 +27,8 @@ import pytest
 #:       2026-10-16 = 99（**G4-S0b**：mixin 合入修 —— `X includes M` 合入 + mixin 自身不作分母接口，2 条）。
 #:       2026-10-16 = 100（**G4-S0b**：CDP 族另源立项 —— 抽取器 + 并集 + 两源登记 + CDP 覆盖探针）。
 #:       2026-10-16 = 101（**G4-S0b**：WebGL 族 Khronos 另源 + merge 续接 provenance 修 + WebGL 覆盖探针）。
-COLLECTION_FLOOR = 101
+#:       2026-10-16 = 103（**G4-S0b / U-6**：逐源锁文件落点 + 无源拒绝负对照，2 条）。
+COLLECTION_FLOOR = 103
 
 
 def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:

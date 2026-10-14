@@ -7,7 +7,9 @@
 
 from __future__ import annotations
 
+import importlib.util
 import json
+import sys
 from pathlib import Path
 
 import pytest
@@ -132,3 +134,37 @@ def test_negative_empty_member_set_still_red(tmp_path: Path) -> None:
     empty.write_text('{"members": [], "source": "spec-webidl"}', encoding="utf-8")
     with pytest.raises(ManifestError):
         load_members(empty)
+
+
+# ---------------------------------------------------------------- 源锁落点（ADR §6.4 / U-6）
+
+
+def test_source_lock_files_exist_for_each_source() -> None:
+    """**逐源锁文件**（`docs/refs/*-hash.txt` = 锁的统一可 grep 落点）：源数 == 锁文件数。
+
+    内容含 `source_version` / `source_sha256` / `method` ⇒ 复核者可**按 method 逐字复现**。
+    """
+    payload = json.loads(MEMBERS.read_text(encoding="utf-8"))
+    refs = _CONTRACTS.parent / "docs" / "refs"
+    locks = sorted(refs.glob("*-hash.txt"))
+    assert len(locks) >= len(payload["sources"]), "每源须有锁文件（防源无锁）"
+    for lock in locks:
+        text = lock.read_text(encoding="utf-8")
+        for key in ("source_version", "source_sha256", "method"):
+            assert key in text, f"{lock.name} 缺 {key}"
+        assert len(text.splitlines()) <= 10, f"{lock.name} 应 ≤10 行（口径 §6.4）"
+
+
+def test_source_lock_writer_refuses_without_sources(tmp_path: Path) -> None:
+    """**负对照**：成员集无 `sources` ⇒ 锁写入器**拒绝**（无源可锁 ⇒ 不得静默产空锁）。"""
+    tool_path = _CONTRACTS / "tools" / "write_source_locks.py"
+    spec = importlib.util.spec_from_file_location("write_source_locks", tool_path)
+    assert spec and spec.loader
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    payload = tmp_path / "no-sources.json"
+    payload.write_text(json.dumps({"members": ["A.b"]}), encoding="utf-8")
+    with pytest.raises(SystemExit):
+        module.main([str(payload), "--dir", str(tmp_path / "out")])

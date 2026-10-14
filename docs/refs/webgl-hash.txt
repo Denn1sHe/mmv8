@@ -1,0 +1,8 @@
+# G4-S0b 源锁 · spec-webidl
+source_version = khronos-webgl@714857a28445e8f5d8d6ae1c78498578009534d8
+source_sha256  = 2af878be77e3dc2db737cd9a292cc29f38936690c435b6e9d6b850808b07deb7
+extracted_at   = 2026-10-14
+members        = 807
+needs_community_review = true
+method         = tools/extract_webidl_members.py /tmp/khronos-webgl --interfaces WebGLRenderingContext,WebGL2RenderingContext --source-version khronos-webgl@714857a28445e8f5d8d6ae1c78498578009534d8 --out /tmp/webgl-members.json
+# 复核：按 method 重跑 ⇒ 应得同 source_sha256 与同 members 数（可证复现）。
