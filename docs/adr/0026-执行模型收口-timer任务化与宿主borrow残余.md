@@ -37,7 +37,7 @@
 | 3.1 | `timer_fires_after_n_rounds` | **第 N 轮**触发（N 钉死；**预算 `16`/轮 · 冲刷 ≤ `64`**，§6-1） | 同步实现 ⇒ 轮次不符 |
 | 3.2 | `timer_does_not_block_load` | `load` 期间**轮不抢**（预算生效） | 阻塞 ⇒ `load` 延后 |
 | 3.3 | `task_queue_ordering` | **严格按序** + 微任务边界 | 乱序 ⇒ 红 |
-| 3.4 | `no_host_try_borrow_panic` | **7 路径（`.borrow()`）+ 宿主驱动面 `.borrow_mut()`（35 处）** 全覆盖；无 panic + 期望值 | 保留 `borrow` / `borrow_mut` ⇒ panic |
+| 3.4 | `no_host_try_borrow_panic` | **可改的 6 路径（`.borrow()`）全覆盖 + ⑦ 具名上游约束（非漏改）** + **宿主驱动面 `.borrow_mut()`（35 处）**；无 panic + 期望值 | 保留 `borrow` / `borrow_mut` ⇒ panic |
 
 ## §4 风险
 
@@ -104,7 +104,7 @@
 **实施记录（`S3c1` 首批，`e20da58`，2026-10-15）**：
 - **⑤ 已转**：`sdk-python/src/convert.rs:181` ⇒ **`try_borrow → JsError(ReentrantEval)`**（**错误域 `JsError` 正确**）✓（架构师源级复核）。
 - **⑦ 裁定 = ✅ 上游约束接受（具名登记，非「豁免」）**：**`stylo::data::ElementDataWrapper` 仅 `borrow`/`borrow_mut`、无 `try_borrow`**（`stylo-0.20.0/data.rs:332`/`:344`；**`try_borrow` 计数 = 0** —— **架构师源级复核**）⇒ **桥内无法「可判定错误」化**。**兜底 = ADR-0016 同语句 + 不叠加借**；**未来「持久槽存储」立项时复评**。
-  - **⚠️ 架构师补注（风险精确化）**：`ElementDataWrapper::borrow()` 在 **release = `unsafe { &*self.inner.get() }`（无检查）**、**debug = `refcell.borrow()`（冲突即 panic）** ⇒ **叠借在 release 是 UB、不是 panic** ⇒ 「**不叠加借**」兜底**尤为关键**（**release 无运行时护栏**）。
+  - **⚠️ 架构师补注（风险精确化，已留档）**：`ElementDataWrapper::borrow()` 在 **release = `unsafe { &*self.inner.get() }`（零检查）**、**debug = `refcell.borrow()`（冲突即 panic）** ⇒ **叠借在 release 是 UB、不是 panic** ⇒ 「**不叠加借**」兜底**在 release 无运行时护栏**，靠**纪律与审查**守住。**关系族 = `R18` 硬边界 / `unsafe` 白名单**（**上游 `unsafe` 优化路径**）。**已转工程师**（**背景强化，不改指令**）。
 - **⑥ 裁定 = (β) 标准口径（非 `Result` 上下文）**：**`try_borrow + debug_assert + 默认值`**；**有独立可写通道则同时记一条**；**纯读查询用 (α) + `debug_assert`** ⇒ **语义具名登记**（`sink.rs` 回调面）。
 - **剩余**：**①–④ + ⑥（19 处）** —— 工程师 GO 中。
 **诚实边界**：站点为**源级枚举**（`grep` 可复现）；「是否宿主驱动」为**分类判断**（依据调用链与重入可能，非机器可判定）；如与架构师口径不符，**以架构师核可为准**。
