@@ -16,12 +16,30 @@ pub mod dom;
 
 use std::cell::Cell;
 
+use crate::font_metrics::FontChain;
+use euclid::{Scale, Size2D};
 use selectors::attr::{AttrSelectorOperation, CaseSensitivity, NamespaceConstraint};
 use selectors::bloom::BloomFilter;
 use selectors::matching::{ElementSelectorFlags, MatchingContext};
 use selectors::{Element as SelectorsElement, OpaqueElement};
+use std::sync::OnceLock;
+use style::context::QuirksMode;
 use style::data::{ElementData, ElementDataMut, ElementDataRef, ElementDataWrapper};
+use style::device::Device;
+use style::media_queries::MediaList;
+use style::media_queries::MediaType;
+use style::properties::ComputedValues;
+use style::properties::style_structs::Font;
+use style::queries::values::PrefersColorScheme;
 use style::selector_parser::SelectorImpl;
+use style::servo::media_features::PointerCapabilities;
+use style::servo_arc::Arc as ServoArc;
+use style::stylesheet_set::DocumentStylesheetSet;
+use style::stylesheets::{
+    AllowImportRules, CustomMediaMap, DocumentStyleSheet, Origin, Stylesheet,
+};
+use style::stylist::{CascadeData, CascadeDataDifference, StylistSheet};
+use style_traits::{CSSPixel, DevicePixel};
 use web_dom::node::{ElementData as DomElementData, NodeId, NodeKind};
 use web_dom::tree::NodeTree;
 
@@ -32,6 +50,94 @@ use crate::opaque;
 #[must_use]
 pub fn global_shared_lock() -> &'static style::shared_lock::SharedRwLock {
     &style::global_style_data::GLOBAL_STYLE_DATA.shared_lock
+}
+
+/// 进程级共享 `Device`（影子级 `CascadeData::rebuild` 需要）。
+///
+/// **具名偏差（P-11 登记）**：此处用固定 800×600 视口构造（媒体查询按此判定）；主样式系统仍用
+/// 真实视口。影子表内媒体查询的视口判定**暂不精确** ⇒ 后续将真实 `Device` 贯穿 `build_slots` 时消除。
+#[must_use]
+pub fn global_device() -> &'static Device {
+    static DEVICE: OnceLock<&'static Device> = OnceLock::new();
+    DEVICE.get_or_init(|| {
+        let default_values: style::servo_arc::Arc<ComputedValues> =
+            ComputedValues::initial_values_with_font_override(Font::initial_values());
+        Box::leak(Box::new(Device::new(
+            MediaType::screen(),
+            QuirksMode::NoQuirks,
+            Size2D::<f32, CSSPixel>::new(800.0, 600.0),
+            Size2D::<f32, DevicePixel>::new(800.0, 600.0),
+            Scale::<f32, CSSPixel, DevicePixel>::new(1.0),
+            Box::new(FontChain::new()),
+            default_values,
+            PrefersColorScheme::Light,
+            PointerCapabilities::empty(),
+            PointerCapabilities::empty(),
+        )))
+    })
+}
+
+/// 收集某子树内 `<style>` 元素的文本（影子根级作者表来源）。
+fn collect_style_texts(tree: &NodeTree, node: NodeId, out: &mut Vec<String>) {
+    for child in tree.children(node) {
+        let is_style = tree
+            .get(child)
+            .and_then(|data| data.element.as_ref())
+            .is_some_and(|element| element.name == "style");
+        if is_style {
+            let text = tree.text_content(child);
+            if !text.is_empty() {
+                out.push(text);
+            }
+        }
+        collect_style_texts(tree, child, out);
+    }
+}
+
+/// 为单个影子根构建 `CascadeData`（**全公开 API，零补丁**）：`:host`/`::slotted` 的真匹配通道。
+fn build_shadow_cascade(
+    texts: &[String],
+    lock: &style::shared_lock::SharedRwLock,
+    base: &style::stylesheets::UrlExtraData,
+) -> Option<&'static CascadeData> {
+    let device = global_device();
+    let mut set: DocumentStylesheetSet<StylistSheet> = DocumentStylesheetSet::new();
+    let guard = lock.read();
+    let custom_media = CustomMediaMap::default();
+    for css in texts {
+        let media = ServoArc::new(lock.wrap(MediaList::empty()));
+        let sheet = Stylesheet::from_str(
+            css,
+            base.clone(),
+            Origin::Author,
+            media,
+            lock.clone(),
+            None,
+            None,
+            QuirksMode::NoQuirks,
+            AllowImportRules::Yes,
+        );
+        set.append_stylesheet(
+            Some(device),
+            &custom_media,
+            DocumentStyleSheet(ServoArc::new(sheet)),
+            &guard,
+        );
+    }
+    let mut cascade = Box::new(CascadeData::new());
+    let mut difference = CascadeDataDifference::default();
+    let (mut flusher, _invalidation) = set.flush();
+    let origin_flusher = flusher.flush_origin(Origin::Author);
+    cascade
+        .rebuild(
+            device,
+            QuirksMode::NoQuirks,
+            origin_flusher,
+            &guard,
+            &mut difference,
+        )
+        .ok()?;
+    Some(Box::leak(cascade))
 }
 
 /// 元素句柄：**对槽的引用**（8 字节；见模块头的不变量说明）。
@@ -56,6 +162,10 @@ pub struct ElementSlot<'a> {
             style::shared_lock::Locked<style::properties::PropertyDeclarationBlock>,
         >,
     >,
+    /// **影子根级 `CascadeData`**（P-11 / R22）：仅影子根槽为 `Some`；
+    /// `Box::leak` 同寿（随槽数组一次性泄漏，与 R18 泄漏模型一致）；
+    /// **不改槽地址/`'a`**（仅改 `size_of::<ElementSlot>`）。
+    shadow_cascade: Cell<Option<&'static CascadeData>>,
 }
 
 impl std::fmt::Debug for ElementSlot<'_> {
@@ -324,6 +434,7 @@ pub fn build_slots<'a>(
             namespace,
             id_atom,
             style_attribute,
+            shadow_cascade: Cell::new(None),
         });
     }
 
@@ -331,6 +442,31 @@ pub fn build_slots<'a>(
     let slots: &[ElementSlot<'_>] = leaked;
     for slot in slots {
         slot.slots.set(Some(slots));
+    }
+    // P-11 / R22：为每个影子根装配**影子级 `CascadeData`**（`:host` / `::slotted` 真匹配通道）。
+    if !tree.is_shadow_root(tree.root()) {
+        let base = crate::style_system::base_url_data();
+        let mut index: u32 = 0;
+        while let Ok(len_u32) = u32::try_from(tree.len()) {
+            if index >= len_u32 {
+                break;
+            }
+            let id = NodeId::new(index, 0);
+            index += 1;
+            if !tree.is_shadow_root(id) {
+                continue;
+            }
+            let mut texts = Vec::new();
+            collect_style_texts(tree, id, &mut texts);
+            if texts.is_empty() {
+                continue;
+            }
+            if let Some(slot) = slots.get(id.index() as usize)
+                && let Some(cascade) = build_shadow_cascade(&texts, lock, &base)
+            {
+                slot.shadow_cascade.set(Some(cascade));
+            }
+        }
     }
     slots
 }

@@ -78,8 +78,10 @@ impl<'a> TShadowRoot for &'a ElementSlot<'a> {
     where
         Self: 'b,
     {
-        // 影子作用域样式数据留待 S11（`shadow::ShadowSupport`）。
-        None
+        // P-11 / R22：影子级 `CascadeData`（仅影子根槽为 `Some`；由 `build_slots` 装配）。
+        // 这是 `:host` / `::slotted` 的**真匹配通道**（`each_applicable_non_document_style_rule_data`
+        // → `shadow.style_data()`）。
+        self.shadow_cascade.get()
     }
 }
 

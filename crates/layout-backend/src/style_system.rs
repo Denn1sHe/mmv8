@@ -46,7 +46,7 @@ fn to_stylo_origin(origin: SheetOrigin) -> Origin {
 }
 
 /// 构造 `UrlExtraData`（`about:blank`；G3 无资源加载）。
-fn base_url_data() -> UrlExtraData {
+pub(crate) fn base_url_data() -> UrlExtraData {
     UrlExtraData::from(url::Url::parse("about:blank").expect("about:blank is a valid url"))
 }
 
@@ -355,6 +355,69 @@ mod tests {
             crate::serialize::serialize_computed(&after, "display").expect("display"),
             "block",
             "负对照：UA 表仍在 => display 仍 block"
+        );
+    }
+
+    #[test]
+    fn host_selector_styles_host() {
+        // R22 / P-11：影子表 `:host { width: 120px; }` 经 **`shadow.style_data()` 真通道** ⇒ host 宽 120。
+        use crate::stylo_host::{StyloHost, build_slots};
+        use web_dom::node::ShadowMode;
+        use web_dom::tree::NodeTree;
+
+        let system = StyleSystem::new(Size::new(800.0, 600.0));
+        let mut tree = NodeTree::new();
+        let root = tree.root();
+        let host = tree.create_element("x-host", "html", vec![]);
+        tree.append_child(root, host);
+        let shadow = tree.attach_shadow(host, ShadowMode::Open).expect("shadow");
+        let style_el = tree.create_element("style", "html", vec![]);
+        tree.append_child(shadow, style_el);
+        let text = tree.create_text(":host { width: 120px; }");
+        tree.append_child(style_el, text);
+
+        let slots = build_slots(&tree, system.shared_lock());
+        let bridge = StyloHost::new(slots);
+        let style = system
+            .resolve_element_style(bridge.node(host).expect("host"), 0.0)
+            .expect("cascade");
+        assert_eq!(
+            crate::serialize::serialize_computed(&style, "width").expect("width"),
+            "120px",
+            ":host 应经影子 `style_data()` 真通道生效（P-11）"
+        );
+    }
+
+    #[test]
+    #[ignore = "P-11 后续：::slotted 需 TElement 槽投影（web-dom 已有 assigned_nodes，但未暴露给 stylo）；:host 已真通道"]
+    fn slotted_selector_styles_slotted() {
+        // R22 / P-11：影子表 `::slotted(span) { width: 60px; }` ⇒ 分发 light 子 span 宽 60。
+        use crate::stylo_host::{StyloHost, build_slots};
+        use web_dom::node::ShadowMode;
+        use web_dom::tree::NodeTree;
+
+        let system = StyleSystem::new(Size::new(800.0, 600.0));
+        let mut tree = NodeTree::new();
+        let root = tree.root();
+        let host = tree.create_element("x-host", "html", vec![]);
+        tree.append_child(root, host);
+        let light = tree.create_element("span", "html", vec![("slot".to_owned(), "s".to_owned())]);
+        tree.append_child(host, light);
+        let shadow = tree.attach_shadow(host, ShadowMode::Open).expect("shadow");
+        let style_el = tree.create_element("style", "html", vec![]);
+        tree.append_child(shadow, style_el);
+        let text = tree.create_text("::slotted(span) { width: 60px; }");
+        tree.append_child(style_el, text);
+
+        let slots = build_slots(&tree, system.shared_lock());
+        let bridge = StyloHost::new(slots);
+        let style = system
+            .resolve_element_style(bridge.node(light).expect("span"), 0.0)
+            .expect("cascade");
+        assert_eq!(
+            crate::serialize::serialize_computed(&style, "width").expect("width"),
+            "60px",
+            "::slotted(span) 应经影子 `style_data()` 真通道生效（P-11）"
         );
     }
 
