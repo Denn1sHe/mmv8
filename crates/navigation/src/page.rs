@@ -1333,6 +1333,7 @@ fn page_err_to_sched(err: JsError) -> SchedulerError {
     )
 }
 
+#[allow(clippy::needless_pass_by_value)] // 既有签名约定（约 15 处调用点以值传参）；体仅借读。
 fn map_js(err: JsError) -> PageError {
     let kind = match err.kind() {
         JsErrorKind::Terminated => PageErrorKind::Terminated,
@@ -1359,7 +1360,7 @@ impl TaskExecutor for PageExec<'_> {
             // `G3X-S3b`：**defer/module 脚本 = 一宏任务**（token 携文档序下标）。
             // **借用纪律**：先把脚本**克隆取出**（借用收束），再求值（不得跨 eval 持 `deferred.borrow()`）。
             let index = usize::try_from(token.raw()).unwrap_or(usize::MAX);
-            let spec = self.shared.deferred.borrow().get(index).cloned();
+            let spec = self.shared.deferred.borrow().get(index).copied();
             if let Some(spec) = spec {
                 let text = self.shared.tree.borrow().text_content(spec.node);
                 let deadline = self.shared.script_deadline.get();
