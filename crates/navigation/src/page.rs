@@ -118,6 +118,30 @@ pub struct FetchTicket {
     reject: HandleLease,
 }
 
+/// **每轮任务数上限**（ADR-0026 §6-1 定裁；`G3X-S3a`）。
+///
+/// **哨兵纪律**：钉后**仅升须显式**（与 `COLLECTION_FLOOR` 同族）。
+pub const TIMER_TASKS_PER_ROUND: u64 = 16;
+
+/// **单次冲刷轮上限**（ADR-0026 §6-1 定裁；`G3X-S3a`）。哨兵纪律同 [`TIMER_TASKS_PER_ROUND`]。
+pub const TIMER_MAX_FLUSH_ROUNDS: u64 = 64;
+
+/// 由 id 造任务令牌（页面定时器面）。
+fn navigation_task_token(id: u64) -> TaskToken {
+    TaskToken::new(id)
+}
+
+/// 一次**轮冲刷**的观测结论（`G3X-S3a`：轮号可断言）。
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub struct TimerRounds {
+    /// 实际推进的轮数（**第 N 轮**可断言）。
+    pub rounds: u64,
+    /// 累计**已触发**定时器数。
+    pub fired: u64,
+    /// 终止结论。
+    pub outcome: RunOutcome,
+}
+
 /// 一条延后执行的脚本（classic `defer` / `type=module`；S9b 模块条款）。
 #[derive(Clone, Copy, Debug)]
 pub struct DeferredScript {
@@ -150,6 +174,12 @@ pub struct PageShared {
     pub mutations: Rc<RefCell<MutationBuffer>>,
     /// `MutationObserver` 注册表（回调槽 `WeakJsHandle`）。
     pub observers: Rc<RefCell<ObserverRegistry<WeakJsHandle>>>,
+    /// **定时器表**（`G3X-S3a`：`id → 逻辑到期毫秒`）。
+    pub timers: Rc<RefCell<std::collections::BTreeMap<u64, f64>>>,
+    /// 定时器 id 分配器。
+    pub next_timer_id: Rc<Cell<u64>>,
+    /// **已触发定时器计数**（观测位）。
+    pub timers_fired: Rc<Cell<u64>>,
     /// `document.write` 缓冲（**单一真相源**）。
     pub writes: Rc<RefCell<Vec<String>>>,
     /// `res`/`rej` 表（`__iv8_fetch` 关闭捕获）。
@@ -324,6 +354,58 @@ impl BrowsingContext {
         runloop
             .run_until(budget, &mut exec)
             .map_err(PageError::from)
+    }
+
+    /// **调度一个定时器**（`G3X-S3a`）：逻辑时钟为唯一时间源（`due = 逻辑当下 + delay`）。
+    ///
+    /// **不阻塞 `load`**：本方法**只入队**，触发发生在 [`Self::pump_timer_rounds`]（宿主驱动）。
+    ///
+    /// 返回定时器 id（可观测）。
+    pub fn schedule_timer(&mut self, delay_ms: f64) -> u64 {
+        let id = self.shared.next_timer_id.get();
+        self.shared.next_timer_id.set(id.saturating_add(1));
+        let delay = if delay_ms.is_finite() && delay_ms > 0.0 {
+            delay_ms
+        } else {
+            0.0
+        };
+        let due = self.runloop.logical_now_ms() + delay;
+        self.shared.timers.borrow_mut().insert(id, due);
+        self.runloop.schedule_timer(navigation_task_token(id), due);
+        id
+    }
+
+    /// 已触发定时器计数（观测位）。
+    #[must_use]
+    pub fn timers_fired(&self) -> u64 {
+        self.shared.timers_fired.get()
+    }
+
+    /// **轮冲刷**（`G3X-S3a`）：`≤ min(max_rounds, 64)` 轮、**每轮 `RunBudget::tasks(16)`**。
+    ///
+    /// **轮号可断言**（返回 [`TimerRounds::rounds`]）；`Idle`/`WaitingIo`/`Closed` 即停。
+    ///
+    /// # Errors
+    /// 运行循环错误（如重入）⇒ [`PageError`]。
+    pub fn pump_timer_rounds(&mut self, max_rounds: u64) -> Result<TimerRounds, PageError> {
+        let cap = max_rounds.min(TIMER_MAX_FLUSH_ROUNDS);
+        let mut rounds: u64 = 0;
+        let mut outcome = RunOutcome::Idle;
+        while rounds < cap {
+            outcome = self.run_until(RunBudget::tasks(TIMER_TASKS_PER_ROUND))?;
+            rounds += 1;
+            if matches!(
+                outcome,
+                RunOutcome::Idle | RunOutcome::WaitingIo | RunOutcome::Closed
+            ) {
+                break;
+            }
+        }
+        Ok(TimerRounds {
+            rounds,
+            fired: self.shared.timers_fired.get(),
+            outcome,
+        })
     }
 
     /// 网络服务（可变）。
@@ -914,6 +996,9 @@ impl PageShared {
             offline: Rc::new(RefCell::new(OfflineBundle::new())),
             mutations: Rc::new(RefCell::new(MutationBuffer::new())),
             observers: Rc::new(RefCell::new(ObserverRegistry::new())),
+            timers: Rc::new(RefCell::new(std::collections::BTreeMap::new())),
+            next_timer_id: Rc::new(Cell::new(0)),
+            timers_fired: Rc::new(Cell::new(0)),
             writes: Rc::new(RefCell::new(Vec::new())),
             fetch_table: Rc::new(RefCell::new(FetchTable::new())),
             fetch_queue: Rc::new(RefCell::new(VecDeque::new())),
@@ -1182,9 +1267,23 @@ struct PageExec<'a> {
 impl TaskExecutor for PageExec<'_> {
     fn run_task(
         &mut self,
-        _source: TaskSource,
-        _token: TaskToken,
+        source: TaskSource,
+        token: TaskToken,
     ) -> Result<TaskVerdict, SchedulerError> {
+        if source == TaskSource::Timer {
+            // `G3X-S3a`：定时器到点 ⇒ 出表 + 计数（回调执行面留待 S3b 任务化）。
+            let removed = self
+                .shared
+                .timers
+                .borrow_mut()
+                .remove(&token.raw())
+                .is_some();
+            if removed {
+                self.shared
+                    .timers_fired
+                    .set(self.shared.timers_fired.get() + 1);
+            }
+        }
         Ok(TaskVerdict::Done)
     }
 
@@ -1805,6 +1904,63 @@ mod tests {
             "应为 Terminated 专有判据，实得 {:?}",
             err.kind()
         );
+    }
+
+    use super::{TIMER_MAX_FLUSH_ROUNDS, TIMER_TASKS_PER_ROUND};
+
+    #[test]
+    fn timer_fires_after_n_rounds() {
+        // G3X-S3a：17 个到期定时器 + 预算 **16/轮** ⇒ **第 2 轮**收束（1 轮 16 + 2 轮 1）。
+        // 判别性：预算若未生效 ⇒ 1 轮跑完（rounds == 1）；同步实现 ⇒ 入队即触发（fired 早已 > 0）。
+        // 哨兵钉值（§6-1）：预算 = 16/轮；17 = 16 + 1 ⇒ 收束落在第 2 轮。
+        assert_eq!(TIMER_TASKS_PER_ROUND, 16, "预算哨兵（钉后仅升须显式）");
+        assert_eq!(TIMER_MAX_FLUSH_ROUNDS, 64, "轮上限哨兵（钉后仅升须显式）");
+        let mut page = BrowsingContext::new("https://a.example/").expect("new");
+        for _ in 0..=TIMER_TASKS_PER_ROUND {
+            page.schedule_timer(0.0);
+        }
+        assert_eq!(page.timers_fired(), 0, "入队不应立即触发（宿主泵才推进）");
+        let report = page
+            .pump_timer_rounds(TIMER_MAX_FLUSH_ROUNDS)
+            .expect("pump");
+        assert_eq!(report.fired, 17, "全部应触发");
+        assert_eq!(
+            report.rounds, 2,
+            "16/轮预算 ⇒ 17 个任务应在**第 2 轮**收束（实测 {}）",
+            report.rounds
+        );
+        assert!(report.rounds > 1, "若一轮跑完则预算未生效（负对照失利）");
+        assert_eq!(report.outcome, RunOutcome::Idle);
+    }
+
+    #[test]
+    fn timer_does_not_block_load() {
+        // G3X-S3a 硬门禁：`load` **不被定时器阻塞**（泵只在宿主侧；load 期间轮不抢）。
+        let mut page = BrowsingContext::new("https://a.example/").expect("new");
+        page.schedule_timer(0.0);
+        page.load(&snapshot(
+            "https://a.example/t",
+            "<body><div id=\"x\"></div></body>",
+        ))
+        .expect("load 应成功（不被未决定时器阻塞）");
+        assert_eq!(
+            page.timers_fired(),
+            0,
+            "load 期间不应推进定时器（宿主泵才推进）"
+        );
+        page.pump_timer_rounds(1).expect("pump");
+        assert!(page.timers_fired() >= 1, "宿主泵后应触发");
+    }
+
+    #[test]
+    fn task_queue_ordering() {
+        // G3X-S3a：同一轮内的多个到期定时器**全部按序处理**（3 ≤ 16 ⇒ 一轮收束）。
+        let mut page = BrowsingContext::new("https://a.example/").expect("new");
+        let ids: Vec<u64> = (0..3).map(|_| page.schedule_timer(0.0)).collect();
+        assert_eq!(ids, vec![0, 1, 2], "id 应按调度序分配");
+        let report = page.pump_timer_rounds(4).expect("pump");
+        assert_eq!(report.fired, 3, "三个都应触发");
+        assert_eq!(report.rounds, 1, "3 ≤ 16 ⇒ 一轮内收束");
     }
 
     #[test]

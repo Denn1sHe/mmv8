@@ -40,6 +40,12 @@ impl TaskSource {
 pub struct TaskToken(u64);
 
 impl TaskToken {
+    /// 原始 `u64`（供宿主按 id 反查；`G3X-S3a` 定时器表）。
+    #[must_use]
+    pub const fn raw(self) -> u64 {
+        self.0
+    }
+
     /// 由原始 `u64` 构造。
     #[must_use]
     pub const fn new(raw: u64) -> Self {
