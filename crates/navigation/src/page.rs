@@ -2541,18 +2541,26 @@ mod tests {
         let mut page = BrowsingContext::new("https://a.example/").expect("new");
         page.load(&snapshot(
             "https://a.example/nd",
-            "<body><script defer>globalThis.__ran = 1;</script></body>",
+            // **判别力设计（QA INJ-④ 修正）**：defer 脚本写**自增计数** `__defer_runs`
+            // ⇒ 一旦该 token 被误路由回 defer 分支（重跑 `deferred[0]`）⇒ **计数变 2 ⇒ 可观测**。
+            "<body><script defer>globalThis.__defer_runs = (globalThis.__defer_runs || 0) + 1;</script></body>",
         ))
         .expect("load");
-        // 静态 defer 已在 load 内泵完（`__ran == 1`）；此处投一个**非标签** Message token 并再泵。
-        page.control_eval("globalThis.__ran2 = 0").expect("init");
-        page.enqueue_message_for_test(scheduler::TaskToken::new(4));
+        let before = page.control_eval("globalThis.__defer_runs").expect("read");
+        assert!(
+            matches!(before, HostValue::Number(value) if (value - 1.0).abs() < 1e-9),
+            "静态 defer 应执行**恰好一次**（实得 {before:?}）"
+        );
+        // 注入 token = **`0`**（**非标签**，且 `raw & !TAG == 0` **映射到有效下标 0**）⇒
+        // 若守卫失效（撤守卫 ⇒ 误入 defer 分支）⇒ 会**重跑 `deferred[0]`** ⇒ 计数 **必然**变 2（QA 原用 `4`
+        // 时下标越界、静默无操作 ⇒ 观测量恒不变，**判别力不成立**——本次修正的正是这一点）。
+        page.enqueue_message_for_test(scheduler::TaskToken::new(0));
         let report = page.pump_timer_rounds(1).expect("pump");
         assert!(report.rounds >= 1, "泵应至少一轮");
-        let ran2 = page.control_eval("globalThis.__ran2").expect("read");
+        let after = page.control_eval("globalThis.__defer_runs").expect("read");
         assert!(
-            matches!(ran2, HostValue::Number(value) if value == 0.0),
-            "非标签 token 不应触发任何 defer 执行（实得 {ran2:?}）"
+            matches!(after, HostValue::Number(value) if (value - 1.0).abs() < 1e-9),
+            "非标签 token **不得**触发 defer 再执行（判别力锚：误路由 ⇒ 2；实得 {after:?}）"
         );
         assert!(
             page.timer_errors().is_empty(),
