@@ -1,0 +1,34 @@
+"""契约套件全局守卫（conftest）。
+
+## 收集数哨兵（COLLECTION_FLOOR）
+
+「陈旧陷阱」家族的一类：测试**静默不收集**（如漏 `test_` 前缀）——套件从 N 条变 N-1 条，
+**不红**、CI 照绿，漏洞永久潜伏（本仓已实证：`capabilities_reports_g3_surface` 漏前缀 ⇒
+60→59 而无人察觉，属"永不运行也永不红"的最危险一类）。
+
+故用 `pytest_collection_modifyitems` 断言**收集数下界**：**仅升；降须显式改本常量并说明理由**
+（改这个数字 = 一次显式决策，不再是静默漂移）。
+"""
+
+from __future__ import annotations
+
+import pytest
+
+#: 契约套件**收集数下界**（具名常量）。
+#:
+#: 规则：**仅升**；任何下调都必须显式修改本常量**并写明理由**（不接受静默漂移）。
+#: 历史：2026-10-14 = 60（G2→G3 更名 + 新增后实测）。
+COLLECTION_FLOOR = 60
+
+
+def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
+    """收集后立即断言下界（漏收集 ⇒ 套件**红**，而非静默减量）。"""
+    del config  # 钩子签名要求；本守卫不消费配置。
+    collected = len(items)
+    if collected < COLLECTION_FLOOR:
+        pytest.exit(
+            f"契约收集数哨兵：仅收集到 {collected} 条 < 下界 {COLLECTION_FLOOR}。\n"
+            "疑似「静默不收集」（漏 `test_` 前缀 / 文件名不匹配 / 新目录未纳入 testpaths）。\n"
+            "若确为**有意缩减**：请显式下调 conftest.py 的 COLLECTION_FLOOR 并写明理由。",
+            returncode=1,
+        )
