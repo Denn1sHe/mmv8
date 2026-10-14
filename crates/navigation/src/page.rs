@@ -543,6 +543,44 @@ impl BrowsingContext {
         self.plane.eval_control(src)
     }
 
+    /// **导出存储快照**（`G4-S1-b`：`4.1b` 持久化的载体）。
+    ///
+    /// 纯数据副本 —— 跨 `BrowsingContext` 实例传导只能**显式**经
+    /// [`BrowsingContext::import_storage_snapshot`] 完成（**禁**同进程静态 map）。
+    ///
+    /// # Errors
+    /// `StorageService` 借用冲突 ⇒ [`PageErrorKind::Internal`]。
+    pub fn export_storage_snapshot(&self) -> Result<storage::StorageSnapshot, PageError> {
+        let service = self
+            .shared
+            .storage
+            .try_borrow()
+            .map_err(|_| PageError::new(PageErrorKind::Internal, "StorageService 借用冲突"))?;
+        Ok(service.export_snapshot())
+    }
+
+    /// **导入存储快照**（`G4-S1-b`）：按 `(origin, kind, key)` 覆盖；
+    /// 任一桶超配额 ⇒ **整批拒绝**（不留半态）。
+    ///
+    /// # Errors
+    /// 借用冲突 / 超配额 ⇒ [`PageErrorKind::Internal`]。
+    pub fn import_storage_snapshot(
+        &self,
+        snapshot: &storage::StorageSnapshot,
+    ) -> Result<(), PageError> {
+        let mut service = self
+            .shared
+            .storage
+            .try_borrow_mut()
+            .map_err(|_| PageError::new(PageErrorKind::Internal, "StorageService 借用冲突"))?;
+        service.import_snapshot(snapshot).map_err(|err| {
+            PageError::new(
+                PageErrorKind::Internal,
+                format!("存储快照导入失败：{err:?}"),
+            )
+        })
+    }
+
     /// 当前就绪状态（导航生命周期）。
     #[must_use]
     pub fn ready_state(&self) -> ReadyState {
@@ -2389,6 +2427,49 @@ mod tests {
         assert!(
             matches!(&leftover, HostValue::Str(text) if text == "null"),
             "超配额不得留下半态（实得 {leftover:?}）"
+        );
+    }
+
+    #[test]
+    fn storage_snapshot_survives_context_swap() {
+        // `4.1b`（**页面实例级 + JS 面**）：换 `BrowsingContext` 后值仍在 —— 经**显式**快照传导。
+        // **负对照（同一测内两段）**：未导入的新上下文**必须为空**（若共享同进程静态 map ⇒ 红）。
+        let mut first = BrowsingContext::new("https://a.example/").expect("new");
+        first
+            .load(&snapshot("https://a.example/s", "<body></body>"))
+            .expect("load");
+        first
+            .control_eval("localStorage.setItem('k', 'v'); localStorage.setItem('j', 'w')")
+            .expect("set");
+        let snap = first.export_storage_snapshot().expect("export");
+        assert_eq!(snap.len(), 2, "导出应含 2 条");
+
+        let mut second = BrowsingContext::new("https://a.example/").expect("new 2");
+        second
+            .load(&snapshot("https://a.example/s", "<body></body>"))
+            .expect("load 2");
+        let before = second
+            .control_eval("String(localStorage.getItem('k'))")
+            .expect("read before");
+        assert!(
+            matches!(&before, HostValue::Str(text) if text == "null"),
+            "未导入的新上下文应为空（实得 {before:?}）"
+        );
+        second.import_storage_snapshot(&snap).expect("import");
+        let after = second
+            .control_eval("localStorage.getItem('k')")
+            .expect("read");
+        assert!(
+            matches!(&after, HostValue::Str(text) if text == "v"),
+            "换页面实例后值应仍在（实得 {after:?}）"
+        );
+        // 插入序亦随之传导（`k` 先于 `j`）。
+        let order = second
+            .control_eval("[localStorage.key(0), localStorage.key(1)].join(',')")
+            .expect("order");
+        assert!(
+            matches!(&order, HostValue::Str(text) if text == "k,j"),
+            "快照导入应保插入序（实得 {order:?}）"
         );
     }
 
