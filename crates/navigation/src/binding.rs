@@ -617,7 +617,7 @@ impl PageBinding {
                         ),
                     }
                 }),
-            );
+            )?;
             let (storage, origin_ref) = (Rc::clone(&inputs.storage), Rc::clone(&inputs.origin));
             install_global_fn(
                 realm,
@@ -633,7 +633,7 @@ impl PageBinding {
                     service.storage(&origin, kind).remove_item(&key);
                     Ok(HostValue::Undefined)
                 }),
-            );
+            )?;
             let (storage, origin_ref) = (Rc::clone(&inputs.storage), Rc::clone(&inputs.origin));
             install_global_fn(
                 realm,
@@ -648,7 +648,7 @@ impl PageBinding {
                     service.storage(&origin, kind).clear();
                     Ok(HostValue::Undefined)
                 }),
-            );
+            )?;
             let (storage, origin_ref) = (Rc::clone(&inputs.storage), Rc::clone(&inputs.origin));
             install_global_fn(
                 realm,
@@ -668,7 +668,7 @@ impl PageBinding {
                         .key(index)
                         .map_or(HostValue::Null, HostValue::Str))
                 }),
-            );
+            )?;
             let (storage, origin_ref) = (Rc::clone(&inputs.storage), Rc::clone(&inputs.origin));
             install_global_fn(
                 realm,
@@ -681,9 +681,11 @@ impl PageBinding {
                         .try_borrow_mut()
                         .map_err(|_| refcell_conflict("StorageService"))?;
                     let length = service.storage(&origin, kind).length();
-                    Ok(HostValue::Number(length as f64))
+                    // `length` 为 `usize`；JS 面为 `f64` —— 经 `u32` 转换避免精度损失告警。
+                    let length = f64::from(u32::try_from(length).unwrap_or(u32::MAX));
+                    Ok(HostValue::Number(length))
                 }),
-            );
+            )?;
         }
 
         realm.eval(SHIM)?;
