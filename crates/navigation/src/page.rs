@@ -136,7 +136,13 @@ pub struct TimerEntry {
 }
 
 /// **defer 任务的令牌标签**（`G3X-S3b`）：与既有/未来的 `Message` 通道载荷**显式区分**
-/// （低频 32 位 = 文档序下标；高位 = 标签）——**不改 scheduler 公共枚举**（遵裁定 (b)）。
+/// （低频 63 位 = 文档序下标；**bit 63 = 标签**）——**不改 scheduler 公共枚举**（遵裁定 (b)）。
+///
+/// # 不变式（`G3X-S7` 加固，**后续 `Message` 生产者必须遵守**）
+/// - **bit 63 保留给 defer**：任何**未来** `TaskSource::Message` 生产者**不得置位** bit 63
+///   （否则会被误判为 defer 任务 ⇒ 取错下标 ⇒ 静默丢弃）；
+/// - defer 下标须 `< 2^63`（实践上远小于此）；
+/// - 判别式 = `token.raw() & DEFER_TOKEN_TAG`（见 `PageExec::run_task` 的 `Message` 分支）。
 const DEFER_TOKEN_TAG: u64 = 1 << 63;
 
 /// 由文档序下标造 **defer 任务令牌**。
@@ -433,6 +439,12 @@ impl BrowsingContext {
             debug_assert!(false, "schedule_timer_expr：timers 借用冲突（宿主重入）");
         }
         id
+    }
+
+    /// **测试注入器**（`G3X-S7`）：向 `Message` 队列投一个**任意** token（用于"非 defer 标签"判别）。
+    #[doc(hidden)]
+    pub fn enqueue_message_for_test(&mut self, token: TaskToken) {
+        self.runloop.schedule(TaskSource::Message, token);
     }
 
     /// 已触发定时器计数（观测位）。
@@ -1713,10 +1725,22 @@ mod tests {
     #[test]
     fn capabilities_reports_g3_surface() {
         // §4 page：G3 能力面 —— geometry 由 stub 升为 computed；shadow_dom 开启。
+        // `G3X-S7` 加固：**全字段值断言**（与 Python 侧 `test_capabilities_reports_g3_surface`
+        // 逐字面量对齐 ⇒ 任一侧值漂移即红 = 值交叉约束）。
         let page = BrowsingContext::new("https://a.example/").expect("new");
         let caps = page.capabilities();
+        assert_eq!(caps.parsing, "streaming", "parsing");
+        assert!(caps.document_write, "document_write");
+        assert!(caps.navigation, "navigation");
+        assert_eq!(caps.network, "offline", "network");
+        assert_eq!(caps.input, "explicit_target", "input");
         assert_eq!(caps.geometry, "computed", "G3 几何面应为 computed");
         assert!(caps.shadow_dom, "G3 应开启 Shadow DOM 面");
+        assert!(caps.script_interruptible, "script_interruptible");
+        assert_eq!(
+            caps.input_user_activation, "sticky_only",
+            "input_user_activation"
+        );
     }
 
     #[test]
@@ -2503,6 +2527,32 @@ mod tests {
         assert!(
             format!("{err:?}").contains("defer/module 任务执行失败"),
             "应经任务化错误面报出（实得 {err:?}）"
+        );
+    }
+
+    #[test]
+    fn non_defer_message_token_is_not_handled_as_defer() {
+        // `G3X-S7` 加固（`DEFER_TOKEN_TAG` 判别）：**非标签** `Message` token ⇒ 不由 defer 分支处理
+        // ⇒ `deferred` **不被取**（防与既有/未来 `Message` 通道语义混淆）。
+        let mut page = BrowsingContext::new("https://a.example/").expect("new");
+        page.load(&snapshot(
+            "https://a.example/nd",
+            "<body><script defer>globalThis.__ran = 1;</script></body>",
+        ))
+        .expect("load");
+        // 静态 defer 已在 load 内泵完（`__ran == 1`）；此处投一个**非标签** Message token 并再泵。
+        page.control_eval("globalThis.__ran2 = 0").expect("init");
+        page.enqueue_message_for_test(scheduler::TaskToken::new(4));
+        let report = page.pump_timer_rounds(1).expect("pump");
+        assert!(report.rounds >= 1, "泵应至少一轮");
+        let ran2 = page.control_eval("globalThis.__ran2").expect("read");
+        assert!(
+            matches!(ran2, HostValue::Number(value) if value == 0.0),
+            "非标签 token 不应触发任何 defer 执行（实得 {ran2:?}）"
+        );
+        assert!(
+            page.timer_errors().is_empty(),
+            "非标签 token 应被安全忽略（无错误登记）"
         );
     }
 

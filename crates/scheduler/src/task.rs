@@ -14,7 +14,11 @@ pub enum TaskSource {
     Network,
     /// 用户输入。
     UserInput,
-    /// 消息/`postMessage`。
+    /// 消息 / **defer 宏任务**（`G3X-S3b`：`navigation` 复用本源承载 defer/module 脚本任务）。
+    ///
+    /// # 不变式（`G3X-S7`）：**bit 63 保留给 defer 令牌标签**
+    /// 承载 defer 任务的 `TaskToken::raw()` 必须置 **bit 63**（见 `navigation::page::DEFER_TOKEN_TAG`）；
+    /// **任何其它 `Message` 生产者不得置位 bit 63**（否则会被 `PageExec` 误判为 defer）。
     Message,
     /// 微任务。
     Microtask,

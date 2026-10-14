@@ -361,6 +361,51 @@ mod tests {
     }
 
     #[test]
+    fn shadow_scope_channels_sentinel() {
+        // `G3X-S7`：**R22 两「不存在形式」的红哨兵**（防被误读为「已覆盖」）。
+        // R22 的两条影子作用域通道 = **`:host`（P-11）** + **`::slotted`（S5b）**；
+        // **任一回归 ⇒ 本哨兵红**（单点显式追踪，取代"以不存在形式登记"）。
+        use crate::stylo_host::{StyloHost, build_slots};
+        use web_dom::node::ShadowMode;
+        use web_dom::tree::NodeTree;
+
+        let system = StyleSystem::new(Size::new(800.0, 600.0));
+        let mut tree = NodeTree::new();
+        let root = tree.root();
+        let host = tree.create_element("x-s", "html", vec![]);
+        tree.append_child(root, host);
+        let light = tree.create_element("span", "html", vec![("slot".to_owned(), "s".to_owned())]);
+        tree.append_child(host, light);
+        let shadow = tree.attach_shadow(host, ShadowMode::Open).expect("shadow");
+        let style_el = tree.create_element("style", "html", vec![]);
+        tree.append_child(shadow, style_el);
+        let css = tree.create_text(":host { width: 120px; } ::slotted(span) { width: 60px; }");
+        tree.append_child(style_el, css);
+        let slot_el =
+            tree.create_element("slot", "html", vec![("name".to_owned(), "s".to_owned())]);
+        tree.append_child(shadow, slot_el);
+
+        let slots = build_slots(&tree, system.shared_lock());
+        let bridge = StyloHost::new(slots);
+        let host_style = system
+            .resolve_element_style(bridge.node(host).expect("host"), 0.0)
+            .expect("host cascade");
+        let span_style = system
+            .resolve_element_style(bridge.node(light).expect("span"), 0.0)
+            .expect("slotted cascade");
+        assert_eq!(
+            crate::serialize::serialize_computed(&host_style, "width").expect("width"),
+            "120px",
+            "哨兵①：`:host` 通道（P-11）回归"
+        );
+        assert_eq!(
+            crate::serialize::serialize_computed(&span_style, "width").expect("width"),
+            "60px",
+            "哨兵②：`::slotted` 通道（S5b）回归"
+        );
+    }
+
+    #[test]
     fn host_selector_styles_host() {
         // R22 / P-11：影子表 `:host { width: 120px; }` 经 **`shadow.style_data()` 真通道** ⇒ host 宽 120。
         use crate::stylo_host::{StyloHost, build_slots};

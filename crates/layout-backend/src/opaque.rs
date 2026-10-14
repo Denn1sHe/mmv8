@@ -19,8 +19,9 @@ pub type TreeId = u64;
 
 /// 稳定地址锚点（`OpaqueElement::new(&*anchor)` 的取址对象）。
 ///
-/// 字段为**稳定身份记录**（`tree`/`id`）；当前仅作 `OpaqueElement` 键的稳定载体，
-/// 树身份校验/作用域反查留待 S11（`shadow`）时读取。
+/// 字段为**稳定身份记录**（`tree`/`id`）；**用途 = 稳定地址锚**（`OpaqueElement::new(&*anchor)`
+/// 取的是**地址**，非字段值）⇒ 字段本身**设计上不被读取**（S7 审计更正：原注"留待 S11 读取"已过期，
+/// S11 已落地且仍以地址为锚）。**保留原因**：字段使锚点**自证身份**、便于调试期核对；非遗漏。
 #[allow(dead_code)]
 struct NodeAnchor {
     tree: TreeId,
