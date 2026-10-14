@@ -687,17 +687,12 @@ impl Realm {
         #[allow(unsafe_code)]
         unsafe {
             let isolate: &mut v8::OwnedIsolate = &mut (*realm).isolate;
-            // `G3X-S8`（③ / U-8 哨兵）：`perform_checkpoint` **不重写** `REALM_DATA_SLOT`，
-            // 只依赖**上次 eval 写入的** Realm 指针 ⇒ G1 单 Realm 下恒真；**多 Realm（G4）化一旦发生
-            // ⇒ 本断言 debug 即红**（防「上次 eval 的 Realm ≠ 当前 checkpoint 的 Realm」静默错配）。
-            #[cfg(debug_assertions)]
-            {
-                let slot_realm = isolate.get_data(REALM_DATA_SLOT).cast::<Self>();
-                debug_assert!(
-                    std::ptr::eq(slot_realm, realm),
-                    "REALM_DATA_SLOT 指向的 Realm ≠ 当前 checkpoint 的 Realm（U-8：G4 化前须显式重写该槽）"
-                );
-            }
+            // `G3X-S8`（③ / U-8）**登记（本批未落哨兵，如实说明）**：`perform_checkpoint` **不重写**
+            // `REALM_DATA_SLOT`（其值 = 上次 `eval` 写入的**句柄**，非裸 `*mut Realm`）⇒ G1 单 Realm
+            // 单线程下无碍。**廉价哨兵经实测不可行**：槽内是 **V8 值句柄**，读回需 `CallbackScope`
+            // （见本文件 `dynamic_import_callback` 的 `scope.get_data(..).cast::<Realm>()` 惯用法），
+            // 而 checkpoint 路径**无 scope**；直接比较「句柄地址 vs Realm 地址」**语义错误**（我曾误加之，
+            // 触发 2 例 false positive，已撤回）。⇒ **维持登记**（G4 多 Realm 化前须**显式重写该槽**或改强标识）。
             let terminate = (*realm).terminate.clone();
             let grace = (*realm).microtask_grace;
 
