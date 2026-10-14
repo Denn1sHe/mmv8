@@ -178,7 +178,13 @@ pub fn py_to_host(target_realm: RealmId, obj: &Bound<'_, PyAny>) -> Result<HostV
         return Ok(HostValue::Str(text.to_string_lossy().into_owned()));
     }
     if let Ok(js_ref) = obj.cast::<PyJsRef>() {
-        let borrowed = js_ref.borrow();
+        // `G3X-S3c1`（⑤）：Python 边界 —— 借用冲突 ⇒ **可判定错误**（非 panic）。
+        let borrowed = js_ref.try_borrow().map_err(|_| {
+            JsError::new(
+                JsErrorKind::ReentrantEval,
+                "PyJsRef 正被借用（宿主重入）⇒ 可判定错误，不 panic",
+            )
+        })?;
         if borrowed.realm != target_realm {
             return Err(JsError::new(
                 JsErrorKind::WrongRealm,

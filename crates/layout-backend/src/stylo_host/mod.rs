@@ -316,6 +316,8 @@ impl<'a> ElementSlot<'a> {
     /// 均由 `styles.primary.is_some()` 派生）。
     #[must_use]
     pub fn has_styles(&self) -> bool {
+        // `G3X-S3c1`（⑦）**结构约束**：`stylo::data::ElementDataWrapper` **仅 `borrow`/`borrow_mut`，无 `try_borrow`**
+        // （stylo-0.20.0/data.rs:332/344）⇒ 桥内无法"可判定错误"化；**登记为上游 API 约束**（非"豁免"）。
         self.data.borrow().has_styles()
     }
 
