@@ -2213,9 +2213,9 @@ mod tests {
     use super::{TIMER_MAX_FLUSH_ROUNDS, TIMER_TASKS_PER_ROUND};
 
     #[test]
-    #[ignore = "S6 未闭合（首轮停报）：动态影子内容未进盒树；已排除「脏位未标」（attachShadow/appendChild shim 均 nDirty）；缺口在重建路径（build_slots 影子级联次序 / build_node 跳过 / style_for_element 静默）"]
-    fn dynamic_shadow_relayout_probe() {
-        // `G3X-S6` 探针：**动态**挂影子 + JS 建影子内容 => 影子内节点几何可读。
+    fn dynamic_shadow_relayout() {
+        // `G3X-S6`：**动态**挂影子 + JS 建影子内容 => 影子内节点几何可读（盒树含影子子树）。
+        // **负对照**：撤 `append_children` 内联级下钻（`box_tree.rs`）⇒ 恒「节点无几何」⇒ 红。
         let mut page = BrowsingContext::new("https://a.example/").expect("new");
         page.load(&snapshot(
             "https://a.example/dyn",
@@ -2233,10 +2233,17 @@ mod tests {
             let shadow = tree.element_shadow(host).expect("shadow root");
             find_by_attr(&tree, shadow, "id", "inner").expect("inner in shadow")
         };
-        let geometry = page.node_geometry(inner);
+        let geometry = page.node_geometry(inner).expect("动态影子内容应有几何");
+        // 几何值可推导：`style width:60px;height:20px` ⇒ 盒尺寸应为 60×20（非空即已进盒树）。
         assert!(
-            geometry.is_ok(),
-            "动态影子内容应有几何（实得 {geometry:?}）"
+            (geometry.offset_width - 60.0).abs() < 0.5,
+            "影子内盒宽应为 60px（实得 {}）",
+            geometry.offset_width
+        );
+        assert!(
+            (geometry.offset_height - 20.0).abs() < 0.5,
+            "影子内盒高应为 20px（实得 {}）",
+            geometry.offset_height
         );
     }
 

@@ -123,6 +123,9 @@ impl BoxTree {
             let taffy_node = self.build_node(tree, host, system, child)?;
             if is_inline_level(tree, host, system, child)? {
                 inline_run.push(taffy_node);
+                // `G3X-S6`：**内联级子亦须下钻**——此前只入匿名块运行、**不递归**，
+                // 致其子树（如**动态影子内容**）**从未进盒树**（无几何）。
+                self.append_children(tree, host, system, child, taffy_node)?;
             } else {
                 self.flush_inline_run(parent_taffy, &mut inline_run)?;
                 self.taffy
