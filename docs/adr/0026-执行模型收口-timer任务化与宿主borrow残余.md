@@ -37,7 +37,7 @@
 | 3.1 | `timer_fires_after_n_rounds` | **第 N 轮**触发（N 钉死；**预算 `16`/轮 · 冲刷 ≤ `64`**，§6-1） | 同步实现 ⇒ 轮次不符 |
 | 3.2 | `timer_does_not_block_load` | `load` 期间**轮不抢**（预算生效） | 阻塞 ⇒ `load` 延后 |
 | 3.3 | `task_queue_ordering` | **严格按序** + 微任务边界 | 乱序 ⇒ 红 |
-| 3.4 | `no_host_try_borrow_panic` | **可改 6 路径全覆盖（20 处）+ 宿主面 `borrow_mut` 可改全集（36 处）+ 5 处具名约束标注（`stylo_host` 4 + `opaque` 1；非漏改）**；无 panic + 期望值 | 保留 `borrow` / `borrow_mut` ⇒ panic |
+| 3.4 | `no_host_try_borrow_panic` | **可改 6 路径全覆盖（20 处）+ 宿主面 `borrow_mut` 可改全集（35 处）+ 5 处具名约束标注（`stylo_host` 4 + `opaque` 1；非漏改）**；无 panic + 期望值 | 保留 `borrow` / `borrow_mut` ⇒ panic |
 
 ## §4 风险
 
@@ -107,9 +107,9 @@
 | ⑦ stylo 桥 | `ElementSlot::borrow_data`／`has_styles`／`ensure_data`（`ElementDataWrapper`） | **具名上游约束**（无 `try_borrow`；release 走 `unsafe { &*get() }` ⇒ UB、无护栏） | 同上（上游约束） |
 | ⑧ 其它宿主面 | `SharedBundle::send`（离线 transport）／`opaque.rs`（`opaque`／`rehydrate` 调用者 = `stylo_host`） | ✅ `send` 已转 | `opaque.rs` 1 = **`S3c2-d` ✅**：`reset()` `(β)` + **`with_side<R>` 泛型约束（与 ⑦ 同族、异站点；具名）** |
 
-**计数（2026-10-15 实测）**：`.borrow()` 产品码 **22**（7 路径）；`.borrow_mut()` **39**（`page.rs` 18／`sink.rs` 16／`input.rs` 1✅／`opaque.rs` 2／`stylo_host` 2）——**较 2026-10-14 的 35 增 4，系 `G3X-S3b` 新增**（如实）。**进度（`2830c21` 后）= `39 → 4`**（`input` 1 + `sink` 16 + `page` 18 = **35 已转**）；余 **`opaque` 2（`S3c2-d`）+ `stylo_host` 2（⑦ 上游约束）**。
+**计数（2026-10-15 **清洁实测**）**：`.borrow()` 产品码 **22**（7 路径）；`.borrow_mut()` **38**（`page.rs` **17**／`sink.rs` 16／`input.rs` 1／`opaque.rs` **1**／`stylo_host` 2）—— **原「`page.rs` 18」含 1 条注释幻影 ⇒ 真实 17**（**工程师清洁复算 + 架构师复核一致** ✓）。**进度 = `S3c2` 全量收口（`a/b/c/d` ✅）**；**符号表进度列全清**。
 
-**📋 最终台账（**验收用 · 定稿，2026-10-15**）**：**`.borrow()` = 22 = **20 转 + 2（⑦ `stylo_host`）**；**`.borrow_mut()` = 39 = **36 转 + 3 具名约束（⑦ `stylo_host` ×2 + `opaque::with_side<R>` 泛型 R ×1）**；⇒ **可改站点全部转换，具名约束恰 5 处（`stylo_host` 4 + `opaque` 1；非漏改）**；**不论 38/39 澄明结果，此终态不变**。**主理人残留复核**：产品码未转换点 = **恰 5 处**（`parser`/`binding` 命中均在 `cfg(test)` 区）—— **与架构师清洁复核一致** ✓。
+**📋 最终台账（**验收用 · 定稿，2026-10-15）**：**`.borrow()` = 22 = **20 转 + 2（⑦ `stylo_host`）**；**`.borrow_mut()` = 38 = **35 转 + 3 具名约束（⑦ `stylo_host` ×2 + `opaque::with_side<R>` 泛型 R ×1）**；⇒ **可改站点全部转换，具名约束恰 5 处（`stylo_host` 4 + `opaque` 1；非漏改）**。**主理人残留复核**：产品码未转换点 = **恰 5 处**（`parser`/`binding` 命中均在 `cfg(test)` 区）—— **与架构师清洁复核（余 5）一致** ✓。
 
 **⚠️ 计数纪律（方法论族第 4 块 · 架构师源级复核，2026-10-15）**：**「注释 / 字符串非站点」** —— 计数命令须排除注释：`grep -nE '\.borrow_mut\(\)' <f> | grep -vE ': *//'`（否则 **`page.rs:1557`（注释里的 `timers.borrow_mut()`）** 被计为**幻影站**；**架构师首轮扫描即中招** ⇒ **同族「位置/文本脆弱，须语义级验证」**）。
 > **方法论族（四条，同根「位置/文本脆弱 ⇒ 须语义级验证」）**：① **全仓扫查**（勿信选定文件清单）② **清单以符号为准**（勿依行号）③ **批量替换不可信**（逐站编译验证）④ **注释/字符串非站点**（计数须排除注释）。
