@@ -90,6 +90,26 @@
 
 **计数（修正后）**：产品码 `.borrow()` = **22 处** —— `page.rs` 12 + `sink.rs` **7** + `convert.rs` 1 + `stylo_host/mod.rs` **2**；`binding.rs`/`parser.rs` 产品码 **0 处**（全在 `#[cfg(test)]` 内）。按 7 路径：**① 1 / ② 2 / ③ 4 / ④ 5 / ⑤ 1 / ⑥ 7 / ⑦ 2 = 22**。
 
+### §6-3·补 符号化清单（2026-10-15；**行号在改造中失效 ⇒ 以符号为准**）
+
+> **方法学**（与「全仓扫查 + 可复现命令」同族）：行号随改造漂移（本批 S3a/S3b 后原表行号**已全数失效**），
+> 故站点一律以 **「符号（`fn` 名 + 行内特征）」** 为锚。**实现进度**：`S3c1`（`.borrow()`）已全数转换（**①–④⑥ + ⑤**；
+> **⑦ 具名上游约束**）＝ commit `e20da58`/`36a28bd`；`S3c2`（`.borrow_mut()`）首站 `input.rs` ＝ `3d91edc`，余按 b/c/d 拆。
+
+| 路径 | 符号（`fn` + 行内特征） | `.borrow()` | `.borrow_mut()` |
+|---|---|---|---|
+| ① 导航/文档绑定 | `BrowsingContext::load`（`Rc::new(NodeTree…)` 后取 `root()`） | ✅ 已转 | 参与（见下） |
+| ② 输入/派发 | `BrowsingContext::input_dispatch`（`is_valid`/`in_document` 块）｜`BrowsingContext::user_activation`（只读 getter） | ✅ 已转 | ✅ `input.rs`（`activation.activate()`） |
+| ③ 解析 sink | `BrowsingContext::drain_parse`（`get_attribute("src")`／`script_kind`／`text_content` ×2） | 4 处已转 | 参与（见下） |
+| ④ defer/fetch 泵 | `BrowsingContext::run_deferred_scripts`（`deferred` 克隆／`tree.text_content`／`deferred.len`）｜`pump_fetch`（`offline.resolve`）｜`PageExec::has_pending_io`（`fetch_queue`/`fetch_table`） | 5 处已转 | 参与（见下） |
+| ⑤ Python 边界 | `convert.rs`（`PyJsRef` 分支 `js_ref`） | ✅ 已转（`JsError(ReentrantEval)`） | — |
+| ⑥ 解析期 `TreeSink` | `DomSink::new`／`append_text`／`append_based_on_parent_node`／`append_before_sibling`／`add_attrs_if_missing`／`remove_from_parent`／`reparent_children` | ✅ 7 处已转（**(β) 默认值语义各自独立**） | 16 处（**S3c2-b 待转**） |
+| ⑦ stylo 桥 | `ElementSlot::borrow_data`／`has_styles`／`ensure_data`（`ElementDataWrapper`） | **具名上游约束**（无 `try_borrow`；release 走 `unsafe { &*get() }` ⇒ UB、无护栏） | 同上（上游约束） |
+| ⑧ 其它宿主面 | `SharedBundle::send`（离线 transport）／`opaque.rs`（`opaque`／`rehydrate` 调用者 = `stylo_host`） | ✅ `send` 已转 | `opaque.rs` 2（**S3c2-d 待转**） |
+
+**计数（2026-10-15 实测）**：`.borrow()` 产品码 **22**（7 路径）；`.borrow_mut()` **39**（`page.rs` 18／`sink.rs` 16／`input.rs` 1✅／`opaque.rs` 2／`stylo_host` 2）——**较 2026-10-14 的 35 增 4，系 `G3X-S3b` 新增**（如实）。
+**非 Result fallback 语义（具名）**：**不 panic + `debug_assert!` 可见 + 保守默认**（⑥/只读 getter）；各默认值**不合并**（"跳过属性" ≠ "空表" ≠ "视为有 pending"）。
+
 **伴生族（`.borrow_mut()`，同属决策 3「任何 `Rc<RefCell>` 一律 `try_borrow`」）**：产品码 = **35 处** —— `page.rs` 14 + `sink.rs` **16** + `input.rs` 1 + `layout-backend/src/opaque.rs` 2 + `stylo_host/mod.rs` **2**（含 `ensure_data` 的 `self.data.borrow_mut()`）。**初版清单只枚举 `.borrow()`，本表补齐**（`borrow_mut` 与 `borrow` 叠加 = panic 面同源）。
 **伴生族分类（架构师源级核定，2026-10-14）**：`.borrow_mut()` 产品码 **35 处** ——
 
