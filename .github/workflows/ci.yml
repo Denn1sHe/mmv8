@@ -11,6 +11,7 @@
 #   · test job 增加 MSRV 矩阵（决策 2）
 #   · 新增 contract job（跑 G0 契约测试，T1 交付物）
 #   · lint job 增加 cargo geiger 作为 warnings 级门禁（决策 2）
+#   · 2026-10-14 维护者全量批准：lint/test job 增加系统依赖步骤（libfontconfig1-dev；修 S7 字体栈引入的 Linux 构建缺口）
 # 铁律 7 的保护意图不变：托管地址与 CODEOWNERS 句柄仍需维护者填写。
 #
 # 与质量方案 §4 的对应关系：
@@ -48,6 +49,10 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+
+      # S7 字体栈引入 fontique ⇒ Linux 构建需 fontconfig 开发头（runner 未预装）
+      - name: 系统依赖（fontconfig 开发头）
+        run: sudo apt-get update && sudo apt-get install -y libfontconfig1-dev
 
       - name: 安装 Rust 工具链
         run: |
@@ -119,6 +124,10 @@ jobs:
         toolchain: ["stable", "1.92.0"]
     steps:
       - uses: actions/checkout@v4
+
+      # S7 字体栈引入 fontique ⇒ Linux 构建需 fontconfig 开发头（runner 未预装）
+      - name: 系统依赖（fontconfig 开发头）
+        run: sudo apt-get update && sudo apt-get install -y libfontconfig1-dev
 
       - name: 安装 Rust 工具链 ${{ matrix.toolchain }}
         run: |
