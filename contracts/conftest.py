@@ -20,8 +20,10 @@ import pytest
 #: 历史：2026-10-14 = 60（G2→G3 更名 + 新增后实测）；
 #:       2026-10-15 = 78（**G4-S0a**：manifest 九字段 schema + behavior_level 三态 + 完备性双门禁测试，
 #:       新增 18 条 ⇒ **只升**，理由见 docs/design-g4-真身-2026-10-15.md §6；
-#:       2026-10-16 = 80（**G4-S0a 补记**：三态错标格全覆盖 —— 补 `CONTRACT`×行为标记 ⇒ 红 + 其合法格正例）。
-COLLECTION_FLOOR = 80
+#:       2026-10-16 = 80（**G4-S0a 补记**：三态错标格全覆盖 —— 补 `CONTRACT`×行为标记 ⇒ 红 + 其合法格正例）；
+#:       2026-10-16 = 89（**G4-S0b**：候选源 B 工具 —— WebIDL 成员抽取器自测 9 条，含 constructor 排除 /
+#:       继承不误归 / 注释剔除 / partial 合并 / 产出必带 needs_community_review / 可被 load_members 读）。
+COLLECTION_FLOOR = 89
 
 
 def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
