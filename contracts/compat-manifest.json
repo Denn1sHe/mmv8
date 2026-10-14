@@ -10563,12 +10563,18 @@
       "id": "Storage.clear",
       "realm": "main",
       "descriptor": "operation",
-      "behavior_level": "stub",
+      "behavior_level": "behaviour",
       "test_ids": [
-        "g4-seed:pending"
+        "storage_roundtrip_and_key_order",
+        "origin_partition_is_hard_isolated",
+        "quota_exceeded_on_n_plus_one_write",
+        "quota_is_enforced_per_bucket",
+        "storage_surface_roundtrip_order_and_quota",
+        "storage_snapshot_survives_context_swap",
+        "snapshot_text_roundtrip_keeps_odd_characters"
       ],
-      "status": "missing",
-      "evidence": "face: Storage 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "status": "verified",
+      "evidence": "S1-a/S1-b（behaviour：state_transition=missing→setItem→getItem/removeItem/clear 五态 + sequence=插入序（更新保持原位）+ key(i) 越界 None + timing=per-bucket 5MiB 配额第 N+1 次写抛 QuotaExceededError 且无半态 + origin 硬隔离 + 快照跨实例传导与转义往返）",
       "implementation_owner": "web-dom",
       "category": "spec-webidl"
     },
@@ -10689,12 +10695,18 @@
       "id": "Storage.getItem",
       "realm": "main",
       "descriptor": "operation",
-      "behavior_level": "stub",
+      "behavior_level": "behaviour",
       "test_ids": [
-        "g4-seed:pending"
+        "storage_roundtrip_and_key_order",
+        "origin_partition_is_hard_isolated",
+        "quota_exceeded_on_n_plus_one_write",
+        "quota_is_enforced_per_bucket",
+        "storage_surface_roundtrip_order_and_quota",
+        "storage_snapshot_survives_context_swap",
+        "snapshot_text_roundtrip_keeps_odd_characters"
       ],
-      "status": "missing",
-      "evidence": "face: Storage 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "status": "verified",
+      "evidence": "S1-a/S1-b（behaviour：state_transition=missing→setItem→getItem/removeItem/clear 五态 + sequence=插入序（更新保持原位）+ key(i) 越界 None + timing=per-bucket 5MiB 配额第 N+1 次写抛 QuotaExceededError 且无半态 + origin 硬隔离 + 快照跨实例传导与转义往返）",
       "implementation_owner": "web-dom",
       "category": "spec-webidl"
     },
@@ -10815,12 +10827,18 @@
       "id": "Storage.key",
       "realm": "main",
       "descriptor": "operation",
-      "behavior_level": "stub",
+      "behavior_level": "behaviour",
       "test_ids": [
-        "g4-seed:pending"
+        "storage_roundtrip_and_key_order",
+        "origin_partition_is_hard_isolated",
+        "quota_exceeded_on_n_plus_one_write",
+        "quota_is_enforced_per_bucket",
+        "storage_surface_roundtrip_order_and_quota",
+        "storage_snapshot_survives_context_swap",
+        "snapshot_text_roundtrip_keeps_odd_characters"
       ],
-      "status": "missing",
-      "evidence": "face: Storage 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "status": "verified",
+      "evidence": "S1-a/S1-b（behaviour：state_transition=missing→setItem→getItem/removeItem/clear 五态 + sequence=插入序（更新保持原位）+ key(i) 越界 None + timing=per-bucket 5MiB 配额第 N+1 次写抛 QuotaExceededError 且无半态 + origin 硬隔离 + 快照跨实例传导与转义往返）",
       "implementation_owner": "web-dom",
       "category": "spec-webidl"
     },
@@ -10829,12 +10847,18 @@
       "id": "Storage.length",
       "realm": "main",
       "descriptor": "attribute",
-      "behavior_level": "stub",
+      "behavior_level": "behaviour",
       "test_ids": [
-        "g4-seed:pending"
+        "storage_roundtrip_and_key_order",
+        "origin_partition_is_hard_isolated",
+        "quota_exceeded_on_n_plus_one_write",
+        "quota_is_enforced_per_bucket",
+        "storage_surface_roundtrip_order_and_quota",
+        "storage_snapshot_survives_context_swap",
+        "snapshot_text_roundtrip_keeps_odd_characters"
       ],
-      "status": "missing",
-      "evidence": "face: Storage 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "status": "verified",
+      "evidence": "S1-a/S1-b（behaviour：state_transition=missing→setItem→getItem/removeItem/clear 五态 + sequence=插入序（更新保持原位）+ key(i) 越界 None + timing=per-bucket 5MiB 配额第 N+1 次写抛 QuotaExceededError 且无半态 + origin 硬隔离 + 快照跨实例传导与转义往返）",
       "implementation_owner": "web-dom",
       "category": "spec-webidl"
     },
@@ -10871,12 +10895,18 @@
       "id": "Storage.removeItem",
       "realm": "main",
       "descriptor": "operation",
-      "behavior_level": "stub",
+      "behavior_level": "behaviour",
       "test_ids": [
-        "g4-seed:pending"
+        "storage_roundtrip_and_key_order",
+        "origin_partition_is_hard_isolated",
+        "quota_exceeded_on_n_plus_one_write",
+        "quota_is_enforced_per_bucket",
+        "storage_surface_roundtrip_order_and_quota",
+        "storage_snapshot_survives_context_swap",
+        "snapshot_text_roundtrip_keeps_odd_characters"
       ],
-      "status": "missing",
-      "evidence": "face: Storage 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "status": "verified",
+      "evidence": "S1-a/S1-b（behaviour：state_transition=missing→setItem→getItem/removeItem/clear 五态 + sequence=插入序（更新保持原位）+ key(i) 越界 None + timing=per-bucket 5MiB 配额第 N+1 次写抛 QuotaExceededError 且无半态 + origin 硬隔离 + 快照跨实例传导与转义往返）",
       "implementation_owner": "web-dom",
       "category": "spec-webidl"
     },
@@ -10913,12 +10943,18 @@
       "id": "Storage.setItem",
       "realm": "main",
       "descriptor": "operation",
-      "behavior_level": "stub",
+      "behavior_level": "behaviour",
       "test_ids": [
-        "g4-seed:pending"
+        "storage_roundtrip_and_key_order",
+        "origin_partition_is_hard_isolated",
+        "quota_exceeded_on_n_plus_one_write",
+        "quota_is_enforced_per_bucket",
+        "storage_surface_roundtrip_order_and_quota",
+        "storage_snapshot_survives_context_swap",
+        "snapshot_text_roundtrip_keeps_odd_characters"
       ],
-      "status": "missing",
-      "evidence": "face: Storage 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "status": "verified",
+      "evidence": "S1-a/S1-b（behaviour：state_transition=missing→setItem→getItem/removeItem/clear 五态 + sequence=插入序（更新保持原位）+ key(i) 越界 None + timing=per-bucket 5MiB 配额第 N+1 次写抛 QuotaExceededError 且无半态 + origin 硬隔离 + 快照跨实例传导与转义往返）",
       "implementation_owner": "web-dom",
       "category": "spec-webidl"
     },

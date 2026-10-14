@@ -22,6 +22,7 @@ from iv8_contract.manifest import (
     EntryStatus,
     Manifest,
     ManifestError,
+    load,
 )
 
 
@@ -300,3 +301,105 @@ def test_load_members_ok(tmp_path: Path) -> None:
     good = tmp_path / "good.json"
     good.write_text('{"members": ["Window.setTimeout"]}', encoding="utf-8")
     assert load_members(good) == frozenset({"Window.setTimeout"})
+
+
+# --------------------------------------------- F7 第 0 次流转 + 假流转防护
+
+
+def _load_promote_tool():
+    """按路径加载 `tools/promote_manifest.py`（非包 ⇒ spec 装载）。"""
+    spec = importlib.util.spec_from_file_location(
+        "promote_manifest", REPO_ROOT / "contracts" / "tools" / "promote_manifest.py"
+    )
+    assert spec and spec.loader
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_verified_entries_cite_real_tests() -> None:
+    """**假流转防护**：`verified` 条目的 `test_ids` 必须指向**真实存在的测试**。
+
+    判别力：若允许写不存在的测试名，`verified` 就是空头支票（观测量不变 = 空门禁，
+    静默家族变体）⇒ 本测对**全部** verified 条目逐一查证（Rust `fn <name>(` /
+    pytest `def test_<name>(`）。
+    """
+    promote = _load_promote_tool()
+    sources = promote._test_sources()
+    manifest = load(SHIPPED_MANIFEST)
+    verified = [e for e in manifest if e.status is EntryStatus.VERIFIED]
+    assert verified, "现应有已流转条目（S1-a/S1-b 覆盖面）"
+    for entry in verified:
+        assert entry.test_ids, f"{entry.id}：verified 必须附 test_ids"
+        for name in entry.test_ids:
+            assert promote._test_exists(name, sources), (
+                f"{entry.id} 的 test_id 不存在：{name}（假流转 ⇒ 红）"
+            )
+
+
+def test_promote_rejects_unknown_test_id(tmp_path: Path) -> None:
+    """**promote 拒写假测试名**（负对照本体：构造不存在的 test_id ⇒ 必须 `SystemExit`）。"""
+    promote = _load_promote_tool()
+    members = tmp_path / "members.json"
+    members.write_text(
+        '{"members": ["X.a"], "member_descriptors": {"X.a": "operation"}}',
+        encoding="utf-8",
+    )
+    out = tmp_path / "manifest.json"
+    _seed_main([str(members), "--out", str(out)])
+    promote.MANIFEST = out  # 重定向到临时文件（不碰实物）
+    with pytest.raises(SystemExit, match="测试名不存在"):
+        promote.main(
+            [
+                "--id",
+                "X.a",
+                "--status",
+                "verified",
+                "--behavior-level",
+                "behaviour",
+                "--test-id",
+                "this_test_does_not_exist",
+                "--evidence",
+                "假流转探针",
+            ]
+        )
+    assert json.loads(out.read_text(encoding="utf-8"))["entries"][0]["status"] == "missing", (
+        "拒写时不得改动条目"
+    )
+
+
+def test_seed_carries_over_flow(tmp_path: Path) -> None:
+    """**F7 结转**：promote 后重跑 seed ⇒ 流转**不得被抹掉**（`F1` 同族风险）。
+
+    负对照：撤掉 `carried_entry` 结转 ⇒ 重跑 seed 后 `status` 回 `missing` ⇒ 本测红。
+    """
+    members = tmp_path / "members.json"
+    members.write_text(
+        json.dumps({"members": ["X.a", "X.b"], "member_descriptors": {"X.a": "operation", "X.b": "attribute"}}),
+        encoding="utf-8",
+    )
+    out = tmp_path / "manifest.json"
+    _seed_main([str(members), "--out", str(out)])
+    promote = _load_promote_tool()
+    promote.MANIFEST = out
+    promote.main(
+        [
+            "--id",
+            "X.a",
+            "--status",
+            "verified",
+            "--behavior-level",
+            "behaviour",
+            "--test-id",
+            "storage_roundtrip_and_key_order",
+            "--evidence",
+            "结转探针",
+        ]
+    )
+    _seed_main([str(members), "--out", str(out)])  # 重跑 seed ⇒ 不得抹掉流转
+    entries = {str(e["id"]): e for e in json.loads(out.read_text(encoding="utf-8"))["entries"]}
+    assert entries["X.a"]["status"] == "verified", "重跑 seed 不得抹掉既有流转（F7）"
+    assert entries["X.a"]["test_ids"] == ["storage_roundtrip_and_key_order"]
+    assert entries["X.b"]["status"] == "missing", "未流转条目仍按种子默认"
+

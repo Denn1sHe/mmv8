@@ -107,6 +107,26 @@ def freeze_state_of(path: Path) -> tuple[bool, int]:
     return bool(payload.get("denominator_fixed", False)), len(entries)
 
 
+def carried_entry(member: str, existing: dict[str, dict[str, object]]) -> dict[str, object] | None:
+    """**结转**（`F7`）：既有 manifest 中同 id 条目的**流转态**原样带回。
+
+    为什么必需：`status`/`behavior_level`/`test_ids`/`evidence` 是**逐笔累积的流转证据**，
+    若每次重跑 seed 都回到"全 missing + pending"，则 ① 流转被静默抹掉（与 `F1` 的冻结位
+    同族：**生成器不得抹掉人工/前序步骤的成果**）② `S6` 出口一次性面对全量 `missing`。
+    ⇒ **只结转 status/behavior_level/test_ids/evidence**（流转四元组）；其余字段仍按本次
+    成员集重新派生（`descriptor`/`owner`/`category` 可能因修真而变更，**以最新派生为准**）。
+    """
+    entry = existing.get(member)
+    if entry is None:
+        return None
+    return {
+        "status": entry.get("status", "missing"),
+        "behavior_level": entry.get("behavior_level", "stub"),
+        "test_ids": list(entry.get("test_ids") or []),
+        "evidence": entry.get("evidence", ""),
+    }
+
+
 def main(argv: list[str] | None = None) -> int:
     """读成员集 ⇒ 写九字段 manifest 种子。
 
@@ -134,25 +154,33 @@ def main(argv: list[str] | None = None) -> int:
             f"[seed] 拒绝写入 {args.out}：分母已冻结（{frozen_entries} 条），而本次成员集只有 "
             f"{len(members)} 条 ⇒ **缩减分母须 `ADR` 显式**（禁静默删分母）"
         )
+    # `F7` 结转：按 id 读既有条目的流转四元组（**生成器不得抹掉前序流转**）。
+    existing_by_id: dict[str, dict[str, object]] = {}
+    if args.out.exists():
+        for entry in json.loads(args.out.read_text(encoding="utf-8")).get("entries") or []:
+            existing_by_id[str(entry["id"])] = entry
+    carried = 0
+    entries: list[dict[str, object]] = []
+    for member in members:
+        seed = build_entry(member, str(provenance.get(member, "unknown")), descriptors.get(member))
+        prior = carried_entry(member, existing_by_id)
+        if prior is not None:
+            seed.update(prior)
+            carried += 1
+        entries.append(seed)
     manifest = {
         "version": args.version,
         # `M0c` 的冻结位由**另笔显式**置真；本生成器**只保留、不覆写**（`F1`：
         # 无条件写 `False` 会把已冻结的分母静默打回未冻结 —— 静默家族原型）。
         "denominator_fixed": frozen_before,
-        "entries": [
-            build_entry(
-                member,
-                str(provenance.get(member, "unknown")),
-                descriptors.get(member),
-            )
-            for member in members
-        ],    }
+        "entries": entries,
+    }
     args.out.write_text(
         json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
     )
     print(
-        f"[seed] 写出 {args.out}：{len(manifest['entries'])} 条（status=missing；"
-        f"behavior_level=stub；source={payload.get('source')}）"
+        f"[seed] 写出 {args.out}：{len(manifest['entries'])} 条"
+        f"（结转既有流转 {carried} 条；新条目按种子默认；source={payload.get('source')}）"
     )
     if frozen_before:
         # **显名**（不静默）：冻结位被保留这件事必须出现在输出里，供人复核。

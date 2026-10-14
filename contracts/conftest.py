@@ -43,7 +43,10 @@ import pytest
 #:       2026-10-16 = 128（**G4 笔 3（ADR-0028 分母显式变更 1669 ⇒ 1698）**：F3 联合类型漏列
 #:       7 条修复判别性 + `D-S2-1` Credentials 家族在位 + `D-2` 三源独立 slug + `F10` owner 按来源族
 #:       派生 + `D-3` golden 锁类型层强制（三方对撞）⇒ +5 ⇒ **只升**）。
-COLLECTION_FLOOR = 128
+#:       2026-10-16 = 131（**G4 F7 第 0 次 manifest 真实流转**：`promote_manifest.py`（测试名
+#:       真实性校验 ⇒ 拒假流转）+ seed 按 id 结转（不抹前序流转）+ `Storage.*` 六条 verified
+#:       （behaviour，7 个真实 test_ids）+ 三条守卫测 ⇒ +3 ⇒ **只升**）。
+COLLECTION_FLOOR = 131
 
 
 def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:

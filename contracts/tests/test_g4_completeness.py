@@ -57,14 +57,22 @@ def test_seed_members_are_member_level_and_owned() -> None:
     for entry in manifest:
         assert "." in entry.id, f"{entry.id} 非成员级"
         assert entry.implementation_owner, f"{entry.id} 缺 implementation_owner"
-    assert all(e.status is EntryStatus.MISSING for e in manifest), "种子起始态应恒为 missing"
+    # `F7`：**未流转条目**恒 missing（已流转 = verified，由 promote 真实流转而来）。
+    unflowed = [e for e in manifest if e.status is not EntryStatus.VERIFIED]
+    assert all(e.status is EntryStatus.MISSING for e in unflowed), (
+        "未流转条目应恒 missing（verified 只允许来自 promote 的真实流转）"
+    )
 
 
 def test_seed_behavior_level_is_stub_without_behaviour_evidence() -> None:
-    """真集：起始 `behavior_level` 恒 `stub`（面级）⇒ 其 evidence **不得**含行为标记。"""
-    manifest = load(MANIFEST)
-    assert {e.behavior_level for e in manifest} == {BehaviorLevel.STUB}
-    for entry in manifest:  # `assert_schema_complete` 内含 `assert_behavior_evidence`
+    """真集：**未流转条目** `behavior_level` 恒 `stub`（面级）⇒ evidence **不得**含行为标记。
+
+    `F7`：已流转条目（verified）由 `promote_manifest.py` 单独升级，其行为证据由
+    `assert_behavior_evidence` 的 `BEHAVIOUR` 规则校验（本测只管未流转面）。
+    """
+    unflowed = [e for e in load(MANIFEST) if e.status is not EntryStatus.VERIFIED]
+    assert {e.behavior_level for e in unflowed} == {BehaviorLevel.STUB}
+    for entry in unflowed:  # `assert_schema_complete` 内含 `assert_behavior_evidence`
         entry.assert_behavior_evidence()
 
 
