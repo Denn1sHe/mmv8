@@ -2213,6 +2213,48 @@ mod tests {
     use super::{TIMER_MAX_FLUSH_ROUNDS, TIMER_TASKS_PER_ROUND};
 
     #[test]
+    fn no_host_try_borrow_panic() {
+        // `G3X-S3c2` 验收（Result 站点）：**强持借期内重入** ⇒ **不 panic + 具名错误**。
+        // （happy path 由既有 81 测覆盖 ⇒ 默认值/错误分支不介入；此测专钉冲突分支。）
+        let mut page = BrowsingContext::new("https://a.example/").expect("new");
+        page.load(&snapshot(
+            "https://a.example/b",
+            "<body><div id=\"t\"></div></body>",
+        ))
+        .expect("load");
+        let target = page.tree().borrow().root();
+        // **强持借**（构造冲突）：持树的可变借，期内调宿主 API（其内部走 `try_borrow`）。
+        let tree = page.tree();
+        let _guard = tree.borrow_mut();
+        let err = page
+            .input_dispatch(InputKind::Click, Some(target))
+            .expect_err("冲突期应走 `try_borrow` Err 分支（不 panic）");
+        assert!(
+            matches!(err.kind(), PageErrorKind::Internal),
+            "应为具名 `Internal`（实得 {err:?}）"
+        );
+        assert!(
+            format!("{err:?}").contains("借用冲突"),
+            "消息应含「借用冲突」（实得 {err:?}）"
+        );
+    }
+
+    #[test]
+    #[should_panic(expected = "借用冲突")]
+    fn sink_conflict_is_detected_loudly() {
+        // `G3X-S3c2` 验收（⑥ 非 Result，(β)）：冲突 ⇒ **debug 下响亮断言**（= 本测即 `should_panic`），
+        // **release 取保守默认、不 panic**（口径见 `sink.rs::tree_mut` 文档）。
+        use html5ever::tendril::StrTendril;
+        use html5ever::tree_builder::{NodeOrText, TreeSink as _};
+        let tree = NodeTree::new();
+        let root = tree.root();
+        let rc = std::rc::Rc::new(std::cell::RefCell::new(tree));
+        let mut sink = crate::sink::DomSink::new(std::rc::Rc::clone(&rc));
+        let _guard = rc.borrow_mut();
+        sink.append(&root, NodeOrText::AppendText(StrTendril::from("x")));
+    }
+
+    #[test]
     fn timer_fires_after_n_rounds() {
         // G3X-S3a：17 个到期定时器 + 预算 **16/轮** ⇒ **第 2 轮**收束（1 轮 16 + 2 轮 1）。
         // 判别性：预算若未生效 ⇒ 1 轮跑完（rounds == 1）；同步实现 ⇒ 入队即触发（fired 早已 > 0）。
