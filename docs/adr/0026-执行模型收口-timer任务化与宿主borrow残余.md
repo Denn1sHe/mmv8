@@ -27,7 +27,7 @@
 - **✅ 定裁（§6-2，2026-10-14）**：**粒度 = 每 `<script>` = 一宏任务**（**非每语句**）；**微任务接入点 = 每宏任务边界的 V8 checkpoint**（**复用既有微任务机制**，**G1 面**）。
 
 ### 决策 3 —— `G3X-S3c`：宿主 `try_borrow` 残余
-- **形态（措辞精化 · 主理人 2026-10-14）**：`resolve` **必在释放 `NodeTree` 可变借用之后**（§7 docx:189 口径）；**「宿主驱动路径上的任何 `Rc<RefCell>` 取借一律 `try_borrow`」**（**意图收窄** —— **非**字面「任何」；**可判定错误、不 panic**）—— 沿 **S12/S13 门面**口径（`relayout_if_dirty` 已示范 `try_borrow` 可判定）。**范围 = 7 路径（`.borrow()`）+ 宿主驱动面 `.borrow_mut()`**（**33 处**）；**非宿主面 ⇒ 具名豁免**（**2 处**；见 §6-3）。
+- **形态（措辞精化 · 主理人 2026-10-14）**：`resolve` **必在释放 `NodeTree` 可变借用之后**（§7 docx:189 口径）；**「宿主驱动路径上的任何 `Rc<RefCell>` 取借一律 `try_borrow`」**（**意图收窄** —— **非**字面「任何」；**可判定错误、不 panic**）—— 沿 **S12/S13 门面**口径（`relayout_if_dirty` 已示范 `try_borrow` 可判定）。**范围 = 7 路径（`.borrow()`）+ 宿主驱动面 `.borrow_mut()`（35 处，经核全部属宿主面 ⇒ 无豁免项；见 §6-3）**。
 - **备选**：A 保留 `borrow()`（**否决**：panic 面）；**B 全改 `try_borrow` + 可判定错误（选定）**。
 
 ## §3 验收（**可推导期望值 + 负对照**）
@@ -37,7 +37,7 @@
 | 3.1 | `timer_fires_after_n_rounds` | **第 N 轮**触发（N 钉死；**预算 `16`/轮 · 冲刷 ≤ `64`**，§6-1） | 同步实现 ⇒ 轮次不符 |
 | 3.2 | `timer_does_not_block_load` | `load` 期间**轮不抢**（预算生效） | 阻塞 ⇒ `load` 延后 |
 | 3.3 | `task_queue_ordering` | **严格按序** + 微任务边界 | 乱序 ⇒ 红 |
-| 3.4 | `no_host_try_borrow_panic` | **7 路径（`.borrow()`）+ 宿主驱动面 `.borrow_mut()`（33 处）** 全覆盖；无 panic + 期望值 | 保留 `borrow` / `borrow_mut` ⇒ panic |
+| 3.4 | `no_host_try_borrow_panic` | **7 路径（`.borrow()`）+ 宿主驱动面 `.borrow_mut()`（35 处）** 全覆盖；无 panic + 期望值 | 保留 `borrow` / `borrow_mut` ⇒ panic |
 
 ## §4 风险
 
@@ -95,10 +95,9 @@
 
 | 归类 | 站点（产品码） | 处置 |
 |---|---|---|
-| **宿主驱动面** | `page.rs` **14**（`timers`/`completed`/`writes`/`fetch_table`/`fetch_queue`/`deferred` 等宿主存储）· `sink.rs` **16**（`TreeSink` 回调内 `self.tree.borrow_mut()`，与 ⑥ 同面）· `input.rs` **1**（`activation`）· `stylo_host/mod.rs` **2**（`ensure_data`/`clear_data` —— **与 ⑦ 同 `RefCell<ElementDataWrapper>`**） | **转换**（共 **33 处**） |
-| **非宿主面（具名豁免）** | `opaque.rs:86`/`:91`（**thread-local `SIDE` 作用域内持借**；非宿主存储） | **豁免**（**附条件**：若实证「**嵌套 `SIDE.with` 可达**」⇒ **改判转换**） |
+| **宿主驱动面 ⇒ 转换** | `page.rs` **14**（`timers`/`completed`/`writes`/`fetch_table`/`fetch_queue`/`deferred` 等宿主存储）· `sink.rs` **16**（`TreeSink` 回调内 `self.tree.borrow_mut()`，与 ⑥ 同面）· `input.rs` **1**（`activation`）· `stylo_host/mod.rs` **2**（`ensure_data`/`clear_data` —— **与 ⑦ 同 `RefCell<ElementDataWrapper>`**）· **`opaque.rs:86`/`:91`**（`with_side`/`reset` 的**调用者 = `stylo_host`** —— `opaque()` @ `mod.rs:479`、`rehydrate` @ `dom.rs:426` ⇒ **同属宿主驱动面**） | **全部 35 处** |
 
-**豁免名单（具名，唯二）**：**`opaque.rs:86`**、**`opaque.rs:91`**；**其余 33 处均在 `S3c` 转换面内**。
+**✅ 经核，无豁免项**：`.borrow_mut()` **35 处全属宿主驱动面** ⇒ **全部转换**。（`opaque.rs:86`/`:91` 原列**豁免候选**，经核其**调用者在 resolve/匹配面** ⇒ **改判转换**。）
 
 **与测试对账（✅ 架构师定）**：`§3.4 no_host_try_borrow_panic` **由「5 路径」扩为「7 路径 + 伴生族（`borrow_mut` 35 处）」**（**`borrow` / `borrow_mut` 叠加 = panic 面同源**），按上表逐路径覆盖。
 **诚实边界**：站点为**源级枚举**（`grep` 可复现）；「是否宿主驱动」为**分类判断**（依据调用链与重入可能，非机器可判定）；如与架构师口径不符，**以架构师核可为准**。
