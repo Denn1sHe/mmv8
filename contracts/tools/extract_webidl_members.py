@@ -75,7 +75,42 @@ class Extraction:
 
 def _strip_comments(text: str) -> str:
     """剔除块注释与行注释（**字符串字面量内的 `//` 可忽略**——IDL 中罕见且不影响成员名）。"""
-    return _LINE_COMMENT.sub("", _BLOCK_COMMENT.sub("", text))
+    return _strip_default_values(_LINE_COMMENT.sub("", _BLOCK_COMMENT.sub("", text)))
+
+
+_DEFAULT_VALUE = re.compile(r"=\s*([\[\{])")
+
+
+def _strip_default_values(text: str) -> str:
+    """剥离默认值中的 ``= {…}`` / ``= […]`` 字面量（**括号配平必须先过此关**）。
+
+    **为何必需**：IDL 形如 ``constructor(optional X o = {});`` —— 该 ``{}`` 会被
+    ``_interface_bodies`` 的朴素配平**误计** ⇒ body 提前闭合 ⇒ **后续成员静默丢失**
+    （实测事故：``encoding.idl`` 的 ``TextDecoder`` 只抽到 0 个成员）。
+    """
+    out: list[str] = []
+    index = 0
+    while True:
+        match = _DEFAULT_VALUE.search(text, index)
+        if match is None:
+            out.append(text[index:])
+            return "".join(out)
+        out.append(text[index : match.start()])
+        open_char = match.group(1)
+        close_char = "}" if open_char == "{" else "]"
+        depth = 0
+        scan = match.start(1)
+        while scan < len(text):
+            char = text[scan]
+            if char == open_char:
+                depth += 1
+            elif char == close_char:
+                depth -= 1
+                if depth == 0:
+                    break
+            scan += 1
+        out.append("= EMPTY")  # 以无害占位替换字面量（保留 `=` 语义、去掉括号）
+        index = scan + 1
 
 
 def _interface_bodies(text: str) -> dict[str, str]:
@@ -96,10 +131,20 @@ def _interface_bodies(text: str) -> dict[str, str]:
     return {name: "\n".join(chunks) for name, chunks in bodies.items()}
 
 
-def extract_members(idl_text: str) -> tuple[str, ...]:
-    """从 IDL 文本抽出**成员级** id（`Iface.member`；属性/方法/常量；排序去重）。"""
+def extract_members(
+    idl_text: str, interfaces: frozenset[str] | None = None
+) -> tuple[str, ...]:
+    """从 IDL 文本抽出**成员级** id（`Iface.member`；属性/方法/常量；排序去重）。
+
+    Args:
+        idl_text: IDL 文本。
+        interfaces: **接口自名单**（`ADR-0027 §6.2` 具名集）；``None`` = 不限。
+            **范围收窄纪律**：共用 IDL 文件（如 `html.idl`）含数千接口 ⇒ 必以自名单收窄，**不外扩**。
+    """
     members: set[str] = set()
     for iface, body in _interface_bodies(_strip_comments(idl_text)).items():
+        if interfaces is not None and iface not in interfaces:
+            continue
         for match in _ATTRIBUTE.finditer(body):
             members.add(f"{iface}.{match.group(1)}")
         for match in _CONST.finditer(body):
@@ -112,7 +157,7 @@ def extract_members(idl_text: str) -> tuple[str, ...]:
     return tuple(sorted(members))
 
 
-def extract_path(path: Path) -> Extraction:
+def extract_path(path: Path, interfaces: frozenset[str] | None = None) -> Extraction:
     """文件或目录（递归）⇒ 成员集 + 输入内容哈希。"""
     files = (
         [path]
@@ -128,7 +173,7 @@ def extract_path(path: Path) -> Extraction:
         payload = file.read_bytes()
         digest.update(file.name.encode("utf-8"))
         digest.update(payload)
-        members.update(extract_members(payload.decode("utf-8")))
+        members.update(extract_members(payload.decode("utf-8"), interfaces))
         names.append(str(file))
     return Extraction(tuple(sorted(members)), digest.hexdigest(), tuple(names))
 
@@ -152,13 +197,23 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("path", type=Path, help="IDL 文件或目录（目录 ⇒ 递归）")
     parser.add_argument("--out", type=Path, default=None, help="输出文件（默认 stdout）")
     parser.add_argument(
+        "--interfaces",
+        default=None,
+        help="接口自名单（逗号分隔；**范围收窄** —— 共用 IDL 文件必用；缺省 = 不限）",
+    )
+    parser.add_argument(
         "--source-version",
         default="未锁定（w3c/webref commit 待填）",
         help="规范快照版本（w3c/webref commit SHA）",
     )
     args = parser.parse_args(argv)
 
-    payload = build_payload(extract_path(args.path), args.source_version)
+    allow = (
+        frozenset(x.strip() for x in args.interfaces.split(",") if x.strip())
+        if args.interfaces
+        else None
+    )
+    payload = build_payload(extract_path(args.path, allow), args.source_version)
     text = json.dumps(payload, ensure_ascii=False, indent=2) + "\n"
     if args.out is None:
         sys.stdout.write(text)
