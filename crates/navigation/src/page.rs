@@ -203,6 +203,10 @@ pub struct PageShared {
     pub timers: Rc<RefCell<std::collections::BTreeMap<u64, TimerEntry>>>,
     /// 定时器 id 分配器。
     pub next_timer_id: Rc<Cell<u64>>,
+    /// **存储服务**（`G4-S1`：origin 分区；**跨导航持久** —— `localStorage` 语义）。
+    pub storage: Rc<RefCell<storage::StorageService>>,
+    /// **当前文档 origin**（存储分区键；随导航更新）。
+    pub origin: Rc<RefCell<String>>,
     /// **已触发定时器计数**（观测位）。
     pub timers_fired: Rc<Cell<u64>>,
     /// **定时器回调错误登记**（`G3X-S3b`：`eval` 的 `Err(JsError)` 显式捕获、不致命）。
@@ -363,6 +367,8 @@ impl BrowsingContext {
         let outcome = parser.feed(&snapshot.html);
         self.parser = Some(parser);
         self.shared.parser_active.set(true);
+        // `G4-S1`：存储分区键 = 当前文档 origin（随导航更新；`localStorage` 跨导航持久于同一 origin）。
+        self.shared.origin.replace(self.origin_string());
         let parsed_done = self.drain_parse(outcome)?;
         self.shared.parser_active.set(false);
         if parsed_done {
@@ -807,6 +813,8 @@ impl BrowsingContext {
     /// 安装页面桥（DOM/事件 binding + `__iv8_fetch` + JS shim）。
     fn install_page_bridge(&mut self) -> Result<(), PageError> {
         let inputs = BindingInputs {
+            storage: Rc::clone(&self.shared.storage),
+            origin: Rc::clone(&self.shared.origin),
             tree: Rc::clone(&self.shared.tree),
             mutations: Rc::clone(&self.shared.mutations),
             writes: Rc::clone(&self.shared.writes),
@@ -1218,6 +1226,8 @@ impl PageShared {
             next_timer_id: Rc::new(Cell::new(0)),
             timers_fired: Rc::new(Cell::new(0)),
             timer_errors: Rc::new(RefCell::new(Vec::new())),
+            storage: Rc::new(RefCell::new(storage::StorageService::new())),
+            origin: Rc::new(RefCell::new(String::new())),
             script_deadline: Rc::new(Cell::new(Duration::from_millis(2000))),
             deferred_base_url: RefCell::new(String::new()),
             writes: Rc::new(RefCell::new(Vec::new())),
@@ -2272,6 +2282,72 @@ mod tests {
             (geometry.offset_height - 20.0).abs() < 0.5,
             "影子内盒高应为 20px（实得 {}）",
             geometry.offset_height
+        );
+    }
+
+    #[test]
+    fn storage_surface_roundtrip_order_and_quota() {
+        // `4.1`（JS 面）：`localStorage`/`sessionStorage` 回环 + **插入序** + **配额具名错误**。
+        // 判别性：全经 **JS 面**（`String()` 转换 + `QuotaExceededError` 消息前缀）。
+        let mut page = BrowsingContext::new("https://a.example/").expect("new");
+        page.load(&snapshot(
+            "https://a.example/st",
+            "<body><script>localStorage.setItem('b', 1); localStorage.setItem('a', 2);</script></body>",
+        ))
+        .expect("load");
+        // 回环 + ToString 转换（数字 1 ⇒ "1"）
+        page.control_eval("localStorage.setItem('n', 42)")
+            .expect("set n");
+        let value = page
+            .control_eval("localStorage.getItem('n')")
+            .expect("get n");
+        assert!(
+            matches!(&value, HostValue::Str(text) if text == "42"),
+            "数字应经 String() 归一为 '42'（实得 {value:?}）"
+        );
+        // 插入序：b, a, n
+        let order = page
+            .control_eval(
+                "[localStorage.key(0), localStorage.key(1), localStorage.key(2)].join(',')",
+            )
+            .expect("order");
+        assert!(
+            matches!(&order, HostValue::Str(text) if text == "b,a,n"),
+            "key 顺序应为插入序（实得 {order:?}）"
+        );
+        // length
+        let length = page.control_eval("localStorage.length").expect("length");
+        assert!(
+            matches!(length, HostValue::Number(value) if (value - 3.0).abs() < 1e-9),
+            "length 应为 3（实得 {length:?}）"
+        );
+        // `sessionStorage` 与 `localStorage` **互不相扰**
+        let session_len = page
+            .control_eval("sessionStorage.length")
+            .expect("session len");
+        assert!(
+            matches!(session_len, HostValue::Number(value) if value == 0.0),
+            "sessionStorage 不应看到 localStorage（实得 {session_len:?}）"
+        );
+        // 配额：巨型值 ⇒ 具名 `QuotaExceededError` —— **在 JS 侧捕获**（契约面 = JS 可见名）。
+        // 注：Rust 侧 `JsError.message` 呈 `[object Object]`（**既有现象**，与 ADR-0017·D4 同族）；
+        // 故本测以 JS `catch` 取 `String(e)` 为准（契约关心的正是 JS 面）。
+        page.control_eval(
+            "try { localStorage.setItem('big', 'x'.repeat(6 * 1024 * 1024)); globalThis.__quota = 'no-throw'; } catch (e) { globalThis.__quota = String(e); }",
+        )
+        .expect("quota probe");
+        let quota = page.control_eval("globalThis.__quota").expect("read quota");
+        assert!(
+            matches!(&quota, HostValue::Str(text) if text.contains("QuotaExceededError")),
+            "JS 面应见具名 QuotaExceededError（实得 {quota:?}）"
+        );
+        // **无半态**：超配额的那次写不得留下键
+        let leftover = page
+            .control_eval("String(localStorage.getItem('big'))")
+            .expect("leftover");
+        assert!(
+            matches!(&leftover, HostValue::Str(text) if text == "null"),
+            "超配额不得留下半态（实得 {leftover:?}）"
         );
     }
 

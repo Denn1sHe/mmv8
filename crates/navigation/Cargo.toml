@@ -24,6 +24,8 @@ engine-v8 = { path = "../engine-v8", version = "0.0.0" }
 web-events = { path = "../web-events", version = "0.0.0" }
 # 内联样式。
 web-style = { path = "../web-style", version = "0.0.0" }
+# 存储面（G4-S1：StorageService / Storage）。
+storage = { path = "../storage", version = "0.0.0" }
 # 运行循环 / 双时钟 / 有界推进。
 scheduler = { path = "../scheduler", version = "0.0.0" }
 # 网络最小面（OfflineBundle / complete 语义）。

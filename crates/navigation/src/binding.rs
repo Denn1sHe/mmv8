@@ -25,6 +25,7 @@ use engine_v8::node_map::NodeMap;
 use engine_v8::realm::Realm;
 use engine_v8::{HostValue, JsHandle};
 
+use storage::StorageKind;
 use web_dom::mutation::{MutationBuffer, MutationRecord};
 use web_dom::node::{NodeId, ShadowMode};
 use web_dom::tree::NodeTree;
@@ -64,6 +65,10 @@ pub struct BindingInputs {
     pub parser_active: Rc<Cell<bool>>,
     /// 布局门面（S12：几何真值 + `getComputedStyle`；§2.5 同步读）。
     pub layout: Rc<RefCell<LayoutFacade>>,
+    /// **存储服务**（`G4-S1`：`StorageService` origin 分区；跨导航持久）。
+    pub storage: Rc<RefCell<storage::StorageService>>,
+    /// **当前文档 origin**（存储分区键；随导航更新）。
+    pub origin: Rc<RefCell<String>>,
 }
 
 /// 手写最小 JS `document` / 元素桥。
@@ -71,6 +76,18 @@ pub struct BindingInputs {
 pub struct PageBinding {
     inputs: BindingInputs,
     node_map: Rc<RefCell<NodeMap>>,
+}
+
+/// `G4-S1`：把 shim 传入的 kind 串解析为 [`StorageKind`]（非法 ⇒ 具名错误）。
+fn storage_kind(args: &[HostValue]) -> Result<StorageKind, JsError> {
+    match arg_str(args, 0).as_deref() {
+        Some("local") => Ok(StorageKind::Local),
+        Some("session") => Ok(StorageKind::Session),
+        other => Err(JsError::new(
+            JsErrorKind::Exception,
+            format!("storage kind 非法：{other:?}（应为 local/session）"),
+        )),
+    }
 }
 
 impl PageBinding {
@@ -556,6 +573,118 @@ impl PageBinding {
                 }),
             )?;
         }
+        // —— 原生原语：存储（G4-S1）——
+        {
+            let (storage, origin_ref) = (Rc::clone(&inputs.storage), Rc::clone(&inputs.origin));
+            install_global_fn(
+                realm,
+                "__iv8_storage_get",
+                2,
+                Box::new(move |_realm, args| {
+                    let kind = storage_kind(args)?;
+                    let key = arg_str(args, 1).unwrap_or_default();
+                    let origin = origin_ref.borrow().clone();
+                    let mut service = storage
+                        .try_borrow_mut()
+                        .map_err(|_| refcell_conflict("StorageService"))?;
+                    Ok(service
+                        .storage(&origin, kind)
+                        .get_item(&key)
+                        .map_or(HostValue::Null, HostValue::Str))
+                }),
+            );
+            // `setItem`：**超配额 ⇒ 具名错误**（消息前缀 = `QuotaExceededError`；与 D4 同约定）。
+            let (storage, origin_ref) = (Rc::clone(&inputs.storage), Rc::clone(&inputs.origin));
+            install_global_fn(
+                realm,
+                "__iv8_storage_set",
+                3,
+                Box::new(move |_realm, args| {
+                    let kind = storage_kind(args)?;
+                    let key = arg_str(args, 1).unwrap_or_default();
+                    let value = arg_str(args, 2).unwrap_or_default();
+                    let origin = origin_ref.borrow().clone();
+                    let mut service = storage
+                        .try_borrow_mut()
+                        .map_err(|_| refcell_conflict("StorageService"))?;
+                    // **超配额 ⇒ 返回哨兵串**：由 **shim 抛具名 `Error`**（`name = QuotaExceededError`）
+                    // —— 因引擎面 `JsError.message` 会退化为 `[object Object]`（既有现象），
+                    // 直接 `Err` 会让 JS 侧**看不到具名**（契约面要求 JS 可见名）。
+                    match service.storage(&origin, kind).set_item(&key, &value) {
+                        Ok(()) => Ok(HostValue::Str("ok".to_owned())),
+                        Err(storage::StorageError::QuotaExceeded { quota, attempted }) => Ok(
+                            HostValue::Str(format!("QuotaExceededError:{quota}:{attempted}")),
+                        ),
+                    }
+                }),
+            );
+            let (storage, origin_ref) = (Rc::clone(&inputs.storage), Rc::clone(&inputs.origin));
+            install_global_fn(
+                realm,
+                "__iv8_storage_remove",
+                2,
+                Box::new(move |_realm, args| {
+                    let kind = storage_kind(args)?;
+                    let key = arg_str(args, 1).unwrap_or_default();
+                    let origin = origin_ref.borrow().clone();
+                    let mut service = storage
+                        .try_borrow_mut()
+                        .map_err(|_| refcell_conflict("StorageService"))?;
+                    service.storage(&origin, kind).remove_item(&key);
+                    Ok(HostValue::Undefined)
+                }),
+            );
+            let (storage, origin_ref) = (Rc::clone(&inputs.storage), Rc::clone(&inputs.origin));
+            install_global_fn(
+                realm,
+                "__iv8_storage_clear",
+                1,
+                Box::new(move |_realm, args| {
+                    let kind = storage_kind(args)?;
+                    let origin = origin_ref.borrow().clone();
+                    let mut service = storage
+                        .try_borrow_mut()
+                        .map_err(|_| refcell_conflict("StorageService"))?;
+                    service.storage(&origin, kind).clear();
+                    Ok(HostValue::Undefined)
+                }),
+            );
+            let (storage, origin_ref) = (Rc::clone(&inputs.storage), Rc::clone(&inputs.origin));
+            install_global_fn(
+                realm,
+                "__iv8_storage_key",
+                2,
+                Box::new(move |_realm, args| {
+                    let kind = storage_kind(args)?;
+                    let index = arg_str(args, 1)
+                        .and_then(|raw| raw.parse::<usize>().ok())
+                        .unwrap_or(usize::MAX);
+                    let origin = origin_ref.borrow().clone();
+                    let mut service = storage
+                        .try_borrow_mut()
+                        .map_err(|_| refcell_conflict("StorageService"))?;
+                    Ok(service
+                        .storage(&origin, kind)
+                        .key(index)
+                        .map_or(HostValue::Null, HostValue::Str))
+                }),
+            );
+            let (storage, origin_ref) = (Rc::clone(&inputs.storage), Rc::clone(&inputs.origin));
+            install_global_fn(
+                realm,
+                "__iv8_storage_length",
+                1,
+                Box::new(move |_realm, args| {
+                    let kind = storage_kind(args)?;
+                    let origin = origin_ref.borrow().clone();
+                    let mut service = storage
+                        .try_borrow_mut()
+                        .map_err(|_| refcell_conflict("StorageService"))?;
+                    let length = service.storage(&origin, kind).length();
+                    Ok(HostValue::Number(length as f64))
+                }),
+            );
+        }
 
         realm.eval(SHIM)?;
         Ok(Self { inputs, node_map })
@@ -723,6 +852,9 @@ const SHIM: &str = r"
   var nGeom = g.__iv8_geom;
   var nGetComputed = g.__iv8_get_computed;
   var nDirty = g.__iv8_mark_dirty;
+  var sGet = g.__iv8_storage_get, sSet = g.__iv8_storage_set;
+  var sRemove = g.__iv8_storage_remove, sClear = g.__iv8_storage_clear;
+  var sKey = g.__iv8_storage_key, sLength = g.__iv8_storage_length;
   var nEvAdd = g.__iv8_ev_add;
   var nEvRemove = g.__iv8_ev_remove;
   var nEvClick = g.__iv8_ev_click;
@@ -742,10 +874,35 @@ const SHIM: &str = r"
   delete g.__iv8_geom;
   delete g.__iv8_get_computed;
   delete g.__iv8_mark_dirty;
+  delete g.__iv8_storage_get; delete g.__iv8_storage_set;
+  delete g.__iv8_storage_remove; delete g.__iv8_storage_clear;
+  delete g.__iv8_storage_key; delete g.__iv8_storage_length;
   delete g.__iv8_ev_add;
   delete g.__iv8_ev_remove;
   delete g.__iv8_ev_click;
   delete g.__iv8_ev_dispatch;
+
+  function makeStorage(kind) {
+    var s = {};
+    Object.defineProperty(s, 'length', { get: function () { return sLength(kind); } });
+    s.getItem = function (k) { return sGet(kind, String(k)); };
+    s.setItem = function (k, v) {
+      var r = sSet(kind, String(k), String(v));
+      if (typeof r === 'string' && r.indexOf('QuotaExceededError:') === 0) {
+        var parts = r.split(':');
+        var e = new Error('QuotaExceededError: 超出存储配额（quota=' + parts[1] + ', attempted=' + parts[2] + '）');
+        e.name = 'QuotaExceededError';
+        throw e;
+      }
+      return undefined;
+    };
+    s.removeItem = function (k) { return sRemove(kind, String(k)); };
+    s.clear = function () { return sClear(kind); };
+    s.key = function (i) { return sKey(kind, String(Number(i) >>> 0)); };
+    return s;
+  }
+  g.localStorage = makeStorage('local');
+  g.sessionStorage = makeStorage('session');
 
   function decorate(node) {
     if (node === null || typeof node !== 'object') { return node; }
@@ -873,6 +1030,8 @@ mod tests {
             .expect("realm");
         let tree = Rc::new(RefCell::new(NodeTree::new()));
         let inputs = BindingInputs {
+            storage: Rc::new(RefCell::new(storage::StorageService::new())),
+            origin: Rc::new(RefCell::new("https://a.example".to_owned())),
             tree: Rc::clone(&tree),
             mutations: Rc::new(RefCell::new(MutationBuffer::new())),
             writes: Rc::new(RefCell::new(Vec::new())),
