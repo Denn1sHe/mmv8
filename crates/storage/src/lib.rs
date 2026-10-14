@@ -347,6 +347,37 @@ mod tests {
     }
 
     #[test]
+    fn quota_is_enforced_per_bucket() {
+        // `⑥`：**申报「per-bucket」的行为证据** —— `local` 桶填满后，同 origin 的 `session` 桶仍可写。
+        // **负对照**：若配额改成 **按 origin 合计**（非 per-bucket）⇒ 本测红（`session` 写被拒）。
+        let mut service = StorageService::new();
+        let origin = "https://a.example";
+        let key = "kkkk";
+        let chunk = "x".repeat(1016);
+        let fits = STORAGE_QUOTA_BYTES / 1024;
+        {
+            let mut local = service.storage(origin, StorageKind::Local);
+            for i in 0..fits {
+                let single = format!("{key}{i:0>4}");
+                local
+                    .set_item(&single, &chunk)
+                    .unwrap_or_else(|e| panic!("第 {i} 次写不应超配额（{e:?}）"));
+            }
+        }
+        assert_eq!(
+            service.used_bytes(origin),
+            STORAGE_QUOTA_BYTES,
+            "local 桶应恰被填满"
+        );
+        // 同 origin 的 `session` 桶：**独立配额** ⇒ 仍可写（per-bucket 判据）。
+        let mut session = service.storage(origin, StorageKind::Session);
+        session
+            .set_item("s", "v")
+            .expect("session 桶应仍可写（per-bucket）");
+        assert_eq!(session.get_item("s").as_deref(), Some("v"));
+    }
+
+    #[test]
     fn quota_allows_shrinking_update() {
         // 边界正例：**缩短值的原位更新** 不因重算而误判超配额。
         let mut service = StorageService::new();

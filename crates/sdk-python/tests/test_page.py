@@ -163,6 +163,9 @@ def test_capabilities_reports_g3_surface(ctx: "iv8.Context") -> None:
     assert caps["script_interruptible"] is True
     assert caps["input_user_activation"] == "sticky_only"
     assert caps["single_realm_navigation"] is True
+    # `G4-S1` `⑥`：配额申报值 = 5 MiB（per-bucket）—— 与 Rust 侧 `capabilities_declares_storage_quota`
+    # **同字面量**（两侧任一侧值漂移 ⇒ 该侧红）。
+    assert caps["storage_quota_bytes"] == 5 * 1024 * 1024
 
 
 def test_page_geometry_is_computed(ctx: "iv8.Context") -> None:

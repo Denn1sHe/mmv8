@@ -264,6 +264,11 @@ pub struct Capabilities {
     pub input_user_activation: &'static str,
     /// 单 Realm 导航（旧 JS 全局残留 = **具名登记偏差**，ADR-0018·D2）。
     pub single_realm_navigation: bool,
+    /// 存储配额（**字节；per-bucket**）—— `G4-S1` **具名策略值**（`⑥` 申报）。
+    ///
+    /// 值源 = [`storage::STORAGE_QUOTA_BYTES`]（**单一真源**）；`§4.0` 口径：
+    /// **外部 golden 基线 = 本申报值**（**待 A 路社区实物对账**，禁自证）。
+    pub storage_quota_bytes: usize,
 }
 
 /// 页面浏览上下文。
@@ -774,6 +779,7 @@ impl BrowsingContext {
             script_interruptible: true,
             input_user_activation: "sticky_only",
             single_realm_navigation: true,
+            storage_quota_bytes: storage::STORAGE_QUOTA_BYTES,
         }
     }
 
@@ -1753,7 +1759,28 @@ mod tests {
         );
         assert!(
             caps.single_realm_navigation,
-            "single_realm_navigation（S8 对称化：与 Python 侧同 10 字段同集）"
+            "single_realm_navigation（S8 对称化：与 Python 侧同 11 字段同集）"
+        );
+    }
+
+    #[test]
+    fn capabilities_declares_storage_quota() {
+        // `⑥`：**配额上能力面** —— `storage_quota_bytes` = **5 MiB（per-bucket）** 申报值。
+        // **判别性**：此处钉**字面量**（`5 * 1024 * 1024`），**不**从 `storage::STORAGE_QUOTA_BYTES`
+        // 读回当期望（读回 = 自证，恒绿无判别力）⇒ **配额被改动 ⇒ 本测红**（须显式改 + 理由注）。
+        // **负对照**：把申报值改成 `storage::STORAGE_QUOTA_BYTES / 2` ⇒ 本测红。
+        // **per-bucket 语义**的行为证据：`crates/storage` 的 `quota_is_enforced_per_bucket`。
+        let page = BrowsingContext::new("https://a.example/").expect("new");
+        let caps = page.capabilities();
+        assert_eq!(
+            caps.storage_quota_bytes,
+            5 * 1024 * 1024,
+            "storage_quota_bytes 应为 5 MiB（per-bucket 申报值）"
+        );
+        assert_eq!(
+            caps.storage_quota_bytes,
+            storage::STORAGE_QUOTA_BYTES,
+            "申报值须与 storage 单一真源一致（防能力面与实现静默漂移）"
         );
     }
 

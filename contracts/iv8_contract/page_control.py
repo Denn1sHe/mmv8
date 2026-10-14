@@ -25,6 +25,7 @@ __all__ = [
     "JS_ERROR_KIND_NAMES",
     "CAPABILITY_KEYS",
     "CAPABILITY_VALUES",
+    "STORAGE_QUOTA_BYTES",
 ]
 
 
@@ -93,8 +94,16 @@ CAPABILITY_KEYS = frozenset(
         "script_interruptible",
         "input_user_activation",
         "single_realm_navigation",
+        "storage_quota_bytes",
     }
 )
+
+#: 存储配额申报值（`G4-S1` `⑥`）：**5 MiB，per-bucket**。
+#:
+#: 与 Rust ``storage::STORAGE_QUOTA_BYTES`` **同值**（由 ``contracts/tests/test_page_control.py``
+#: 读 Rust 源文件文本断言，非手写副本）；``§4.0`` 口径：**外部 golden 基线 = 本申报值**
+#: （**待 A 路社区实物对账**），**禁止**以实现读回当外部基线。
+STORAGE_QUOTA_BYTES = 5 * 1024 * 1024
 
 #: G3 能力面口径（施工图 §3.8；G3-B16：geometry 升为 computed、shadow_dom 开启）。
 CAPABILITY_VALUES = {
@@ -108,4 +117,5 @@ CAPABILITY_VALUES = {
     "script_interruptible": True,
     "input_user_activation": "sticky_only",
     "single_realm_navigation": True,
+    "storage_quota_bytes": STORAGE_QUOTA_BYTES,
 }

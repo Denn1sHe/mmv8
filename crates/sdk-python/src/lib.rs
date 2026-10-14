@@ -291,6 +291,8 @@ impl PyContext {
         dict.set_item("script_interruptible", caps.script_interruptible)?;
         dict.set_item("input_user_activation", caps.input_user_activation)?;
         dict.set_item("single_realm_navigation", caps.single_realm_navigation)?;
+        // `G4-S1` `⑥`：存储配额（**字节；per-bucket**）—— 与 `Capabilities.storage_quota_bytes` 同名同值。
+        dict.set_item("storage_quota_bytes", caps.storage_quota_bytes)?;
         Ok(dict.unbind())
     }
 

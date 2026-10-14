@@ -17,6 +17,7 @@ RUNLOOP_RS = REPO_ROOT / "crates" / "scheduler" / "src" / "runloop.rs"
 CONTROLLER_RS = REPO_ROOT / "crates" / "navigation" / "src" / "controller.rs"
 ERROR_RS = REPO_ROOT / "crates" / "engine-v8" / "src" / "error.rs"
 PAGE_RS = REPO_ROOT / "crates" / "navigation" / "src" / "page.rs"
+STORAGE_RS = REPO_ROOT / "crates" / "storage" / "src" / "lib.rs"
 
 
 def _text(path: Path) -> str:
@@ -47,6 +48,21 @@ def _struct_field_names(text: str, struct_decl: str) -> list[str]:
     located = re.search(re.escape(struct_decl) + r"\s*\{(?P<body>.*?)\n\}", text, re.DOTALL)
     assert located is not None, f"未能定位 {struct_decl} 的字段块"
     return re.findall(r"pub\s+([a-z_][a-z0-9_]*)\s*:", located.group("body"))
+
+
+def _rust_usize_const(text: str, name: str) -> int:
+    """从 Rust 源文件抽取 ``pub const NAME: usize = <整数乘法式>;`` 的取值。
+
+    只解析 **整数与 `*`**（**不 `eval`**）；定位不到 ⇒ 断言失败（不静默取默认）。
+    """
+    located = re.search(
+        rf"pub const {name}: usize = ([0-9]+(?:\s*\*\s*[0-9]+)*);", text
+    )
+    assert located is not None, f"未能定位 Rust 常量 {name}"
+    product = 1
+    for factor in located.group(1).split("*"):
+        product *= int(factor.strip())
+    return product
 
 
 def test_run_outcome_names_match_rust() -> None:
@@ -95,3 +111,20 @@ def test_capabilities_reports_g3_surface() -> None:
     assert values["script_interruptible"] is True
     assert values["input_user_activation"] == "sticky_only"
     assert values["single_realm_navigation"] is True
+    # `G4-S1` `⑥`：配额申报值 = 5 MiB（per-bucket）。钉**字面量**（不从 Rust 常量读回当期望）
+    # ⇒ 任一侧值漂移（Python 常量 / Rust `storage::STORAGE_QUOTA_BYTES`）⇒ 本测红。
+    assert values["storage_quota_bytes"] == 5 * 1024 * 1024
+
+
+def test_storage_quota_matches_rust_const() -> None:
+    """`⑥`：`STORAGE_QUOTA_BYTES` 与 Rust `storage::STORAGE_QUOTA_BYTES` **同值**（读 Rust 源文本）。
+
+    **不手写第二份期望**：本测解析 `crates/storage/src/lib.rs` 的常量表达式
+    （只认 `整数 * 整数 …` 乘法，**不 `eval`**），与 Python 侧申报值对撞。
+    """
+    rust = _rust_usize_const(_text(STORAGE_RS), "STORAGE_QUOTA_BYTES")
+    assert page_control.STORAGE_QUOTA_BYTES == rust, (
+        f"存储配额两侧不相等：Rust={rust} Python={page_control.STORAGE_QUOTA_BYTES}"
+    )
+    assert rust == 5 * 1024 * 1024, f"配额申报值应为 5 MiB（per-bucket），实际 {rust}"
+    assert page_control.CAPABILITY_VALUES["storage_quota_bytes"] == rust
