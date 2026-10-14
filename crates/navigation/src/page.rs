@@ -423,6 +423,8 @@ impl BrowsingContext {
         let mut outcome = RunOutcome::Idle;
         while rounds < cap {
             outcome = self.run_until(RunBudget::tasks(TIMER_TASKS_PER_ROUND))?;
+            // `G3X-S3b`（ADR-0026 §6-2）：**宏任务边界 = 微任务冲刷点**（V8 checkpoint，G1 面）。
+            self.perform_checkpoint()?;
             rounds += 1;
             if matches!(
                 outcome,
@@ -1997,6 +1999,29 @@ mod tests {
         let report = page.pump_timer_rounds(4).expect("pump");
         assert_eq!(report.fired, 3, "三个都应触发");
         assert_eq!(report.rounds, 1, "3 ≤ 16 ⇒ 一轮内收束");
+    }
+
+    #[test]
+    fn macro_task_boundary_flushes_microtasks() {
+        // G3X-S3b（ADR-0026 §6-2）：**微任务在宏任务边界冲刷**（V8 checkpoint）。
+        // 判别性：若轮边界不做冲刷 ⇒ 微任务滞留（`__m` 恒 0）。
+        let mut page = BrowsingContext::new("https://a.example/").expect("new");
+        page.load(&snapshot("https://a.example/m", "<body></body>"))
+            .expect("load");
+        page.control_eval("globalThis.__m = 0").expect("init");
+        page.control_eval("Promise.resolve().then(function () { globalThis.__m = 1; });")
+            .expect("queue microtask");
+        let before = page.control_eval("globalThis.__m").expect("read before");
+        assert!(
+            matches!(before, HostValue::Number(value) if value == 0.0),
+            "微任务不应立即跑（Explicit 策略；实得 {before:?}）"
+        );
+        page.pump_timer_rounds(1).expect("pump");
+        let after = page.control_eval("globalThis.__m").expect("read after");
+        assert!(
+            matches!(after, HostValue::Number(value) if (value - 1.0).abs() < 1e-9),
+            "轮边界应冲刷微任务（实得 {after:?}）"
+        );
     }
 
     #[test]
