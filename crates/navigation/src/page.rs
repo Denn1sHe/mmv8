@@ -402,13 +402,18 @@ impl BrowsingContext {
             0.0
         };
         let due = self.runloop.logical_now_ms() + delay;
-        self.shared.timers.borrow_mut().insert(
-            id,
-            TimerEntry {
-                due_ms: due,
-                expr: None,
-            },
-        );
+        // `G3X-S3c2`（非 Result，(β)）：**不 panic** —— 冲突 ⇒ `debug_assert` + 不入表（保守）。
+        if let Ok(mut timers) = self.shared.timers.try_borrow_mut() {
+            timers.insert(
+                id,
+                TimerEntry {
+                    due_ms: due,
+                    expr: None,
+                },
+            );
+        } else {
+            debug_assert!(false, "schedule_timer：timers 借用冲突（宿主重入）");
+        }
         self.runloop.schedule_timer(navigation_task_token(id), due);
         id
     }
@@ -419,8 +424,13 @@ impl BrowsingContext {
     /// 返回定时器 id（可观测）。
     pub fn schedule_timer_expr(&mut self, delay_ms: f64, expr: &str) -> u64 {
         let id = self.schedule_timer(delay_ms);
-        if let Some(entry) = self.shared.timers.borrow_mut().get_mut(&id) {
-            entry.expr = Some(expr.to_owned());
+        // `G3X-S3c2`（非 Result，(β)）。
+        if let Ok(mut timers) = self.shared.timers.try_borrow_mut() {
+            if let Some(entry) = timers.get_mut(&id) {
+                entry.expr = Some(expr.to_owned());
+            }
+        } else {
+            debug_assert!(false, "schedule_timer_expr：timers 借用冲突（宿主重入）");
         }
         id
     }
@@ -566,10 +576,14 @@ impl BrowsingContext {
         options: ObserveOptions,
         callback: WeakJsHandle,
     ) -> u64 {
-        self.shared
-            .observers
-            .borrow_mut()
-            .observe(target, options, callback)
+        // `G3X-S3c2`（非 Result，(β)）：冲突 ⇒ `debug_assert` + 未注册（返回 0 句柄）。
+        self.shared.observers.try_borrow_mut().map_or_else(
+            |_| {
+                debug_assert!(false, "observe：ObserverRegistry 借用冲突（宿主重入）");
+                0
+            },
+            |mut registry| registry.observe(target, options, callback),
+        )
     }
 
     /// 交付微任务 checkpoint：**宿主前段**先交付 `MutationObserver`（copy-out），再跑 V8 微任务
@@ -658,7 +672,11 @@ impl BrowsingContext {
             .map_err(|err| {
                 PageError::new(PageErrorKind::NavigationAborted, err.message().to_owned())
             })?;
-        self.shared.completed.borrow_mut().insert(id, response);
+        self.shared
+            .completed
+            .try_borrow_mut()
+            .map_err(|_| PageError::new(PageErrorKind::Internal, "completed 借用冲突"))?
+            .insert(id, response);
         Ok(())
     }
 
@@ -748,10 +766,27 @@ impl BrowsingContext {
     pub fn close(&mut self) -> Result<(), PageError> {
         let epoch = self.shared.controller.epoch();
         self.shared.network.abort_epoch(epoch);
-        self.shared.writes.borrow_mut().clear();
-        self.shared.fetch_table.borrow_mut().entries.clear();
-        self.shared.fetch_queue.borrow_mut().clear();
-        self.shared.completed.borrow_mut().clear();
+        // `G3X-S3c2`：关闭路径（(β)）—— 冲突 ⇒ `debug_assert` + 跳过（不 panic）。
+        if let Ok(mut writes) = self.shared.writes.try_borrow_mut() {
+            writes.clear();
+        } else {
+            debug_assert!(false, "close：writes 借用冲突");
+        }
+        if let Ok(mut table) = self.shared.fetch_table.try_borrow_mut() {
+            table.entries.clear();
+        } else {
+            debug_assert!(false, "close：fetch_table 借用冲突");
+        }
+        if let Ok(mut queue) = self.shared.fetch_queue.try_borrow_mut() {
+            queue.clear();
+        } else {
+            debug_assert!(false, "close：fetch_queue 借用冲突");
+        }
+        if let Ok(mut completed) = self.shared.completed.try_borrow_mut() {
+            completed.clear();
+        } else {
+            debug_assert!(false, "close：completed 借用冲突");
+        }
         // 关闭底层 Realm（G1 `close` 语义：此后 eval 报明确错误；幂等）。
         self.plane.realm_mut().close().map_err(map_js)?;
         Ok(())
@@ -826,7 +861,10 @@ impl BrowsingContext {
                                 let module = kind == ScriptKind::Module;
                                 self.shared
                                     .deferred
-                                    .borrow_mut()
+                                    .try_borrow_mut()
+                                    .map_err(|_| {
+                                        PageError::new(PageErrorKind::Internal, "deferred 借用冲突")
+                                    })?
                                     .push(DeferredScript { node, module });
                             }
                             ScriptKind::BlockingClassic => {
@@ -993,7 +1031,14 @@ impl BrowsingContext {
 
     /// 把 `document.write` 写缓冲交给 parser（保序）。
     fn flush_writes(&mut self) {
-        let texts: Vec<String> = self.shared.writes.borrow_mut().drain(..).collect();
+        // `G3X-S3c2`（非 Result，(β)）：冲突 ⇒ `debug_assert` + 无可冲刷（保守）。
+        let texts: Vec<String> = self.shared.writes.try_borrow_mut().map_or_else(
+            |_| {
+                debug_assert!(false, "flush_writes：writes 借用冲突（宿主重入）");
+                Vec::new()
+            },
+            |mut writes| writes.drain(..).collect(),
+        );
         if texts.is_empty() {
             return;
         }
@@ -1007,7 +1052,12 @@ impl BrowsingContext {
     /// 泵 fetch 票：把 `__iv8_fetch` 登记项喂入 `NetworkService`（命中 ⇒ 就地 resolve）。
     fn pump_fetch(&mut self) -> Result<(), PageError> {
         loop {
-            let ticket = self.shared.fetch_queue.borrow_mut().pop_front();
+            let ticket = self
+                .shared
+                .fetch_queue
+                .try_borrow_mut()
+                .map_err(|_| PageError::new(PageErrorKind::Internal, "fetch_queue 借用冲突"))?
+                .pop_front();
             let Some(ticket) = ticket else {
                 return Ok(());
             };
@@ -1035,7 +1085,10 @@ impl BrowsingContext {
                 Ok(FetchOutcome::Pending(_)) => {
                     self.shared
                         .fetch_table
-                        .borrow_mut()
+                        .try_borrow_mut()
+                        .map_err(|_| {
+                            PageError::new(PageErrorKind::Internal, "fetch_table 借用冲突")
+                        })?
                         .insert(id, ticket.resolve, ticket.reject);
                 }
                 Err(err) => {
@@ -1049,9 +1102,20 @@ impl BrowsingContext {
 
     /// 解析宿主已 `complete` 的 fetch 响应（promise resolve）。
     fn resolve_completed(&mut self) -> Result<(), PageError> {
-        let done: Vec<(RequestId, Response)> = self.shared.completed.borrow_mut().drain().collect();
+        let done: Vec<(RequestId, Response)> = self
+            .shared
+            .completed
+            .try_borrow_mut()
+            .map_err(|_| PageError::new(PageErrorKind::Internal, "completed 借用冲突"))?
+            .drain()
+            .collect();
         for (id, response) in done {
-            let entry = self.shared.fetch_table.borrow_mut().remove(id);
+            let entry = self
+                .shared
+                .fetch_table
+                .try_borrow_mut()
+                .map_err(|_| PageError::new(PageErrorKind::Internal, "fetch_table 借用冲突"))?
+                .remove(id);
             if let Some((resolve, _reject)) = entry {
                 let object = build_response_object(self.plane.realm_mut(), Some(&response))
                     .map_err(map_js)?;
@@ -1359,11 +1423,19 @@ fn install_fetch(
         };
         let resolve = realm.root(*resolve)?;
         let reject = realm.root(*reject)?;
-        queue.borrow_mut().push_back(FetchTicket {
-            url,
-            resolve,
-            reject,
-        });
+        queue
+            .try_borrow_mut()
+            .map_err(|_| {
+                JsError::new(
+                    engine_v8::error::JsErrorKind::ReentrantEval,
+                    "fetch_queue 借用冲突（宿主重入）⇒ 可判定错误",
+                )
+            })?
+            .push_back(FetchTicket {
+                url,
+                resolve,
+                reject,
+            });
         Ok(HostValue::Undefined)
     });
     let id = realm.id();
@@ -1483,7 +1555,13 @@ impl TaskExecutor for PageExec<'_> {
         if source == TaskSource::Timer {
             // `G3X-S3a`：定时器到点 ⇒ 出表 + 计数；`G3X-S3b`：**有回调则在宏任务边界真跑**。
             // **借用纪律（ADR-0016）**：`remove` 的借用收束在**同语句内**（不得跨 eval 持 `timers.borrow_mut()`）。
-            let entry = self.shared.timers.borrow_mut().remove(&token.raw());
+            let entry = self.shared.timers.try_borrow_mut().map_or_else(
+                |_| {
+                    debug_assert!(false, "run_task：timers 借用冲突（宿主重入）");
+                    None
+                },
+                |mut timers| timers.remove(&token.raw()),
+            );
             if let Some(entry) = entry {
                 self.shared
                     .timers_fired
@@ -1493,10 +1571,11 @@ impl TaskExecutor for PageExec<'_> {
                     // 重入由 `runloop` 既有守卫处理；无论成败 verdict 取 `Done`（任务不重排）。
                     let plane = &mut *self.plane;
                     if let Err(err) = plane.with_page_script(|p| p.realm_mut().eval(&expr)) {
-                        self.shared
-                            .timer_errors
-                            .borrow_mut()
-                            .push(format!("timer callback eval failed: {err:?}"));
+                        if let Ok(mut errors) = self.shared.timer_errors.try_borrow_mut() {
+                            errors.push(format!("timer callback eval failed: {err:?}"));
+                        } else {
+                            debug_assert!(false, "run_task：timer_errors 借用冲突");
+                        }
                     }
                 }
             }
