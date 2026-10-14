@@ -135,6 +135,16 @@ pub struct TimerEntry {
     pub expr: Option<String>,
 }
 
+/// **defer 任务的令牌标签**（`G3X-S3b`）：与既有/未来的 `Message` 通道载荷**显式区分**
+/// （低频 32 位 = 文档序下标；高位 = 标签）——**不改 scheduler 公共枚举**（遵裁定 (b)）。
+const DEFER_TOKEN_TAG: u64 = 1 << 63;
+
+/// 由文档序下标造 **defer 任务令牌**。
+#[must_use]
+pub const fn defer_task_token(index: u64) -> TaskToken {
+    TaskToken::new(DEFER_TOKEN_TAG | index)
+}
+
 /// 由 id 造任务令牌（页面定时器面）。
 fn navigation_task_token(id: u64) -> TaskToken {
     TaskToken::new(id)
@@ -867,24 +877,23 @@ impl BrowsingContext {
         let count = self.shared.deferred.borrow().len();
         for index in 0..count {
             self.runloop
-                .schedule(TaskSource::Message, navigation_task_token(index as u64));
+                .schedule(TaskSource::Message, defer_task_token(index as u64));
         }
-        // 泵 defer 段至空（**只 Message 源**；`BudgetExhausted` 则续轮）。
+        // 泵 defer 段至空（**只 Message 源**；**每次 1 个任务** ⇒ 任务间冲刷 `document.write`，保 S13 逐脚本顺序语义）。
         loop {
-            let Self {
-                runloop,
-                shared,
-                plane,
-                ..
-            } = self;
-            let mut exec = PageExec { shared, plane };
-            let outcome = runloop
-                .run_until_sources(
-                    RunBudget::tasks(TIMER_TASKS_PER_ROUND),
-                    &[TaskSource::Message],
-                    &mut exec,
-                )
-                .map_err(PageError::from)?;
+            let outcome = {
+                let Self {
+                    runloop,
+                    shared,
+                    plane,
+                    ..
+                } = self;
+                let mut exec = PageExec { shared, plane };
+                runloop
+                    .run_until_sources(RunBudget::tasks(1), &[TaskSource::Message], &mut exec)
+                    .map_err(PageError::from)?
+            };
+            self.flush_writes();
             if !matches!(outcome, RunOutcome::BudgetExhausted) {
                 break;
             }
@@ -1357,9 +1366,14 @@ impl TaskExecutor for PageExec<'_> {
         token: TaskToken,
     ) -> Result<TaskVerdict, SchedulerError> {
         if source == TaskSource::Message {
-            // `G3X-S3b`：**defer/module 脚本 = 一宏任务**（token 携文档序下标）。
-            // **借用纪律**：先把脚本**克隆取出**（借用收束），再求值（不得跨 eval 持 `deferred.borrow()`）。
-            let index = usize::try_from(token.raw()).unwrap_or(usize::MAX);
+            // `G3X-S3b`：**defer/module 脚本 = 一宏任务**（token = `DEFER_TOKEN_TAG | 文档序下标`）。
+            // **载荷显式区分**：非 defer 标签的 Message 任务**不由本分支处理**（防与既有通道语义混淆）。
+            // **借用纪律**：先把脚本**取出**（借用收束），再求值（不得跨 eval 持 `deferred.borrow()`）。
+            let raw = token.raw();
+            if raw & DEFER_TOKEN_TAG == 0 {
+                return Ok(TaskVerdict::Done);
+            }
+            let index = usize::try_from(raw & !DEFER_TOKEN_TAG).unwrap_or(usize::MAX);
             let spec = self.shared.deferred.borrow().get(index).copied();
             if let Some(spec) = spec {
                 let text = self.shared.tree.borrow().text_content(spec.node);
@@ -1385,8 +1399,7 @@ impl TaskExecutor for PageExec<'_> {
                         .with_page_script(|p| p.realm_mut().eval_with_deadline(&text, deadline))
                         .map_err(page_err_to_sched)?;
                 }
-                // 逐脚本冲刷 `document.write` 缓冲（保 S13 顺序语义）。
-                let _ = self.shared.writes.borrow_mut().drain(..).count();
+                // `document.write` 冲刷交由**泵层**（`run_deferred_scripts`）逐任务执行（保 S13 顺序语义）。
             }
         }
         if source == TaskSource::Timer {
@@ -2140,6 +2153,107 @@ mod tests {
         assert!(
             matches!(saw, HostValue::Bool(true)),
             "classic 就地写的节点应被后续 defer 看到（classic 未被任务化）"
+        );
+    }
+
+    #[test]
+    fn deferred_runs_in_document_order_as_tasks() {
+        // T2：**≥3 个 defer** 严格文档序（防「单条过、多条乱」）。
+        // 负对照：乱序/丢脚本 ⇒ 序列不符 ⇒ 红。
+        let mut page = BrowsingContext::new("https://a.example/").expect("new");
+        page.load(&snapshot(
+            "https://a.example/d3",
+            "<body><script defer>globalThis.__ord=['d0'];</script><script defer>globalThis.__ord.push('d1');</script><script defer>globalThis.__ord.push('d2');</script></body>",
+        ))
+        .expect("load");
+        let ord = page
+            .control_eval("globalThis.__ord.join(',')")
+            .expect("read");
+        assert!(
+            matches!(&ord, HostValue::Str(text) if text == "d0,d1,d2"),
+            "三个 defer 应严格文档序（实得 {ord:?}）"
+        );
+    }
+
+    #[test]
+    fn module_script_is_async_by_default() {
+        // T3：module 与 defer **同任务序**（异步默认）。
+        let mut page = BrowsingContext::new("https://a.example/").expect("new");
+        page.load(&snapshot(
+            "https://a.example/mo",
+            "<body><script defer>globalThis.__mo=['d0'];</script><script type=\"module\">globalThis.__mo.push('m1');</script></body>",
+        ))
+        .expect("load");
+        let mo = page
+            .control_eval("globalThis.__mo.join(',')")
+            .expect("read");
+        assert!(
+            matches!(&mo, HostValue::Str(text) if text == "d0,m1"),
+            "module 应与 defer 同任务序（实得 {mo:?}）"
+        );
+    }
+
+    #[test]
+    fn dom_content_loaded_after_all_deferred() {
+        // T4：`DOMContentLoaded` **末位**（在所有 defer 之后）。
+        let mut page = BrowsingContext::new("https://a.example/").expect("new");
+        page.load(&snapshot(
+            "https://a.example/dcl",
+            "<body><script>globalThis.__seq=['classic'];document.addEventListener('DOMContentLoaded', function () { globalThis.__seq.push('DCL'); });</script><script defer>globalThis.__seq.push('d0');</script><script defer>globalThis.__seq.push('d1');</script></body>",
+        ))
+        .expect("load");
+        let seq = page
+            .control_eval("globalThis.__seq.join(',')")
+            .expect("read");
+        assert!(
+            matches!(&seq, HostValue::Str(text) if text.ends_with("DCL")),
+            "DCL 应在末位（实得 {seq:?}）"
+        );
+        assert!(
+            matches!(&seq, HostValue::Str(text) if text.contains("d0") && text.contains("d1")),
+            "defer 应已执行且在 DCL 之前（实得 {seq:?}）"
+        );
+    }
+
+    #[test]
+    fn timer_excluded_from_load_pump() {
+        // T7（**裁定 (a) 的不变量锚**）：`load` 内泵**排除 timer** ⇒ load 完成时 timer 仍未触发。
+        // 负对照：若 load 内泵包含 timer ⇒ 此处 `fired > 0`（且 S3a `timer_does_not_block_load` 会转红）。
+        let mut page = BrowsingContext::new("https://a.example/").expect("new");
+        page.schedule_timer(0.0);
+        page.load(&snapshot(
+            "https://a.example/tx",
+            "<body><script defer>globalThis.__x = 1;</script></body>",
+        ))
+        .expect("load");
+        assert_eq!(
+            page.timers_fired(),
+            0,
+            "load 内泵应排除 timer（defer 已跑但 timer 未触发）"
+        );
+        let x = page.control_eval("globalThis.__x").expect("read");
+        assert!(
+            matches!(x, HostValue::Number(value) if (value - 1.0).abs() < 1e-9),
+            "defer 仍应跑完（实得 {x:?}）"
+        );
+    }
+
+    #[test]
+    fn defer_write_after_load_is_named_error() {
+        // T6（**修正版**）：defer 任务内 `document.write` ⇒ **ADR-0017·D4 具名错误**
+        // （post-load write 被拒）；任务化后该语义**不变**。
+        // 原 T6「逐脚本可见」的前提**与 ADR-0017·D4 冲突**（我已上报修正）——post-load write 系**拒绝**语义。
+        let mut page = BrowsingContext::new("https://a.example/").expect("new");
+        let outcome = page.load(&snapshot(
+            "https://a.example/mw",
+            "<body><script defer>document.write('<div id=\"w0\"></div>');</script></body>",
+        ));
+        // post-load write ⇒ 被拒（D4）⇒ `load` 失败；**任务化后语义不变**。
+        // 注：错误文本经 eval 面呈 `[object Object]`（既有细节，非本步引入）⇒ 此处钉**拒绝语义**本身。
+        let err = outcome.expect_err("post-load document.write 应被拒（ADR-0017·D4）");
+        assert!(
+            format!("{err:?}").contains("defer/module 任务执行失败"),
+            "应经任务化错误面报出（实得 {err:?}）"
         );
     }
 
