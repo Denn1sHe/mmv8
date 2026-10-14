@@ -189,6 +189,7 @@
 > **🖥️ 远程快照留档（`REMOTE_SNAPSHOT`，2026-10-14）**：`fmt` ✅ / **病根（fontconfig）除** / `uv 0.13.1` ✅ / **`test` 搁置** / **`deny` + `geiger` 未装** / **`clippy` 挂起未取证** —— **改日可续**（pivot：本地优先，远程挂起）。
 > **✅ G3 本地验收 = 真过（QA PASS，2026-10-14）**：报告 **`docs/qa-report-g3-2026-10-14.md`**（入库）。**8 门禁全绿**（`cargo test --workspace` **234 passed / 0 failed**；unsafe 白名单 `== PASS ==`；…）；**INJ 全表判别力成立**（注入→红→复原→绿；**含哨兵当日实战红**：INJ-2b 去 `test_` 前缀 ⇒ conftest 报「仅收集到 **59** 条 < 下界 60」）；**4 登记项描述真实性经源码/探针核实**；**零缺陷路由**。
 > **轻微偏差（非阻断，已裁）**：① **INJ-4 口径更正**——向 **Python 侧**注入**仅 Python 侧红**（Rust 侧 `capabilities_reports_g3_surface` 仍 ok；**INJ-4R 补证 Rust 侧判别力独立成立**）⇒ **安全性质不受影响**（两侧各自钉死 `"computed"`：`page.rs:1315` / `test_page_control.py:93`），属**措辞偏差**；② **R22 两条测试以「不存在」形式登记**（**非 `#[ignore]`**）⇒ **缺红哨兵**，须**显式追踪**防被误读为「已覆盖」。**候选加固**：Rust↔Python `CAPABILITY_VALUES` **值交叉断言**（排入收尾批质量清单评估，不单派单）。
+> **§3.3 定格更新（2026-10-14，收官审定）**：**§3.3 = 4/4**（几何 2 条**全绿**：`layout_invalidation_changes_geometry` [**S12-c 合验**] + `layout_only_change_leaves_computed` [**R23 修复 `12d978e` 恢复**]；主理人亲跑双绿）。**此前 §0.1.3 / §5 步表中的 `2/4` 均为中期快照**（**保留以存审计轨迹**）；**当前口径 = 4/4**。归档见 `docs/gate-report-g3-2026-10-14.md`。
 > **归属注记（`34b6bff`）**：该 docs 提交**误并入 `crates/navigation/src/page.rs` 2 行**（`element_by_id` 内移除冗余 `try_borrow` 行 —— **clippy 修正**，**已核实**）—— **不重写历史**；**归属 = 工程师 clippy 修正**（本应独立提交，重排 `--autosquash` 时并入）。
 > **S14-remote 开工（2026-10-13）**：双端复验 + geiger 基线 + **advisories 真库跑**（远程有网）。
 > **S14 保留裁定**（**正交、绿灯，无回退**）：**次序令语义 =「R23 不沉底」**（R23 修复属**第一优先**，但 S14 watchdog **独立正交** ⇒ **不回退**其绿灯）。
