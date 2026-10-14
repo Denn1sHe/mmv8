@@ -180,6 +180,9 @@
 > **覆盖率 ✅（S16，2026-10-13；主理人受管后台，51s 增量）**：`cargo llvm-cov --workspace --summary-only` ⇒ **TOTAL = 83.87%R / 73.30%F / 82.10%L**（G2 末对照 **83.47%R / 82.66%L**）。**亮点**：`style_system` 96.82R/94.34L；`web-dom/tree` 93.38R/94.50L；`web-events/dispatch` 97.84R/99.21L；`scheduler/runloop` 96.05R/96.83L；`web-style` 全件 >91%。
 > **软点（如实登记）**：`stylo_host/dom.rs` **41.69R / 38.24L**（`TElement`/`TNode` 大量方法属**引擎内部调用路径**，测试驱动不到）；`stylo_host/mod.rs` 61.17R/57.36L；`navigation/sink.rs` 46.29L（**G2 已知盲区**）；**`sdk-python` src 0%**（**惯例口径**：pytest 驱动面、Rust 插桩不达 —— G2 同款注明，**非真盲区**）；`policy/error.rs` / `web-events/error.rs` 0%（小文件）。
 > **读数**：行覆盖较 G2 **回落 0.56pp**（82.66→82.10）—— 驱动 = **新增投影层大文件的部分覆盖**（G3 净增一层）；**「是否设不回落阈值」留 QA 季评估**。**（工程师侧两次被会话边界回收 ⇒ 覆盖率由主理人受管后台完成 —— ENV 家族已录。）**
+> **📌 全量批准记录（2026-10-14）**：维护者原文「**批准你的所有请求。完成所有开发任务**」⇒ **本日提交的请求一并授权**（含 `ci.yml`）—— 落 **ADR-0005 增补**（逐条：授权日期 / 范围 / 理由）。
+> **⚠️ CI 三红案（叙事）**：**绿→红分界 = `c15e6a7`**（**S7 字体栈**，2026-10-13 10:44）⇒ **连续 4 跑红**（失败步 = **lint/clippy + `test/cargo test`（×2 矩阵）**；`deny`/`contract` **绿**；注解 **exit 101**）；**根因 = `ubuntu-24.04` runner 缺 `libfontconfig1-dev`**（`fontique` 构建期依赖）—— **来源 = 同病根环境依赖**（与远程机一致），**非代码回归**。**修复**：`ci.yml` 增构建依赖 + 作业头注释；**`dev-env.md` 补**「**CI（ubuntu-24.04）/ 远程构建依赖 = `pkg-config` + `libfontconfig1-dev`**」。
+> **批准甲落地**：**远程全批已启动**（非交互 apt → 全量重跑 → geiger 最终轮）。**G3 收口路线**：**远程 → QA 季**。
 > **归属注记（`34b6bff`）**：该 docs 提交**误并入 `crates/navigation/src/page.rs` 2 行**（`element_by_id` 内移除冗余 `try_borrow` 行 —— **clippy 修正**，**已核实**）—— **不重写历史**；**归属 = 工程师 clippy 修正**（本应独立提交，重排 `--autosquash` 时并入）。
 > **S14-remote 开工（2026-10-13）**：双端复验 + geiger 基线 + **advisories 真库跑**（远程有网）。
 > **S14 保留裁定**（**正交、绿灯，无回退**）：**次序令语义 =「R23 不沉底」**（R23 修复属**第一优先**，但 S14 watchdog **独立正交** ⇒ **不回退**其绿灯）。

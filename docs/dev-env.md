@@ -23,6 +23,10 @@
 
 工具链按需继续安装由 AI 自主完成（维护者已授权），限定用户级安装；系统级改动仍需决策上报。
 
+**构建期系统依赖（Linux，CI + 远程机同需）**：`pkg-config` + **`libfontconfig1-dev`**（`fontique` 构建期依赖）
+—— **缺则 Linux 构建全线红**（CI 三红案根因；`ubuntu-24.04` runner 与远程机**同一病根**）。
+非交互安装：`sudo apt-get -y install pkg-config libfontconfig1-dev`（`DEBIAN_FRONTEND=noninteractive`）。
+
 ## 为什么这样分工（回答"mac 开发的版本能不能在 Linux x86 跑"）
 
 - **源码层**：同一份 Rust 源码在 mac 与 Linux 都能编译运行，前提是遵守跨平台纪律（见 AGENTS.md）。开发在 mac 上完全没问题。
