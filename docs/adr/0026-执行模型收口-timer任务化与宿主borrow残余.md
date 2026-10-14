@@ -37,7 +37,7 @@
 | 3.1 | `timer_fires_after_n_rounds` | **第 N 轮**触发（N 钉死；**预算 `16`/轮 · 冲刷 ≤ `64`**，§6-1） | 同步实现 ⇒ 轮次不符 |
 | 3.2 | `timer_does_not_block_load` | `load` 期间**轮不抢**（预算生效） | 阻塞 ⇒ `load` 延后 |
 | 3.3 | `task_queue_ordering` | **严格按序** + 微任务边界 | 乱序 ⇒ 红 |
-| 3.4 | `no_host_try_borrow_panic` | **可改的 6 路径（`.borrow()`）全覆盖 + ⑦ 具名上游约束（非漏改）** + **宿主驱动面 `.borrow_mut()`（35 处）**；无 panic + 期望值 | 保留 `borrow` / `borrow_mut` ⇒ panic |
+| 3.4 | `no_host_try_borrow_panic` | **可改的 6 路径（`.borrow()`）全覆盖 + ⑦ 具名上游约束（非漏改）** + **宿主驱动面 `.borrow_mut()`（39 处全集）**；无 panic + 期望值 | 保留 `borrow` / `borrow_mut` ⇒ panic |
 
 ## §4 风险
 
@@ -110,16 +110,16 @@
 **计数（2026-10-15 实测）**：`.borrow()` 产品码 **22**（7 路径）；`.borrow_mut()` **39**（`page.rs` 18／`sink.rs` 16／`input.rs` 1✅／`opaque.rs` 2／`stylo_host` 2）——**较 2026-10-14 的 35 增 4，系 `G3X-S3b` 新增**（如实）。
 **非 Result fallback 语义（具名）**：**不 panic + `debug_assert!` 可见 + 保守默认**（⑥/只读 getter）；各默认值**不合并**（"跳过属性" ≠ "空表" ≠ "视为有 pending"）。
 
-**伴生族（`.borrow_mut()`，同属决策 3「任何 `Rc<RefCell>` 一律 `try_borrow`」）**：产品码 = **35 处** —— `page.rs` 14 + `sink.rs` **16** + `input.rs` 1 + `layout-backend/src/opaque.rs` 2 + `stylo_host/mod.rs` **2**（含 `ensure_data` 的 `self.data.borrow_mut()`）。**初版清单只枚举 `.borrow()`，本表补齐**（`borrow_mut` 与 `borrow` 叠加 = panic 面同源）。
-**伴生族分类（架构师源级核定，2026-10-14）**：`.borrow_mut()` 产品码 **35 处** ——
+**伴生族（`.borrow_mut()`，同属决策 3「**宿主驱动路径上的任何 `Rc<RefCell>` 取借一律 `try_borrow`**」）**：产品码 = **39 处（全集）** —— `page.rs` **18** + `sink.rs` **16** + `input.rs` **1**（✅ 已转 `3d91edc`） + `layout-backend/src/opaque.rs` **2** + `stylo_host/mod.rs` **2**（含 `ensure_data`）。**注**：**较首版 35 处 **+4**，系 `S3b`（defer 任务化）新增 `page.rs` 站点**（**架构师源级复算 2026-10-15 = 38 待转 + 1 已转 = 39**）；**位置敏感 ⇒ 以「符号表」（`fn` + 行内特征）为准**。
+**伴生族分类（架构师源级核定，2026-10-14；**计数 2026-10-15 修正为 39**）**：`.borrow_mut()` 产品码 **39 处** ——
 
 | 归类 | 站点（产品码） | 处置 |
 |---|---|---|
 | **宿主驱动面 ⇒ 转换** | `page.rs` **14**（`timers`/`completed`/`writes`/`fetch_table`/`fetch_queue`/`deferred` 等宿主存储）· `sink.rs` **16**（`TreeSink` 回调内 `self.tree.borrow_mut()`，与 ⑥ 同面）· `input.rs` **1**（`activation`）· `stylo_host/mod.rs` **2**（`ensure_data`/`clear_data` —— **与 ⑦ 同 `RefCell<ElementDataWrapper>`**）· **`opaque.rs:86`/`:91`**（`with_side`/`reset` 的**调用者 = `stylo_host`** —— `opaque()` @ `mod.rs:479`、`rehydrate` @ `dom.rs:426` ⇒ **同属宿主驱动面**） | **全部 35 处** |
 
-**✅ 经核，无豁免项**：`.borrow_mut()` **35 处全属宿主驱动面** ⇒ **全部转换**。（`opaque.rs:86`/`:91` 原列**豁免候选**，经核其**调用者在 resolve/匹配面** ⇒ **改判转换**。）
+**✅ 经核，无豁免项**：`.borrow_mut()` **39 处全属宿主驱动面** ⇒ **全部转换**。（`opaque.rs:86`/`:91` 原列**豁免候选**，经核其**调用者在 resolve/匹配面** ⇒ **改判转换**。）
 
-**与测试对账（✅ 架构师定）**：`§3.4 no_host_try_borrow_panic` **由「5 路径」扩为「7 路径 + 伴生族（`borrow_mut` 35 处）」**（**`borrow` / `borrow_mut` 叠加 = panic 面同源**），按上表逐路径覆盖。
+**与测试对账（✅ 架构师定）**：`§3.4 no_host_try_borrow_panic` **由「5 路径」扩为「7 路径 + 伴生族（`borrow_mut` **39 处**）」**（**`borrow` / `borrow_mut` 叠加 = panic 面同源**），按上表逐路径覆盖。
 
 **实施记录（`S3c1` 首批，`e20da58`，2026-10-15）**：
 - **⑤ 已转**：`sdk-python/src/convert.rs:181` ⇒ **`try_borrow → JsError(ReentrantEval)`**（**错误域 `JsError` 正确**）✓（架构师源级复核）。
@@ -131,7 +131,13 @@
 **实施记录（`S3c1-b`，`36a28bd`，153 行；`S3c1` 主段收官）**：
 - **①–④ 已转**（**12 处 `try_borrow → Internal`**）｜**⑥ 已转**（**7 回调 `(β)`：保守默认 + `debug_assert`**）｜**只读 getter 口径**；**navigation 81/81、零 ignore**（主理人亲验）。
 - **📌 方法学发现（入本 `§6-3`）**：**源码行号在改造中失效** ⇒ **枚举类清单应改「符号（`fn` 名 + 行内特征）」**（**与「全仓扫查」同族**：**位置脆弱、符号稳定**）；**符号清单补丁由工程师出 ⇒ 并入本表**。**同族教训族 +1：「**清单以符号为准，勿以行号为准**」**。
-- **`S3c2` 已 GO**（**35 处 `borrow_mut`**，宿主驱动面）；**验收测试授权**（**草案先审**；含 **`debug_assert` × 测试构建的张力处理**）。
+- **`S3c2` 已 GO**（**39 处全集（38 待转 + `input` 首站已转）**，宿主驱动面）；**验收测试授权**（**草案先审**；含 **`debug_assert` × 测试构建的张力处理**）。
+
+**实施记录（`S3c2` 首站 `3d91edc`，2026-10-15）**：
+- **首站**：`navigation/src/input.rs` ⇒ **`try_borrow_mut → JsError(ReentrantEval)`**（**该文件 `.borrow_mut()` 归零** ✓）。
+- **📌 方法学发现（入族）**：**`borrow_mut` 正则批量替换不可靠**（**破坏取值位点 / 括号边界** ⇒ 语法错 / 吞 `impl` 边界）⇒ **全回退、逐站手改、每笔编译即验** ⇒ **教训族 +1：「批量替换不可信，逐站编译验证」**（**与「全仓扫查 / 清单以符号为准」同族**）。
+- **验收设计 4 条（✅ 主理人批）**：① **`Result` 具名错误**；② **⑥ `should_panic` / release 文档化**；③ **39 站覆盖**；④ **⑦ 不入测**。**拆笔 `b/c/d` 准**（**`with_tree_mut` helper 模式**）。
+- **顺序**：**符号化补丁先行**（工程师出 ⇒ **并入本表**）→ `S3c2-b/c/d`。
 **诚实边界**：站点为**源级枚举**（`grep` 可复现）；「是否宿主驱动」为**分类判断**（依据调用链与重入可能，非机器可判定）；如与架构师口径不符，**以架构师核可为准**。
 
 4. **`§6-4` 与 `S1b` 先后** = **无依赖，`S3` 不等**（**正交**；「持久槽存储」绑增量 restyle 立项）—— §4 风险行已按此改写。
