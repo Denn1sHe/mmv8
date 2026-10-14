@@ -14,7 +14,11 @@ from pathlib import Path
 
 import pytest
 
-from iv8_contract.completeness import check_completeness, load_members
+from iv8_contract.completeness import (
+    check_completeness,
+    check_denominator_golden,
+    load_members,
+)
 from iv8_contract.manifest import (
     BehaviorLevel,
     Entry,
@@ -202,7 +206,9 @@ def test_entries_carry_source_family_in_category() -> None:
     """③-(3)：**来源族随条目承载**（`category`）——同名前缀双源时防误读。"""
     manifest = load(MANIFEST)
     categories = {e.category for e in manifest}
-    assert categories == {"spec-webidl", "cdp-protocol"}, f"category 应为来源族（实得 {categories}）"
+    assert categories == {"spec-webidl", "cdp-protocol", "khronos-webgl"}, (
+        f"category 应为来源族（实得 {categories}）——`D-2`：Khronos 独立来源族"
+    )
     for entry in manifest:
         if entry.id.startswith("Storage."):
             assert entry.category in {"spec-webidl", "cdp-protocol"}, "前缀共享者须有来源族标注"
@@ -321,3 +327,76 @@ def _load_tool(name: str):
     sys.modules[spec.name] = module
     spec.loader.exec_module(module)
     return module
+
+
+# --------------------------------------------- 笔 3：ADR-0028 分母显式变更 + golden 锁
+
+
+def test_denominator_golden_matches_shipped_artifacts() -> None:
+    """**D-3 类型层**：`denominator_fixed=true` ⇒ 实物成员集必须等于 golden 锁。
+
+    判别力：golden 与 manifest/members **三方对撞** ⇒ 只改一处（偷增/偷减）必红。
+    """
+    check_denominator_golden(_CONTRACTS.parent)
+
+
+def test_union_type_members_recovered() -> None:
+    """**F3 判别力**：联合类型属性**不再被静默跳过**（旧则类型字符类不含 `()`）。
+
+    钉值 = 7 条曾丢成员**全部在位**（漏任一条 ⇒ 正则回退 ⇒ 本测红）。
+    """
+    payload = json.loads(MEMBERS.read_text(encoding="utf-8"))
+    members = set(payload["members"])
+    recovered = [
+        "AudioContext.sinkId",
+        "CanvasRenderingContext2D.fillStyle",
+        "CanvasRenderingContext2D.strokeStyle",
+        "FileReader.result",
+        "IDBCursor.source",
+        "IDBRequest.source",
+        "WebGLRenderingContext.canvas",
+    ]
+    missing = [m for m in recovered if m not in members]
+    assert not missing, f"联合类型成员缺失（抽取器正则回退？）：{missing}"
+
+
+def test_credentials_family_in_denominator() -> None:
+    """**D-S2-1**：Credentials 家族**进了分母**（此前 0 条 = S0 时少种）。"""
+    payload = json.loads(MEMBERS.read_text(encoding="utf-8"))
+    members = set(payload["members"])
+    for member in [
+        "CredentialsContainer.get",
+        "CredentialsContainer.create",
+        "CredentialsContainer.store",
+        "CredentialsContainer.preventSilentAccess",
+        "Credential.id",
+        "Credential.type",
+        "PasswordCredential.password",
+        "FederatedCredential.provider",
+    ]:
+        assert member in members, f"Credentials 家族缺成员：{member}（分母不得静默少种）"
+
+
+def test_three_sources_have_independent_slugs() -> None:
+    """**D-2**：三源 slug **互不相同**（webref 与 khronos 曾共用 `spec-webidl`）。"""
+    payload = json.loads(MEMBERS.read_text(encoding="utf-8"))
+    slugs = [str(s["source"]) for s in payload["sources"]]
+    assert len(slugs) == len(set(slugs)) == 3, f"来源 slug 须三族独立（实得 {slugs}）"
+    assert "khronos-webgl" in slugs, "Khronos 应有独立来源族"
+
+
+def test_owner_derivation_uses_source_family() -> None:
+    """**F10**：`implementation_owner` 按**来源族**派生（CDP `Storage.*` ⇒ host 而非 web-dom）。"""
+    manifest = {e.id: e for e in load(MANIFEST)}
+    assert manifest["Storage.clearDataForOrigin"].implementation_owner == "host", (
+        "CDP Storage 域方法属宿主调试面（此前误挂 web-dom）"
+    )
+    assert manifest["HTMLMediaElement.play"].implementation_owner == "graphics", (
+        "HTMLMediaElement 应归图形媒体（此前前缀不命中 ⇒ uncategorized）"
+    )
+    assert manifest["CredentialsContainer.get"].implementation_owner == "engine-v8", (
+        "Credentials 家族归密码/安全与权限"
+    )
+    owners = [e.implementation_owner for e in manifest.values()]
+    assert "uncategorized" not in owners, "族归属应全覆盖（uncategorized = 显名不猜的兜底）"
+

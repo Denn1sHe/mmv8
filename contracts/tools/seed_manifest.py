@@ -30,9 +30,12 @@ from pathlib import Path
 #: 族归属（`ADR-0027 §6.2` 六行）——按接口名前缀匹配（**顺序敏感，先具体后一般**）。
 FAMILY_OWNERS: tuple[tuple[tuple[str, ...], str], ...] = (
     (("IDB", "Storage", "Cache", "CookieStore"), "web-dom"),  # 存储
-    (("Crypto", "SubtleCrypto", "Algorithm", "Permission"), "engine-v8"),  # 密码 / 安全与权限
+    (("Crypto", "SubtleCrypto", "Algorithm", "Permission", "Credential", "CredentialsContainer",
+      "PasswordCredential", "FederatedCredential"),
+     "engine-v8"),  # 密码 / 安全与权限（Credentials 家族：`D-S2-1` 扩源）
     (
-        ("Canvas", "OffscreenCanvas", "WebGL", "GPU", "Audio", "Media", "WebSocket"),
+        ("Canvas", "OffscreenCanvas", "WebGL", "GPU", "Audio", "Media", "HTMLMediaElement",
+         "MediaStream", "MediaStreamTrack", "WebSocket"),
         "graphics",
     ),  # 图形媒体
     (("TextEncoder", "TextDecoder", "Blob", "File", "FileReader", "URL", "ReadableStream",
@@ -47,8 +50,17 @@ SEED_TEST_ID = "g4-seed:pending"
 TARGET_VERSION = "v0.1.4"
 
 
-def owner_for(member_id: str) -> str:
-    """按族归属定 `implementation_owner`（`§6.2`；未命中 ⇒ `uncategorized`，**显名不猜**）。"""
+def owner_for(member_id: str, source_slug: str = "") -> str:
+    """按族归属定 `implementation_owner`（`§6.2`；未命中 ⇒ `uncategorized`，**显名不猜**）。
+
+    `F10`：**来源族优先于接口名前缀** —— CDP `Storage.*`（宿主调试域方法）若只按前缀匹配
+    会误挂 `web-dom`（Web 存储 API），而它其实属**宿主调试面**（`host`）；`HTMLMediaElement.*`
+    前缀表只有 `Media` ⇒ 漏挂 `uncategorized`（应 `graphics`）。⇒ 先判来源族，再回落前缀。
+    """
+    if source_slug.startswith("cdp"):
+        return "host"  # 宿主 CDP 域方法/事件 ⇒ 宿主调试面（与 Web 存储 API 不同族）
+    if source_slug.startswith("khronos"):
+        return "graphics"  # WebGL/WebGL2 ⇒ 图形媒体
     iface = member_id.split(".", 1)[0]
     for prefixes, owner in FAMILY_OWNERS:
         if iface.startswith(prefixes):
@@ -76,7 +88,7 @@ def build_entry(member: str, source_slug: str, descriptor: str | None = None) ->
         "test_ids": [SEED_TEST_ID],
         "status": "missing",
         "evidence": f"face: {member.split('.', 1)[0]} 见 webref IDL（面级存在性；行为取证待 S1~S5）",
-        "implementation_owner": owner_for(member),
+        "implementation_owner": owner_for(member, source_slug),
         # `G4-S0b` ③-(3)：**来源族**随条目承载（同名前缀双源时防误读；见 refs/shared-prefix-report.md）。
         "category": source_slug,
     }

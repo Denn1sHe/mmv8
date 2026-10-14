@@ -1,8 +1,8 @@
 # G4-S0b 源锁 · spec-webidl
 source_version = webref@fe954a991e86c3dae5b0a85205edd7d06d8bdff2
-source_sha256  = 264c9f74f88cd3fe0d0af255330963fcf119c4bc0f431a934f5246be589a4e9f
-extracted_at   = 2026-10-14
-members        = 419
+source_sha256  = 345e6904499e559094aa9430210764a95f98d2074e458416f49651fa3eac7f86
+extracted_at   = 2026-10-15
+members        = 439
 needs_community_review = true
-method         = tools/extract_webidl_members.py /tmp/webref-idl --interfaces Storage,StorageManager,StorageBucketManager,IDBFactory,IDBDatabase,IDBTransaction,IDBObjectStore,IDBIndex,IDBCursor,IDBCursorWithValue,IDBRequest,IDBOpenDBRequest,IDBKeyRange,CacheStorage,Cache,CookieStore,Crypto,SubtleCrypto,CryptoKey,Algorithm,Permissions,PermissionStatus,CanvasRenderingContext2D,OffscreenCanvas,WebGLRenderingContext,WebGL2RenderingContext,AudioContext,AudioNode,HTMLMediaElement,MediaStream,MediaStreamTrack,WebSocket,TextEncoder,TextDecoder,Blob,File,FileReader,URL,ReadableStream,WritableStream,TransformStream,Geolocation,Notification,Clipboard --source-version webref@fe954a991e86c3dae5b0a85205edd7d06d8bdff2 --out /tmp/part1.json
+method         = tools/extract_webidl_members.py /tmp/webref-idl --interfaces Storage,StorageManager,StorageBucketManager,IDBFactory,IDBDatabase,IDBTransaction,IDBObjectStore,IDBIndex,IDBCursor,IDBCursorWithValue,IDBRequest,IDBOpenDBRequest,IDBKeyRange,CacheStorage,Cache,CookieStore,Crypto,SubtleCrypto,CryptoKey,Algorithm,Permissions,PermissionStatus,CanvasRenderingContext2D,OffscreenCanvas,WebGLRenderingContext,WebGL2RenderingContext,AudioContext,AudioNode,HTMLMediaElement,MediaStream,MediaStreamTrack,WebSocket,TextEncoder,TextDecoder,Blob,File,FileReader,URL,ReadableStream,WritableStream,TransformStream,Geolocation,Notification,Clipboard,CredentialsContainer,Credential,PasswordCredential,FederatedCredential --source-version webref@fe954a991e86c3dae5b0a85205edd7d06d8bdff2 --out /tmp/part1.json
 # 复核：按 method 重跑 ⇒ 应得同 source_sha256 与同 members 数（可证复现）。

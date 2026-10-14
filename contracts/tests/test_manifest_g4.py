@@ -31,7 +31,9 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 SHIPPED_MANIFEST = REPO_ROOT / "contracts" / "compat-manifest.json"
 SHIPPED_MEMBERS = REPO_ROOT / "contracts" / "community-v0.1.4-members.json"
 #: **冻结分母**（`S0` 封口值；此后增删须 `ADR` 显式）。
-FROZEN_DENOMINATOR = 1669
+#: `ADR-0028`（2026-10-16）：**显式变更 1669 ⇒ 1698** —— F3 联合类型漏列 7 条 +
+#: `D-S2-1` Credentials 家族扩源 22 条；抽取器正则同批修复；Khronos 独立来源族（`D-2`）。
+FROZEN_DENOMINATOR = 1698
 
 
 def _load_seed_tool():

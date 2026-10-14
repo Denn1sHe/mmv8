@@ -40,7 +40,10 @@ import pytest
 #:       2026-10-16 = 123（**G4 笔 2**：F2 merge 跨源冲突判据改 `source_version`（slug 可归并、
 #:       版本不可归并）+ merge 自测 6 条；F4 测试重名元守卫（floor 守不住"后定义覆盖"）；F6 源锁
 #:       sha256 交叉校验 + seed 缺 `descriptor` 即拒；另删 3 组重名死码 ⇒ 净 +9 ⇒ **只升**）。
-COLLECTION_FLOOR = 123
+#:       2026-10-16 = 128（**G4 笔 3（ADR-0028 分母显式变更 1669 ⇒ 1698）**：F3 联合类型漏列
+#:       7 条修复判别性 + `D-S2-1` Credentials 家族在位 + `D-2` 三源独立 slug + `F10` owner 按来源族
+#:       派生 + `D-3` golden 锁类型层强制（三方对撞）⇒ +5 ⇒ **只升**）。
+COLLECTION_FLOOR = 128
 
 
 def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:

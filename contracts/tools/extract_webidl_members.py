@@ -61,12 +61,14 @@ _INCLUDES = re.compile(r"\b([A-Za-z_]\w*)\s+includes\s+([A-Za-z_]\w*)\s*;")
 #: `interface mixin <Name>` —— **mixin 本身不是分母接口**（其成员归 includer；自身不得作接口名）。
 _MIXIN_HEAD = re.compile(r"\binterface\s+mixin\s+([A-Za-z_]\w*)")
 
-#: body 内：属性（含 `readonly`；**类型允许多词**，如 `unsigned long long`）。
+#: body 内：属性（含 `readonly`；**类型允许多词**，如 `unsigned long long`；
+#: **含联合类型**，如 `(DOMString or CanvasGradient or CanvasPattern)` —— `F3`：
+#: 旧则类型字符类不含 `()` ⇒ 联合类型属性被**静默跳过**（实测丢 7 条）。
 _ATTRIBUTE = re.compile(
-    r"\b(?:readonly\s+)?attribute\s+(?:[\w.<>?\[\]]+\s+)+([A-Za-z_]\w*)\s*;"
+    r"\b(?:readonly\s+)?attribute\s+(?:[\w.<>?\[\]()]+\s+)+([A-Za-z_]\w*)\s*;"
 )
-#: body 内：常量（**类型允许多词**，如 `unsigned short`）。
-_CONST = re.compile(r"\bconst\s+(?:[\w.<>?\[\]]+\s+)+([A-Za-z_]\w*)\s*=")
+#: body 内：常量（**类型允许多词**，如 `unsigned short`；同授联合类型）。
+_CONST = re.compile(r"\bconst\s+(?:[\w.<>?\[\]()]+\s+)+([A-Za-z_]\w*)\s*=")
 #: body 内：有名方法（**排除** `constructor`，并避开 `attribute`/`const` 误配）。
 _METHOD = re.compile(r"\b([A-Za-z_]\w*)\s*\([^;{]*\)\s*;")
 
@@ -230,12 +232,14 @@ def extract_path(path: Path, interfaces: frozenset[str] | None = None) -> Extrac
     )
 
 
-def build_payload(extraction: Extraction, source_version: str) -> dict[str, object]:
+def build_payload(
+    extraction: Extraction, source_version: str, source: str = "spec-webidl"
+) -> dict[str, object]:
     """按计划 `§4` 造产出（**必带** `needs_community_review: true`）。"""
     return {
         "members": list(extraction.members),
         "member_descriptors": extraction.descriptors,
-        "source": "spec-webidl",
+        "source": source,
         "method": " ".join(sys.argv),
         "extracted_at": date.today().isoformat(),
         "source_version": source_version,
@@ -259,6 +263,12 @@ def main(argv: list[str] | None = None) -> int:
         default="未锁定（w3c/webref commit 待填）",
         help="规范快照版本（w3c/webref commit SHA）",
     )
+    parser.add_argument(
+        "--source",
+        default="spec-webidl",
+        help="来源族 slug（`D-2`：Khronos WebGL 独立来源族 ⇒ khronos-webgl；"
+        "slug 可归并 ⇒ 跨源冲突判据以 source_version 为准，见 merge_members）",
+    )
     args = parser.parse_args(argv)
 
     allow = (
@@ -266,7 +276,7 @@ def main(argv: list[str] | None = None) -> int:
         if args.interfaces
         else None
     )
-    payload = build_payload(extract_path(args.path, allow), args.source_version)
+    payload = build_payload(extract_path(args.path, allow), args.source_version, args.source)
     text = json.dumps(payload, ensure_ascii=False, indent=2) + "\n"
     if args.out is None:
         sys.stdout.write(text)

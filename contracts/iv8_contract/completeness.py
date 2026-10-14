@@ -22,17 +22,22 @@ report.assert_ok()                                  # 违反 ⇒ ManifestError
 
 from __future__ import annotations
 
+import hashlib
 import json
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from iv8_contract.manifest import Manifest, ManifestError
+from iv8_contract.manifest import Manifest, ManifestError, load
 
 __all__ = [
     "CompletenessReport",
     "check_completeness",
     "load_members",
+    "load_golden",
+    "denominator_digest",
+    "check_denominator_golden",
+    "GOLDEN_LOCK",
 ]
 
 
@@ -99,3 +104,60 @@ def load_members(path: str | Path) -> frozenset[str]:
     if not isinstance(members, list) or not members:
         raise ManifestError(f"社区清单 {target} 的 members 必须是非空数组")
     return frozenset(str(m) for m in members)
+
+
+#: golden 锁文件（`ADR-0028 §3`：分母唯一真源；**唯一允许变更的途径 = ADR 显式**）。
+GOLDEN_LOCK = "docs/refs/denominator-golden.txt"
+
+
+def load_golden(repo_root: str | Path) -> tuple[int, str]:
+    """读 golden 锁 ⇒ `(n, sha256)`。
+
+    `D-3`：**类型层强制** —— `denominator_fixed: true` 的分母必须有**外部锚**。
+    此前它只是自声明布尔（只能证明"不再改"，不能证明"没被剪"）；golden 把
+    「分母成员集」固化成**可证哈希** ⇒ 任何增删都必须在 golden 与 manifest **同时**体现，
+    否则本校验红（**声明态 ≠ 实物态 ⇒ 红**）。
+    """
+    path = Path(repo_root) / GOLDEN_LOCK
+    if not path.is_file():
+        raise ManifestError(f"golden 锁不存在：{path}（denominator_fixed=true 必须有外部锚）")
+    fields: dict[str, str] = {}
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if "=" in line and not line.lstrip().startswith("#"):
+            key, value = line.split("=", 1)
+            fields[key.strip()] = value.strip()
+    try:
+        return int(fields["denominator_n"]), fields["denominator_sha256"]
+    except KeyError as exc:  # pragma: no cover - 由坏锁测试覆盖
+        raise ManifestError(f"golden 锁缺字段：{exc}") from exc
+
+
+def denominator_digest(members: frozenset[str]) -> str:
+    """成员集合的**稳定摘要**（与 golden 锁同口径：`sha256("\\n".join(sorted(members)))`）。"""
+    return hashlib.sha256("\n".join(sorted(members)).encode("utf-8")).hexdigest()
+
+
+def check_denominator_golden(repo_root: str | Path) -> None:
+    """**golden 锁校验**（`D-3`）：manifest 的 `denominator_fixed=true` ⇒ 成员集必须等于 golden。
+
+    三层防线中的**类型层**（另两层：写入侧 = seed 拒缩水；实物态 = 发货态断言）。
+    任一层不一致 ⇒ 本函数抛 :class:`ManifestError`（**不静默**）。
+    """
+    root = Path(repo_root)
+    manifest = load(root / "contracts" / "compat-manifest.json")
+    if not manifest.denominator_fixed:
+        return  # 未冻结 ⇒ 无 golden 义务
+    members = load_members(root / "contracts" / "community-v0.1.4-members.json")
+    expected_n, expected_sha = load_golden(root)
+    actual_ids = frozenset(entry.id for entry in manifest)
+    if actual_ids != members:
+        raise ManifestError(
+            "manifest 条目集与 community 成员集不一致（增删须 ADR 显式 + 同步 golden）"
+        )
+    digest = denominator_digest(members)
+    if len(members) != expected_n or digest != expected_sha:
+        raise ManifestError(
+            f"分母与 golden 锁不一致：实物 n={len(members)} sha={digest[:12]}… "
+            f"vs golden n={expected_n} sha={expected_sha[:12]}… "
+            "⇒ 增删分母必须 ADR 显式并同步更新 docs/refs/denominator-golden.txt"
+        )
