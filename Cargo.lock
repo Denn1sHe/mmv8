@@ -999,6 +999,7 @@ dependencies = [
  "network",
  "policy",
  "scheduler",
+ "storage",
  "web-dom",
  "web-events",
  "web-style",
