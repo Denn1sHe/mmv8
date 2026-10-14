@@ -391,7 +391,7 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "P-11 后续：::slotted 需 TElement 槽投影（web-dom 已有 assigned_nodes，但未暴露给 stylo）；:host 已真通道"]
+    #[ignore = "S5b 未闭合（已停报）：`assigned_slot` 钩子**早已存在**（stylo_host/mod.rs:610），缺口不在投影；疑在规则收集路径（`collect_host_and_slotted_rules` 未被 `resolve_element_style` 走达）"]
     fn slotted_selector_styles_slotted() {
         // R22 / P-11：影子表 `::slotted(span) { width: 60px; }` ⇒ 分发 light 子 span 宽 60。
         use crate::stylo_host::{StyloHost, build_slots};
