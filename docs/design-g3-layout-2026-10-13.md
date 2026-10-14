@@ -152,7 +152,7 @@
 > **S13 开工（2026-10-13）**：`BrowsingContext` 持 `LayoutBackend` + `relayout_if_dirty` + 导航 `reset` + `Capabilities` 更新（§4 page 两条）；**R19 残余① 口径关联**。
 > **S13 ✅ 完成（`f57fe20`，53 行）**：`PageShared.layout`（与 binding **共享门面**）+ `relayout_if_dirty`（**try_borrow 可判定错误，不 panic**）+ `load()` reset（门面重建 / 脏位归零 / UA 重装）+ **Capabilities 翻转**（`geometry: computed`、`shadow_dom: true`，G3-B16）；**navigation 62/62**（主理人复核）。**🎯「能力宣言翻身」**。
 > **⚠️ 事故登记（「静默丢测」，已捕已修）**：`test_capability_values_are_g2_documented → capabilities_reports_g3_surface` 更名时**丢 `test_` 前缀** ⇒ **pytest 不收集** ⇒ 契约 **60→59**（**永不运行、永不红**）；**主理人复核捕获**（数感 `59≠60`）；**修复在工程师处**（改名 + `uv run pytest` 验 60）。**教训句**：「**动 `contracts/` 必须 `uv run pytest`**（本机可用 —— `uv run` 即标准口径）」。
-> **防呆（✅ 已采纳，2026-10-13）**：**契约套件不变量 = 收集数下限哨兵** —— **形态**：`conftest` **`pytest_collection_modifyitems`** 钩子（收集后断言 **`len(items) >= COLLECTION_FLOOR`**，低于即**整场红**）；**`COLLECTION_FLOOR = 60` 具名常量**（注释「**仅升；降须显式改并说明理由**」，同**单调性**精神）；**排入 S14 批次首件**。**理由**：本类「静默丢测」= **判别力盲区家族**（同 R19 恒真观测：**测不出失败**）。**登记 §4 不变量行**。
+> **防呆（✅ 已采纳，2026-10-13）**：**契约套件不变量 = 收集数下限哨兵** —— **形态**：`conftest` **`pytest_collection_modifyitems`** 钩子（收集后断言 **`len(items) >= COLLECTION_FLOOR`**，低于即**整场红**）；**`COLLECTION_FLOOR = 60` 具名常量**（注释「**仅升；降须显式改并说明理由**」，同**单调性**精神）；**排入 S14 批次首件**。**理由**：本类「静默丢测」= **判别力盲区家族**（同 R19 恒真观测：**测不出失败**）。**登记 §4 不变量行**。**✅ 落地（`e566f10`，2026-10-14）**：`contracts/conftest.py` `pytest_collection_modifyitems` + **`COLLECTION_FLOOR = 60`**（注释钉死「**仅升；降须显式改并写明理由**」+ 历史注 + 触发时给**三类根因提示**）；**三跑自证**：① 60 **绿** ② 临时去 `test_` 前缀 ⇒ **红**（「仅收集到 **59** 条 < 下界 60」）③ 复原 ⇒ 60 **绿** —— **判别性 ±1**；**主理人亲验 60 passed**（已推 `origin`）。
 > **S14 开工（2026-10-13）**：模块 watchdog（U-12：模块 eval 接 deadline；`module_deadloop_terminates`）+ geiger 基线（远程）。
 > **S14 ✅（watchdog 部分，`f531613`，67 行）**：`Realm::eval_module_with_deadline`（watchdog + **粘性复位** + `Terminated`）+ 模块路径接线；测试 `module_deadline_terminates_module_deadloop`；**navigation 63/63**（主理人复核）。**🎯「脚本可中断面完整」（P-1a + U-12 双闭合）**。**「双端复验 + geiger」另列 = S14-remote 批**（R23 修复后派单）。
 > **计数口径注（QA 期统一）**：**engine-v8 `52` vs 旧 `53`** —— 口径歧义**记此一行**，**QA 期统一**（避免误判「丢测/多测」，与「收集数下限哨兵」同**单调性**精神）。
@@ -185,7 +185,8 @@
 > **批准甲落地**：**远程全批已启动**（非交互 apt → 全量重跑 → geiger 最终轮）。**G3 收口路线**：**远程 → QA 季**。
 > **📄 权威基准 docx 入库（2026-10-14 纳管）**：`docs/iv8自研运行时完整技术方案.docx`（**68.9KB，mtime 10-12 16:07** —— **两天前即在 `docs/` 本地，此前 untracked**）⇒ **评审可引原文，消除 blob 盲区**。
 > **🔀 维护者 pivot（2026-10-14）**：**远程 / Linux 搁置、本地优先** ⇒ **S14-remote = 挂起（非失败）**；**双端复验 = 维护者延期（非门禁失败）**；**G3 验收口径 = 本地**（QA 季在跑 · `software-qa-engineer` 独立本地复核）。**G4 设计输入清单（起步，≤40 行）** 见 `docs/decision-briefs/2026-10-14-G4-设计输入清单.md`（R19① / R22 / R24 专项 / U-10 残余 / 动态影子重排 / sink.rs / sdk-python 口径 ……）。
-> **⚠️ 调度遗漏（如实登记 · 主理人）**：「**收集数哨兵**」获批（`8ad3984`）后**从未派单落地 = 主理人遗漏**；**已补派**（工程在途）。**教训句**：「**批准 → 落地必须有派单痕迹**」（与「**静默丢测**」**同源**：承认 → 修复 → 入档）。
+> **⚠️ 调度遗漏（如实登记 · 主理人）**：「**收集数哨兵**」获批（`8ad3984`）后**从未派单落地 = 主理人遗漏**；**已补派**（工程在途）。**教训句**：「**批准 → 落地必须有派单痕迹**」（与「**静默丢测**」**同源**：承认 → 修复 → 入档）。**✅ 补课完成**（`e566f10` 哨兵落地，见上「防呆」行）—— **教训闭环**。
+> **🖥️ 远程快照留档（`REMOTE_SNAPSHOT`，2026-10-14）**：`fmt` ✅ / **病根（fontconfig）除** / `uv 0.13.1` ✅ / **`test` 搁置** / **`deny` + `geiger` 未装** / **`clippy` 挂起未取证** —— **改日可续**（pivot：本地优先，远程挂起）。
 > **归属注记（`34b6bff`）**：该 docs 提交**误并入 `crates/navigation/src/page.rs` 2 行**（`element_by_id` 内移除冗余 `try_borrow` 行 —— **clippy 修正**，**已核实**）—— **不重写历史**；**归属 = 工程师 clippy 修正**（本应独立提交，重排 `--autosquash` 时并入）。
 > **S14-remote 开工（2026-10-13）**：双端复验 + geiger 基线 + **advisories 真库跑**（远程有网）。
 > **S14 保留裁定**（**正交、绿灯，无回退**）：**次序令语义 =「R23 不沉底」**（R23 修复属**第一优先**，但 S14 watchdog **独立正交** ⇒ **不回退**其绿灯）。
