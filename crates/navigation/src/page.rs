@@ -581,6 +581,24 @@ impl BrowsingContext {
         })
     }
 
+    /// **拉取待投递的 `storage` 事件**（`G4-S1-c` / `§4.1s`）。
+    ///
+    /// 口径（Web Storage 规范）：事件只投递给**非写入方**文档 ⇒ 本 API 由**宿主**按 origin
+    /// 拉取后自行决定投递目标；**源文档不收自己的事件**（服务侧无监听器注册面 ⇒
+    /// 「自文档不触发」由 pull + 一次性模型保证）。跨文档派发（多文档面）**具名延后**。
+    ///
+    /// # Errors
+    /// `StorageService` 借用冲突 ⇒ [`PageErrorKind::Internal`]。
+    pub fn take_storage_events(&self) -> Result<Vec<storage::StorageEvent>, PageError> {
+        let origin = self.shared.origin.borrow().clone();
+        let mut service = self
+            .shared
+            .storage
+            .try_borrow_mut()
+            .map_err(|_| PageError::new(PageErrorKind::Internal, "StorageService 借用冲突"))?;
+        Ok(service.take_events(&origin))
+    }
+
     /// 当前就绪状态（导航生命周期）。
     #[must_use]
     pub fn ready_state(&self) -> ReadyState {
@@ -2962,5 +2980,40 @@ mod tests {
             .complete_fetch(id, Response::ok(200, Vec::new(), Vec::new()))
             .expect_err("旧代次请求应被作废");
         assert_eq!(err.kind(), PageErrorKind::NavigationAborted);
+    }
+    #[test]
+    fn page_level_storage_events_are_pullable_and_one_shot() {
+        // `§4.1s` 页面级：宿主可拉取事件 ⇒ 且**一次性**（源文档不去拉就收不到；
+        // 拉过即空 ⇒ 不会被二次投递 = 「自文档不触发」的机制面）。
+        let mut page = BrowsingContext::new("https://a.example/").expect("new");
+        page.load(&snapshot("https://a.example/doc", "<body></body>"))
+            .expect("load");
+        page.control_eval("localStorage.setItem('k','v1')")
+            .expect("set");
+        let events = page.take_storage_events().expect("take");
+        assert_eq!(events.len(), 1, "一次写入 ⇒ 一条待投递事件");
+        assert_eq!(events[0].key.as_deref(), Some("k"));
+        assert_eq!(events[0].new_value.as_deref(), Some("v1"));
+        assert_eq!(events[0].old_value, None, "新增键 ⇒ old = null");
+        assert!(
+            page.take_storage_events().expect("take again").is_empty(),
+            "二次拉取 ⇒ 空（一次性）"
+        );
+    }
+    #[test]
+    fn page_level_events_track_update_and_remove() {
+        // 更新 ⇒ old=前值；删除 ⇒ new=null（三字段口径在页面级同样成立）。
+        let mut page = BrowsingContext::new("https://a.example/").expect("new");
+        page.load(&snapshot("https://a.example/doc", "<body></body>"))
+            .expect("load");
+        page.control_eval(
+            "localStorage.setItem('k','v1'); localStorage.setItem('k','v2'); localStorage.removeItem('k')",
+        )
+        .expect("seq");
+        let events = page.take_storage_events().expect("take");
+        assert_eq!(events.len(), 3);
+        assert_eq!(events[1].old_value.as_deref(), Some("v1"));
+        assert_eq!(events[1].new_value.as_deref(), Some("v2"));
+        assert_eq!(events[2].new_value, None, "删除 ⇒ new = null");
     }
 }

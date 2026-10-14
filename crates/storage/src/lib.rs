@@ -48,6 +48,25 @@ pub enum StorageError {
     },
 }
 
+/// `storage` 事件（`G4-S1-c` / `§4.1s`）—— **纯数据**，由 `StorageService` 生成、
+/// 宿主按 origin **拉取**后投递给**非写入方**文档（规范：源文档不收自己的事件）。
+///
+/// 字段口径（Web Storage 规范）：`key = null` ⇔ `clear()`；`old_value`/`new_value`
+/// 在**新增**/**删除**时分别为 `null`。
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct StorageEvent {
+    /// 产生事件的 origin（**按 origin 隔离**——跨 origin 不得可见）。
+    pub origin: String,
+    /// 存储种类（`local` / `session`）。
+    pub kind: StorageKind,
+    /// 变更键；`None` ⇔ `clear()`。
+    pub key: Option<String>,
+    /// 旧值（新增键 ⇒ `None`）。
+    pub old_value: Option<String>,
+    /// 新值（删除键 ⇒ `None`）。
+    pub new_value: Option<String>,
+}
+
 /// 有序键值表（**插入序**；更新保持原位；`used_bytes` = `Σ(key + value)` 字节）。
 #[derive(Clone, Debug, Default)]
 struct OrderedMap {
@@ -293,6 +312,8 @@ struct Partition {
 pub struct StorageService {
     /// origin ⇒ 分区（**跨 origin 硬隔离**）。
     partitions: BTreeMap<String, Partition>,
+    /// `storage` 事件队列（**按 origin 拉取**；源文档不收自己的事件 ⇒ 无监听器注册面）。
+    events: Vec<StorageEvent>,
 }
 
 impl StorageService {
@@ -329,6 +350,30 @@ impl StorageService {
             StorageKind::Local => p.local.used_bytes,
             StorageKind::Session => p.session.used_bytes,
         })
+    }
+
+    /// **记录**一条 `storage` 事件（由句柄写入面调用；宿主随后按 origin 拉取投递）。
+    fn record(&mut self, event: StorageEvent) {
+        self.events.push(event);
+    }
+
+    /// **拉取**某 origin 的待投递 `storage` 事件（**取出即清空**——一次性投递语义）。
+    ///
+    /// 规范口径：事件只投递给**非写入方**文档 ⇒ 本服务**不持有监听器、不自行派发**
+    /// （「自文档不触发」由该 pull 模型保证：写入方若不去拉，就永远收不到）。
+    #[must_use]
+    pub fn take_events(&mut self, origin: &str) -> Vec<StorageEvent> {
+        let mut taken = Vec::new();
+        let mut kept = Vec::new();
+        for event in self.events.drain(..) {
+            if event.origin == origin {
+                taken.push(event);
+            } else {
+                kept.push(event);
+            }
+        }
+        self.events = kept;
+        taken
     }
 
     /// **导出快照**（`G4-S1-b`）：纯数据副本，**不含**任何进程内共享状态。
@@ -501,7 +546,7 @@ impl Storage<'_> {
                 bucket.and_then(|b| b.get(key)).map(str::to_owned),
             )
         };
-        let old_cost = old_value.map_or(0, |v| key.len() + v.len());
+        let old_cost = old_value.as_ref().map_or(0, |v| key.len() + v.len());
         let attempted = current - old_cost + key.len() + value.len();
         if attempted > STORAGE_QUOTA_BYTES {
             return Err(StorageError::QuotaExceeded {
@@ -512,17 +557,48 @@ impl Storage<'_> {
         self.service
             .bucket_mut(&self.origin, self.kind)
             .set(key, value);
+        // `S1-c`：`storage` 事件（`old_value` = 更新前值；新增键 ⇒ `None`）。
+        self.service.record(StorageEvent {
+            origin: self.origin.clone(),
+            kind: self.kind,
+            key: Some(key.to_owned()),
+            old_value,
+            new_value: Some(value.to_owned()),
+        });
         Ok(())
     }
 
     /// `removeItem(key)`（缺省为**空操作**，与 JS 一致）。
     pub fn remove_item(&mut self, key: &str) {
+        let old_value = self
+            .service
+            .bucket(&self.origin, self.kind)
+            .and_then(|b| b.get(key))
+            .map(str::to_owned);
         self.service.bucket_mut(&self.origin, self.kind).remove(key);
+        if old_value.is_some() {
+            // `S1-c`：只在**确有删除**时产事件（删不存在的键不产事件）。
+            self.service.record(StorageEvent {
+                origin: self.origin.clone(),
+                kind: self.kind,
+                key: Some(key.to_owned()),
+                old_value,
+                new_value: None,
+            });
+        }
     }
 
     /// `clear()`（**仅清本 `(origin, kind)` 桶**）。
     pub fn clear(&mut self) {
         self.service.bucket_mut(&self.origin, self.kind).clear();
+        // `S1-c`：`clear()` ⇒ `key = None`（规范：key 为 null 即 clear 语义）。
+        self.service.record(StorageEvent {
+            origin: self.origin.clone(),
+            kind: self.kind,
+            key: None,
+            old_value: None,
+            new_value: None,
+        });
     }
 }
 
@@ -834,5 +910,106 @@ mod tests {
         local.set_item("k", &big).expect("首次写");
         local.set_item("k", "small").expect("缩短值应允许");
         assert_eq!(local.get_item("k").as_deref(), Some("small"));
+    }
+}
+
+#[cfg(test)]
+mod event_tests {
+    use super::*;
+
+    #[test]
+    fn storage_events_carry_key_old_new() {
+        // `§4.1s`：事件三字段口径 —— 新增 ⇒ old=None；更新 ⇒ old=前值；删除 ⇒ new=None。
+        let mut service = StorageService::new();
+        let origin = "https://a.example";
+        {
+            let mut local = service.storage(origin, StorageKind::Local);
+            local.set_item("k", "v1").expect("write");
+            local.set_item("k", "v2").expect("write");
+            local.remove_item("k");
+        }
+        let events = service.take_events(origin);
+        assert_eq!(events.len(), 3, "三次变更 ⇒ 三条事件");
+        assert_eq!(events[0].key.as_deref(), Some("k"));
+        assert_eq!(events[0].old_value, None, "新增键 ⇒ old_value = null");
+        assert_eq!(events[0].new_value.as_deref(), Some("v1"));
+        assert_eq!(
+            events[1].old_value.as_deref(),
+            Some("v1"),
+            "更新 ⇒ old = 前值"
+        );
+        assert_eq!(events[1].new_value.as_deref(), Some("v2"));
+        assert_eq!(events[2].new_value, None, "删除 ⇒ new_value = null");
+        for event in &events {
+            assert_eq!(event.origin, origin);
+            assert_eq!(event.kind, StorageKind::Local);
+        }
+    }
+
+    #[test]
+    fn clear_event_has_null_key() {
+        // 规范：`clear()` ⇒ `key = null`（事件消费者据此区分"清空"与"删某键"）。
+        let mut service = StorageService::new();
+        let origin = "https://a.example";
+        {
+            let mut local = service.storage(origin, StorageKind::Local);
+            local.set_item("k", "v").expect("write");
+            local.clear();
+        }
+        let _ = service.take_events(origin); // 清掉 set/clear 前的噪声，只留最后的 clear
+        {
+            let mut local = service.storage(origin, StorageKind::Local);
+            local.clear();
+        }
+        let events = service.take_events(origin);
+        assert_eq!(events.len(), 1);
+        assert_eq!(events[0].key, None, "clear ⇒ key = null");
+    }
+
+    #[test]
+    fn removing_absent_key_emits_no_event() {
+        // 负向口径：删**不存在的键**不得产事件（否则消费者收到空变更）。
+        let mut service = StorageService::new();
+        let origin = "https://a.example";
+        {
+            let mut local = service.storage(origin, StorageKind::Local);
+            local.remove_item("nope");
+        }
+        assert!(
+            service.take_events(origin).is_empty(),
+            "删不存在的键 ⇒ 无事件"
+        );
+    }
+
+    #[test]
+    fn events_are_isolated_per_origin() {
+        // **跨 origin 隔离**：A origin 的写入不得让 B origin 拉到事件（隔离是硬约束）。
+        let mut service = StorageService::new();
+        {
+            let mut a = service.storage("https://a.example", StorageKind::Local);
+            a.set_item("k", "v").expect("write");
+        }
+        assert!(
+            service.take_events("https://b.example").is_empty(),
+            "跨 origin 不得可见事件"
+        );
+        assert_eq!(service.take_events("https://a.example").len(), 1);
+    }
+
+    #[test]
+    fn events_are_consumed_once() {
+        // **自文档不触发**的机制面：pull + 一次性 ⇒ 写入方不去拉就永远收不到；
+        // 且同一批事件不会被二次投递（消费者拉过即空）。
+        let mut service = StorageService::new();
+        let origin = "https://a.example";
+        {
+            let mut local = service.storage(origin, StorageKind::Local);
+            local.set_item("k", "v").expect("write");
+        }
+        assert_eq!(service.take_events(origin).len(), 1, "首次拉取 ⇒ 1 条");
+        assert!(
+            service.take_events(origin).is_empty(),
+            "二次拉取 ⇒ 空（一次性投递语义）"
+        );
     }
 }
