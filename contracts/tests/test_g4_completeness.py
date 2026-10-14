@@ -168,3 +168,41 @@ def test_source_lock_writer_refuses_without_sources(tmp_path: Path) -> None:
     payload.write_text(json.dumps({"members": ["A.b"]}), encoding="utf-8")
     with pytest.raises(SystemExit):
         module.main([str(payload), "--dir", str(tmp_path / "out")])
+
+
+# --------------------------------------------- 跨源消歧（G4-S0b ③：静默去重专防）
+
+
+def test_no_cross_source_id_silent_dedup() -> None:
+    """**跨源 id 全局唯一性门禁**（③-(1)）：**并集大小 == 各源成员数之和**。
+
+    判别性：若两源有同名 id 而被**集合静默去重**，并集会**小于**各源之和 ⇒ 本测红。
+    （merge 亦带**硬冲突报错**；本测是"最终产物"层的第二道。）
+    """
+    payload = json.loads(MEMBERS.read_text(encoding="utf-8"))
+    members = payload["members"]
+    provenance = payload["member_sources"]
+    total = sum(int(source["members"]) for source in payload["sources"])
+    assert len(members) == total, (
+        f"并集 {len(members)} != 各源之和 {total} ⇒ 存在**静默去重**（跨源同名 id 被吞）"
+    )
+    assert len(provenance) == len(members), "每条成员须恰有一个来源族"
+
+
+def test_shared_prefix_report_exists_and_lists_storage() -> None:
+    """③-(2)：**共享前缀报告**存在，且**显名** `Storage.`（同名前缀跨源透明化）。"""
+    report = _CONTRACTS.parent / "docs" / "refs" / "shared-prefix-report.md"
+    assert report.is_file(), "缺共享前缀报告"
+    text = report.read_text(encoding="utf-8")
+    assert "`Storage.`" in text, "应显名共享前缀 Storage."
+    assert "spec-webidl" in text and "cdp-protocol" in text, "应列各源计数"
+
+
+def test_entries_carry_source_family_in_category() -> None:
+    """③-(3)：**来源族随条目承载**（`category`）——同名前缀双源时防误读。"""
+    manifest = load(MANIFEST)
+    categories = {e.category for e in manifest}
+    assert categories == {"spec-webidl", "cdp-protocol"}, f"category 应为来源族（实得 {categories}）"
+    for entry in manifest:
+        if entry.id.startswith("Storage."):
+            assert entry.category in {"spec-webidl", "cdp-protocol"}, "前缀共享者须有来源族标注"

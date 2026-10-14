@@ -28,7 +28,9 @@ import pytest
 #:       2026-10-16 = 100（**G4-S0b**：CDP 族另源立项 —— 抽取器 + 并集 + 两源登记 + CDP 覆盖探针）。
 #:       2026-10-16 = 101（**G4-S0b**：WebGL 族 Khronos 另源 + merge 续接 provenance 修 + WebGL 覆盖探针）。
 #:       2026-10-16 = 103（**G4-S0b / U-6**：逐源锁文件落点 + 无源拒绝负对照，2 条）。
-COLLECTION_FLOOR = 103
+#:       2026-10-16 = 106（**G4-S0b ③**：跨源消歧三举措 —— 唯一性门禁（静默去重专防）/ 共享前缀报告 /
+#:       条目来源族承载，3 条）。
+COLLECTION_FLOOR = 106
 
 
 def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:

@@ -32,12 +32,26 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     members: set[str] = set()
+    provenance: dict[str, str] = {}
     sources: list[dict[str, object]] = []
     for path in args.inputs:
         payload = json.loads(path.read_text(encoding="utf-8"))
         source_members = list(payload["members"])
         if not source_members:
             raise SystemExit(f"[merge] 源 {path} 为空 ⇒ 拒绝合并（防静默丢源）")
+        # **续接已有 per-member provenance**（输入可能是已合并文件）；否则用本源的 `source`。
+        incoming: dict[str, str] = payload.get("member_sources") or {
+            member: str(payload.get("source", "unknown")) for member in source_members
+        }
+        for member in source_members:
+            slug = incoming.get(member, str(payload.get("source", "unknown")))
+            # **跨源 id 冲突 ⇒ 报错**（防"集合静默去重"吞掉一条；`G4-S0b` ③-(1)）。
+            if member in provenance and provenance[member] != slug:
+                raise SystemExit(
+                    f"[merge] id 跨源冲突：{member} 同时来自 {provenance[member]} 与 {slug}"
+                    "（**不得静默去重**——先裁决命名）"
+                )
+            provenance[member] = slug
         members.update(source_members)
         # **续接已有 `sources`**（输入本身可能是已合并文件）——否则 provenance 被**展平**（源数静默减少）。
         if payload.get("sources"):
@@ -56,6 +70,7 @@ def main(argv: list[str] | None = None) -> int:
 
     merged = {
         "members": sorted(members),
+        "member_sources": provenance,
         "source": "spec-webidl+cdp-protocol",
         "sources": sources,
         "extracted_at": date.today().isoformat(),

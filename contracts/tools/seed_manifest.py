@@ -65,7 +65,7 @@ def descriptor_for(member: str) -> str:
     # 注：`method` 与 `attribute` 的细分需**行为证据**（属 `behaviour`），故起步不冒充。
 
 
-def build_entry(member: str) -> dict[str, object]:
+def build_entry(member: str, source_slug: str) -> dict[str, object]:
     """造一条**九字段齐**的种子条目（`status=missing`，`behavior_level=stub`）。"""
     return {
         "target_version": TARGET_VERSION,
@@ -77,6 +77,8 @@ def build_entry(member: str) -> dict[str, object]:
         "status": "missing",
         "evidence": f"face: {member.split('.', 1)[0]} 见 webref IDL（面级存在性；行为取证待 S1~S5）",
         "implementation_owner": owner_for(member),
+        # `G4-S0b` ③-(3)：**来源族**随条目承载（同名前缀双源时防误读；见 refs/shared-prefix-report.md）。
+        "category": source_slug,
     }
 
 
@@ -93,11 +95,14 @@ def main(argv: list[str] | None = None) -> int:
     if not members:
         raise SystemExit("[seed] 成员集为空 ⇒ 拒绝生成（防空表假通过）")
 
+    provenance = payload.get("member_sources") or {}
     manifest = {
         "version": args.version,
         # `M0c`（`denominator_fixed: true`）**须经核可**后另笔设置（本生成器不动它）。
         "denominator_fixed": False,
-        "entries": [build_entry(member) for member in members],
+        "entries": [
+            build_entry(member, str(provenance.get(member, "unknown"))) for member in members
+        ],
     }
     args.out.write_text(
         json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
