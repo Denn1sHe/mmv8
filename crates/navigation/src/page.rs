@@ -2226,20 +2226,20 @@ mod tests {
             "var h = document.getElementById('h'); var sr = h.attachShadow({mode:'open'}); var inner = document.createElement('div'); inner.id='inner'; inner.setAttribute('style','width:60px;height:20px'); sr.appendChild(inner);",
         )
         .expect("attach+append");
+        fn find(tree: &NodeTree, node: NodeId, id: &str) -> Option<NodeId> {
+            for child in tree.children(node) {
+                if tree.get_attribute(child, "id") == Some(id) {
+                    return Some(child);
+                }
+                if let Some(found) = find(tree, child, id) {
+                    return Some(found);
+                }
+            }
+            None
+        }
         let inner = {
             let tree = page.tree();
             let tree = tree.borrow();
-            fn find(tree: &NodeTree, node: NodeId, id: &str) -> Option<NodeId> {
-                for child in tree.children(node) {
-                    if tree.get_attribute(child, "id") == Some(id) {
-                        return Some(child);
-                    }
-                    if let Some(found) = find(tree, child, id) {
-                        return Some(found);
-                    }
-                }
-                None
-            }
             let host = find(&tree, tree.root(), "h").expect("host");
             let shadow = tree.element_shadow(host).expect("shadow root");
             find(&tree, shadow, "inner").expect("inner in shadow")
