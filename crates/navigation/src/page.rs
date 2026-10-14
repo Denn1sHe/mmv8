@@ -205,6 +205,8 @@ pub struct PageShared {
     pub next_timer_id: Rc<Cell<u64>>,
     /// **存储服务**（`G4-S1`：origin 分区；**跨导航持久** —— `localStorage` 语义）。
     pub storage: Rc<RefCell<storage::StorageService>>,
+    /// **`IndexedDB` 面级表面**（`G4-S1-d`：内存后端；跨实例走快照，同 S1 口径）。
+    pub idb: Rc<RefCell<storage::idb::IdbSurface>>,
     /// **当前文档 origin**（存储分区键；随导航更新）。
     pub origin: Rc<RefCell<String>>,
     /// **已触发定时器计数**（观测位）。
@@ -876,6 +878,7 @@ impl BrowsingContext {
     fn install_page_bridge(&mut self) -> Result<(), PageError> {
         let inputs = BindingInputs {
             storage: Rc::clone(&self.shared.storage),
+            idb: Rc::clone(&self.shared.idb),
             origin: Rc::clone(&self.shared.origin),
             tree: Rc::clone(&self.shared.tree),
             mutations: Rc::clone(&self.shared.mutations),
@@ -1289,6 +1292,7 @@ impl PageShared {
             timers_fired: Rc::new(Cell::new(0)),
             timer_errors: Rc::new(RefCell::new(Vec::new())),
             storage: Rc::new(RefCell::new(storage::StorageService::new())),
+            idb: Rc::new(RefCell::new(storage::idb::IdbSurface::new())),
             origin: Rc::new(RefCell::new(String::new())),
             script_deadline: Rc::new(Cell::new(Duration::from_millis(2000))),
             deferred_base_url: RefCell::new(String::new()),
@@ -3000,6 +3004,73 @@ mod tests {
             "二次拉取 ⇒ 空（一次性）"
         );
     }
+    #[test]
+    fn idb_surface_sequence_via_js() {
+        // `§4.1c` **JS 面级序列**：open ⇒ upgradeneeded ⇒ createObjectStore ⇒ success ⇒ add ⇒ onsuccess(key)。
+        let mut page = BrowsingContext::new("https://a.example/").expect("new");
+        page.load(&snapshot("https://a.example/doc", "<body></body>"))
+            .expect("load");
+        let seq = page
+            .control_eval(
+                r"
+                (function () {
+                  var seq = [];
+                  var req = indexedDB.open('db', 1);
+                  req.onupgradeneeded = function () {
+                    seq.push('upgrade');
+                    var db = __iv8_idb_make_db(req);
+                    var store = db.createObjectStore('s');
+                    var add = store.add('v', 'k1');
+                    add.onsuccess = function () { seq.push('add:' + add.result); };
+                    __iv8_idb_add_req = add;
+                  };
+                  req.onsuccess = function () { seq.push('success'); };
+                  req.__pump();                       // ⇒ upgrade（handler 内建 store + add）
+                  req.__pump();                       // ⇒ success
+                  __iv8_idb_add_req.__pump();       // ⇒ addsuccess(key)
+                  return seq.join(',');
+                })()
+                ",
+            )
+            .expect("sequence");
+        match seq {
+            HostValue::Str(text) => {
+                assert_eq!(
+                    text, "upgrade,success,add:k1",
+                    "IDB 面级序列（实得 {text}）"
+                );
+            }
+            other => panic!("应得序列字符串（实得 {other:?}）"),
+        }
+    }
+
+    #[test]
+    fn idb_unimplemented_members_are_named_errors_in_js() {
+        // `§4.1c′` JS 面：未达成员 ⇒ **具名** `NotSupportedError`（`e.name` 可见，非静默 undefined）。
+        let mut page = BrowsingContext::new("https://a.example/").expect("new");
+        page.load(&snapshot("https://a.example/doc", "<body></body>"))
+            .expect("load");
+        let name = page
+            .control_eval(
+                r"
+                (function () {
+                  try { indexedDB.deleteDatabase('db'); return 'no-throw'; }
+                  catch (e) { return e.name + '|' + (e instanceof Error); }
+                })()
+                ",
+            )
+            .expect("unsupported");
+        match name {
+            HostValue::Str(text) => {
+                assert_eq!(
+                    text, "NotSupportedError|true",
+                    "未达成员应具名（实得 {text}）"
+                );
+            }
+            other => panic!("应得名字符串（实得 {other:?}）"),
+        }
+    }
+
     #[test]
     fn page_level_events_track_update_and_remove() {
         // 更新 ⇒ old=前值；删除 ⇒ new=null（三字段口径在页面级同样成立）。

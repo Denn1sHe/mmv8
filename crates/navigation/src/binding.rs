@@ -46,6 +46,19 @@ pub(crate) fn refcell_conflict(what: &str) -> JsError {
     )
 }
 
+/// `IdbEvent::Error` ⇒ 具名 `JsError`（`D4-M`：原生具名可达 ⇒ JS 面 `e.name` 可见）。
+fn idb_event_error(event: &storage::idb::IdbEvent) -> JsError {
+    match event {
+        storage::idb::IdbEvent::Error { name, message, .. } => {
+            JsError::named(JsErrorKind::Exception, name, message.clone())
+        }
+        other => JsError::new(
+            JsErrorKind::Internal,
+            format!("IdbSurface 返回了非错误事件：{other:?}"),
+        ),
+    }
+}
+
 /// 建 `PageBinding` 所需的共享子单元（**均由 `BrowsingContext` 持有、克隆共享**）。
 #[derive(Debug, Clone)]
 pub struct BindingInputs {
@@ -67,6 +80,8 @@ pub struct BindingInputs {
     pub layout: Rc<RefCell<LayoutFacade>>,
     /// **存储服务**（`G4-S1`：`StorageService` origin 分区；跨导航持久）。
     pub storage: Rc<RefCell<storage::StorageService>>,
+    /// `IndexedDB` 面级表面（与 `PageShared` 共享）。
+    pub idb: Rc<RefCell<storage::idb::IdbSurface>>,
     /// **当前文档 origin**（存储分区键；随导航更新）。
     pub origin: Rc<RefCell<String>>,
 }
@@ -573,6 +588,98 @@ impl PageBinding {
                 }),
             )?;
         }
+        // —— 原生原语：IndexedDB 面级（G4-S1-d）——
+        {
+            let idb = Rc::clone(&inputs.idb);
+            install_global_fn(
+                realm,
+                "__iv8_idb_open",
+                2,
+                Box::new(move |_realm, args| {
+                    let name = arg_str(args, 0).unwrap_or_default();
+                    let version = arg_str(args, 1)
+                        .and_then(|v| v.parse::<u32>().ok())
+                        .unwrap_or(1);
+                    let request = idb
+                        .try_borrow_mut()
+                        .map_err(|_| refcell_conflict("IdbSurface"))?
+                        .open(&name, version);
+                    Ok(HostValue::Str(request.to_string()))
+                }),
+            )?;
+            let idb = Rc::clone(&inputs.idb);
+            install_global_fn(
+                realm,
+                "__iv8_idb_create_store",
+                2,
+                Box::new(move |_realm, args| {
+                    let request = arg_str(args, 0)
+                        .and_then(|v| v.parse::<u64>().ok())
+                        .unwrap_or(0);
+                    let name = arg_str(args, 1).unwrap_or_default();
+                    let store = idb
+                        .try_borrow_mut()
+                        .map_err(|_| refcell_conflict("IdbSurface"))?
+                        .create_object_store(request, &name)
+                        .map_err(|event| idb_event_error(&event))?;
+                    Ok(HostValue::Str(store.to_string()))
+                }),
+            )?;
+            let idb = Rc::clone(&inputs.idb);
+            install_global_fn(
+                realm,
+                "__iv8_idb_add",
+                3,
+                Box::new(move |_realm, args| {
+                    let store = arg_str(args, 0)
+                        .and_then(|v| v.parse::<u64>().ok())
+                        .unwrap_or(0);
+                    let value = arg_str(args, 1).unwrap_or_default();
+                    let key = arg_str(args, 2);
+                    let request = idb
+                        .try_borrow_mut()
+                        .map_err(|_| refcell_conflict("IdbSurface"))?
+                        .add(store, &value, key.as_deref())
+                        .map_err(|event| idb_event_error(&event))?;
+                    Ok(HostValue::Str(request.to_string()))
+                }),
+            )?;
+            let idb = Rc::clone(&inputs.idb);
+            install_global_fn(
+                realm,
+                "__iv8_idb_pump",
+                1,
+                Box::new(move |_realm, args| {
+                    let request = arg_str(args, 0)
+                        .and_then(|v| v.parse::<u64>().ok())
+                        .unwrap_or(0);
+                    // **事件编码**：`name|key|version|database`（shim 解析后派发）。
+                    let events = idb
+                        .try_borrow_mut()
+                        .map_err(|_| refcell_conflict("IdbSurface"))?
+                        .pump(request);
+                    let encoded = events
+                        .iter()
+                        .map(|event| match event {
+                            storage::idb::IdbEvent::UpgradeNeeded { version, .. } => {
+                                format!("upgradeneeded|{version}")
+                            }
+                            storage::idb::IdbEvent::OpenSuccess { database, .. } => {
+                                format!("success|{database}")
+                            }
+                            storage::idb::IdbEvent::AddSuccess { key, .. } => {
+                                format!("addsuccess|{key}")
+                            }
+                            storage::idb::IdbEvent::Error { name, message, .. } => {
+                                format!("error|{name}|{message}")
+                            }
+                        })
+                        .collect::<Vec<_>>()
+                        .join(";");
+                    Ok(HostValue::Str(encoded))
+                }),
+            )?;
+        }
         // —— 原生原语：存储（G4-S1）——
         {
             let (storage, origin_ref) = (Rc::clone(&inputs.storage), Rc::clone(&inputs.origin));
@@ -861,6 +968,8 @@ const SHIM: &str = r"
   var sGet = g.__iv8_storage_get, sSet = g.__iv8_storage_set;
   var sRemove = g.__iv8_storage_remove, sClear = g.__iv8_storage_clear;
   var sKey = g.__iv8_storage_key, sLength = g.__iv8_storage_length;
+  var idbOpen = g.__iv8_idb_open, idbCreateStore = g.__iv8_idb_create_store;
+  var idbAdd = g.__iv8_idb_add, idbPump = g.__iv8_idb_pump;
   var nEvAdd = g.__iv8_ev_add;
   var nEvRemove = g.__iv8_ev_remove;
   var nEvClick = g.__iv8_ev_click;
@@ -883,6 +992,8 @@ const SHIM: &str = r"
   delete g.__iv8_storage_get; delete g.__iv8_storage_set;
   delete g.__iv8_storage_remove; delete g.__iv8_storage_clear;
   delete g.__iv8_storage_key; delete g.__iv8_storage_length;
+  delete g.__iv8_idb_open; delete g.__iv8_idb_create_store;
+  delete g.__iv8_idb_add; delete g.__iv8_idb_pump;
   delete g.__iv8_ev_add;
   delete g.__iv8_ev_remove;
   delete g.__iv8_ev_click;
@@ -905,6 +1016,88 @@ const SHIM: &str = r"
   }
   g.localStorage = makeStorage('local');
   g.sessionStorage = makeStorage('session');
+
+  // —— IndexedDB **面级** shim（G4-S1-d / §4.1c + §4.1c′）——
+  // 序列：open ⇒ pump ⇒ onupgradeneeded ⇒ createObjectStore ⇒ pump ⇒ onsuccess ⇒ add ⇒ pump ⇒ onsuccess(key)。
+  // **未达成员**（Transaction/Index/Cursor/getAll/…）⇒ 具名 `NotSupportedError`（逐员 missing，不吞成员）。
+  function idbUnsupported(member) {
+    var e = new Error('IndexedDB 成员 `' + member + '` 属未达面级（manifest 中逐员 missing；真实现须铁律 6 上报）');
+    e.name = 'NotSupportedError';
+    return e;
+  }
+  function makeIdbRequest(kind, handle) {
+    var req = { __handle: handle, __kind: kind, result: undefined, error: null,
+                onsuccess: null, onerror: null, onupgradeneeded: null };
+    req.__dispatch = function (encoded) {
+      if (!encoded) { return; }
+      var parts = encoded.split(';');
+      for (var i = 0; i < parts.length; i++) {
+        var f = parts[i].split('|');
+        var name = f[0];
+        if (name === 'upgradeneeded') {
+          if (typeof req.onupgradeneeded === 'function') { req.onupgradeneeded({ target: req, type: 'upgradeneeded' }); }
+        } else if (name === 'success') {
+          req.result = f[1];
+          if (typeof req.onsuccess === 'function') { req.onsuccess({ target: req, type: 'success' }); }
+        } else if (name === 'addsuccess') {
+          req.result = f[1];
+          if (typeof req.onsuccess === 'function') { req.onsuccess({ target: req, type: 'success' }); }
+        } else if (name === 'error') {
+          var err = new Error(f.slice(2).join('|'));
+          err.name = f[1];
+          req.error = err;
+          if (typeof req.onerror === 'function') { req.onerror({ target: req, type: 'error' }); }
+        }
+      }
+    };
+    return req;
+  }
+  var __idb_store_counter = 0;
+  var __idb_stores = {};
+  var indexedDB = {
+    open: function (name, version) {
+      var req = makeIdbRequest('open', idbOpen(String(name), String(Number(version) || 1)));
+      req.__pump = function () { req.__dispatch(idbPump(req.__handle)); };
+      g.__iv8_idb_last_request = req;
+      return req;
+    },
+    deleteDatabase: function () { throw idbUnsupported('IDBFactory.deleteDatabase'); },
+    cmp: function () { throw idbUnsupported('IDBFactory.cmp'); },
+    databases: function () { throw idbUnsupported('IDBFactory.databases'); }
+  };
+  g.indexedDB = indexedDB;
+  // 打开请求的数据库面（仅在 onupgradeneeded/onsuccess 期间可建 store）。
+  function makeIdbDatabase(request) {
+    return {
+      createObjectStore: function (name) {
+        var handle = idbCreateStore(String(request.__handle), String(name));
+        __idb_store_counter += 1;
+        var store = {
+          __handle: handle,
+          add: function (value, key) {
+            var r = makeIdbRequest('add', idbAdd(String(handle), String(value), key === undefined ? '' : String(key)));
+            r.__pump = function () { r.__dispatch(idbPump(r.__handle)); };
+            return r;
+          },
+          put: function () { throw idbUnsupported('IDBObjectStore.put'); },
+          get: function () { throw idbUnsupported('IDBObjectStore.get'); },
+          getAll: function () { throw idbUnsupported('IDBObjectStore.getAll'); },
+          delete: function () { throw idbUnsupported('IDBObjectStore.delete'); },
+          count: function () { throw idbUnsupported('IDBObjectStore.count'); },
+          openCursor: function () { throw idbUnsupported('IDBObjectStore.openCursor'); },
+          createIndex: function () { throw idbUnsupported('IDBObjectStore.createIndex'); },
+          transaction: function () { throw idbUnsupported('IDBObjectStore.transaction'); }
+        };
+        return store;
+      },
+      transaction: function () { throw idbUnsupported('IDBDatabase.transaction'); },
+      close: function () { throw idbUnsupported('IDBDatabase.close'); },
+      deleteObjectStore: function () { throw idbUnsupported('IDBDatabase.deleteObjectStore'); }
+    };
+  }
+  // `onupgradeneeded`/`onsuccess` 期间把 `transaction.source` 语义面接到数据库面。
+  var __idb_orig_dispatch = makeIdbRequest;
+  g.__iv8_idb_make_db = makeIdbDatabase;
 
   function decorate(node) {
     if (node === null || typeof node !== 'object') { return node; }
@@ -1033,6 +1226,7 @@ mod tests {
         let tree = Rc::new(RefCell::new(NodeTree::new()));
         let inputs = BindingInputs {
             storage: Rc::new(RefCell::new(storage::StorageService::new())),
+            idb: Rc::new(RefCell::new(storage::idb::IdbSurface::new())),
             origin: Rc::new(RefCell::new("https://a.example".to_owned())),
             tree: Rc::clone(&tree),
             mutations: Rc::new(RefCell::new(MutationBuffer::new())),

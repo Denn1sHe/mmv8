@@ -913,6 +913,8 @@ mod tests {
     }
 }
 
+pub mod idb;
+
 #[cfg(test)]
 mod event_tests {
     use super::*;
