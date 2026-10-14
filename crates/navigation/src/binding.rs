@@ -592,7 +592,7 @@ impl PageBinding {
                         .get_item(&key)
                         .map_or(HostValue::Null, HostValue::Str))
                 }),
-            );
+            )?;
             // `setItem`：**超配额 ⇒ 具名错误**（消息前缀 = `QuotaExceededError`；与 D4 同约定）。
             let (storage, origin_ref) = (Rc::clone(&inputs.storage), Rc::clone(&inputs.origin));
             install_global_fn(
