@@ -1293,6 +1293,10 @@ fn map_js(err: JsError) -> PageError {
 struct PageExec<'a> {
     shared: &'a PageShared,
     /// 控制面（`G3X-S3b`：定时器回调经 realm 在**宏任务边界**执行）。
+    ///
+    /// **WIP（2026-10-14）**：回调执行面已接线但**未闭合**（`timer_callback_true_run` 标 `#[ignore]`；
+    /// 副作用未落地，根因未隔离 ⇒ 已停报待裁）；在闭合前此字段**仅经该路径读取**。
+    #[allow(dead_code)]
     plane: &'a mut ControlPlane,
 }
 
