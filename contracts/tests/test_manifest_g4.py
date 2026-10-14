@@ -201,6 +201,12 @@ def test_shipped_manifest_denominator_is_fixed() -> None:
         f"冻结分母应为 {FROZEN_DENOMINATOR} 条（S0 封口值；**此后增删须 `ADR` 显式**），"
         f"实得 {len(shipped.entries)}"
     )
+    # `F15`（架构师 `551f1ad`）：**直钉成员集条目数**（与冻结分母同值）—— 不只钉 manifest
+    # （`4.7` 双向核是**间接**钉；这里补**直接**钉，防「清单缩水而 manifest 未同步」）。
+    assert len(load_members(SHIPPED_MEMBERS)) == FROZEN_DENOMINATOR, (
+        f"实发成员集 {SHIPPED_MEMBERS} 应为 {FROZEN_DENOMINATOR} 条（与冻结分母同值），"
+        f"实得 {len(load_members(SHIPPED_MEMBERS))}"
+    )
 
 
 def test_seed_preserves_denominator_freeze(tmp_path: Path) -> None:
