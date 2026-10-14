@@ -33,6 +33,7 @@ def main(argv: list[str] | None = None) -> int:
 
     members: set[str] = set()
     provenance: dict[str, str] = {}
+    member_versions: dict[str, str] = {}
     descriptors: dict[str, str] = {}
     sources: list[dict[str, object]] = []
     for path in args.inputs:
@@ -44,15 +45,29 @@ def main(argv: list[str] | None = None) -> int:
         incoming: dict[str, str] = payload.get("member_sources") or {
             member: str(payload.get("source", "unknown")) for member in source_members
         }
+        # **续接已有 per-member 来源版本**（`G4` F2：判据必须是**不可归并键**）。
+        # 曾用 `source`（slug）判跨源冲突 ⇒ **同 slug 跨源恒假**（webref 与 khronos 共用
+        # `spec-webidl`）⇒ 静默去重。**slug 可归并、版本不可归并** ⇒ 以 `source_version` 判。
+        incoming_versions: dict[str, str] = payload.get("member_source_versions") or {
+            member: str(payload.get("source_version", "")) for member in source_members
+        }
         for member in source_members:
             slug = incoming.get(member, str(payload.get("source", "unknown")))
+            version = incoming_versions.get(member, str(payload.get("source_version", "")))
             # **跨源 id 冲突 ⇒ 报错**（防"集合静默去重"吞掉一条；`G4-S0b` ③-(1)）。
             if member in provenance and provenance[member] != slug:
                 raise SystemExit(
                     f"[merge] id 跨源冲突：{member} 同时来自 {provenance[member]} 与 {slug}"
                     "（**不得静默去重**——先裁决命名）"
                 )
+            # **同 slug 不同版本 ⇒ 也是跨源冲突**（F2 的真正判据：slug 会撞，版本不会）。
+            if member in member_versions and member_versions[member] != version:
+                raise SystemExit(
+                    f"[merge] id 跨源冲突：{member} 同时来自版本 {member_versions[member]} 与 {version}"
+                    f"（slug 均为 {slug!r} —— **slug 可归并，冲突判据必须以 source_version 为准**）"
+                )
             provenance[member] = slug
+            member_versions[member] = version
         descriptors.update(payload.get("member_descriptors") or {})
         members.update(source_members)
         # **续接已有 `sources`**（输入本身可能是已合并文件）——否则 provenance 被**展平**（源数静默减少）。
@@ -73,6 +88,7 @@ def main(argv: list[str] | None = None) -> int:
     merged = {
         "members": sorted(members),
         "member_sources": provenance,
+        "member_source_versions": member_versions,
         "member_descriptors": descriptors,
         "source": "spec-webidl+cdp-protocol",
         "sources": sources,

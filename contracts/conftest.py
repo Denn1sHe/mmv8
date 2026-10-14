@@ -37,7 +37,10 @@ import pytest
 #:       发货态实物断言 + seed 保留冻结位 + 冻结期禁缩水，3 条）。
 #:       2026-10-16 = 114（**`F12`**：JS 面具名错误的**契约侧**锚定 ——
 #:       `contracts/tests/test_storage.py`：具名直抛成对断言 + 哨兵绕行零残留，1 条）。
-COLLECTION_FLOOR = 114
+#:       2026-10-16 = 123（**G4 笔 2**：F2 merge 跨源冲突判据改 `source_version`（slug 可归并、
+#:       版本不可归并）+ merge 自测 6 条；F4 测试重名元守卫（floor 守不住"后定义覆盖"）；F6 源锁
+#:       sha256 交叉校验 + seed 缺 `descriptor` 即拒；另删 3 组重名死码 ⇒ 净 +9 ⇒ **只升**）。
+COLLECTION_FLOOR = 123
 
 
 def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:

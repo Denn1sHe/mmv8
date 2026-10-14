@@ -1815,6 +1815,9 @@ mod tests {
             5 * 1024 * 1024,
             "storage_quota_bytes 应为 5 MiB（per-bucket 申报值）"
         );
+        // ⚠️ 下面第二条断言（与 `storage::STORAGE_QUOTA_BYTES` 比对）**判别力冗余**：
+        // `caps.storage_quota_bytes` 正由该常量赋值 ⇒ 恒真；**真正的判别力由上一条字面量断言承担**
+        // （常量被改 ⇒ 上一条红）。保留它只为"改常量时被迫同时看见能力面"的双重显名。
         assert_eq!(
             caps.storage_quota_bytes,
             storage::STORAGE_QUOTA_BYTES,

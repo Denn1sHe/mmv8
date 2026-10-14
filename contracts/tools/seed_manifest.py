@@ -56,22 +56,22 @@ def owner_for(member_id: str) -> str:
     return "uncategorized"
 
 
-def descriptor_for(member: str) -> str:
-    """起步 `descriptor`（由成员名反推；**仅起步**，后续按实测改判）。"""
-    name = member.split(".", 1)[1]
-    if name.isupper() or (name.isalnum() and name.upper() == name and not name.isdigit()):
-        return "constant"
-    return "attribute"  # 方法/属性**由抽取器同列**，此处不臆断细别 ⇒ 起步取 attribute 面
-    # 注：`method` 与 `attribute` 的细分需**行为证据**（属 `behaviour`），故起步不冒充。
-
-
 def build_entry(member: str, source_slug: str, descriptor: str | None = None) -> dict[str, object]:
-    """造一条**九字段齐**的种子条目（`status=missing`，`behavior_level=stub`）。"""
+    """造一条**九字段齐**的种子条目（`status=missing`，`behavior_level=stub`）。
+
+    `F6`：`descriptor` **缺失 ⇒ 报错**（由调用方捕获并指名成员），**不得**静默回退
+    `descriptor_for` 的旧分类 —— 静默回退正是 `G4-S0b` ② 修真过的"善意的谎"。
+    """
+    if not descriptor:
+        raise SystemExit(
+            f"[seed] 成员 {member} 缺 `descriptor`（member_descriptors 未收录）"
+            "⇒ 拒绝静默回退旧分类（`F6`）：请先在抽取器侧补四类 descriptor 再重跑"
+        )
     return {
         "target_version": TARGET_VERSION,
         "id": member,
         "realm": "main",
-        "descriptor": descriptor or descriptor_for(member),
+        "descriptor": descriptor,
         "behavior_level": "stub",
         "test_ids": [SEED_TEST_ID],
         "status": "missing",
@@ -134,8 +134,7 @@ def main(argv: list[str] | None = None) -> int:
                 descriptors.get(member),
             )
             for member in members
-        ],
-    }
+        ],    }
     args.out.write_text(
         json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
     )

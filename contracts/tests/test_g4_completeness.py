@@ -240,33 +240,84 @@ def test_descriptor_truth_does_not_change_denominator() -> None:
     assert manifest_ids == set(payload["members"]), "修 descriptor 不得改 id 集合"
 
 
-# --------------------------------------------- descriptor 修真（G4-S0b ②）
+
+# --------------------------------------------- 笔 2：F4 重名元守卫 + F6 锁交叉/缺 descriptor
 
 
-def test_descriptors_are_real_not_defaulted() -> None:
-    """② `descriptor` 修真：**四类齐**且**非全 `attribute`**（此前默认值是"善意的谎"）。
+def test_no_duplicate_test_names_in_suite() -> None:
+    """**F4 元守卫**：`tests/` 下不得有**重名** `def test_`（后定义静默覆盖前定义 ⇒ 死码）。
 
-    判别性：若 `descriptor` 退回"全 `attribute`"缺省 ⇒ 本测红。
+    判别性：重名不会降低收集数（后定义补位）⇒ `COLLECTION_FLOOR` 守不住此类 ⇒ 必须专查。
+    负对照：在任一测试文件里复制一条同名测试 ⇒ 本测红（本批已实证：`test_g4_completeness.py`
+    曾有 3 组重名死码，`floor` 毫无反应）。
     """
-    manifest = load(MANIFEST)
-    kinds = {e.descriptor for e in manifest}
-    assert kinds == {"attribute", "operation", "constant", "event"}, (
-        f"descriptor 应含四类（实得 {kinds}）"
-    )
-    assert sum(1 for e in manifest if e.descriptor == "attribute") < len(manifest), (
-        "不得全为 attribute（缺省化 = 未修真）"
-    )
+    duplicates: dict[str, list[str]] = {}
+    for path in sorted((_CONTRACTS / "tests").glob("test_*.py")):
+        names = [
+            line.split("def ", 1)[1].split("(", 1)[0]
+            for line in path.read_text(encoding="utf-8").splitlines()
+            if line.startswith("def test_")
+        ]
+        for name in names:
+            duplicates.setdefault(name, []).append(path.name)
+    repeated = {n: files for n, files in duplicates.items() if len(files) > 1}
+    assert not repeated, f"测试重名（后定义静默覆盖 ⇒ 死码）：{repeated}"
 
 
-def test_cdp_descriptor_mapping_is_command_operation_event_event() -> None:
-    """② CDP 映射口径：`command → operation`、`event → event`（抽样钉值）。"""
-    manifest = {e.id: e for e in load(MANIFEST)}
-    assert manifest["Runtime.evaluate"].descriptor == "operation", "CDP command 应为 operation"
-    assert manifest["Runtime.consoleAPICalled"].descriptor == "event", "CDP event 应为 event"
+def test_source_locks_cross_check_members_payload() -> None:
+    """**F6**：`docs/refs/*-hash.txt` 与 `members.json` 的 `sources[]` **逐源交叉一致**。
 
-
-def test_descriptor_truth_does_not_change_denominator() -> None:
-    """② **分母 id 集合不变**（`descriptor` 属元数据修正，冻结位不受影响）。"""
+    判别力：锁文件是"可 grep 的统一落点"，若与产物漂移（改了一个忘另一个）⇒ 本测红
+    （此前两处无任何机器比对，属"声明态 ≠ 实物态"家族）。
+    """
     payload = json.loads(MEMBERS.read_text(encoding="utf-8"))
-    manifest_ids = {e.id for e in load(MANIFEST)}
-    assert manifest_ids == set(payload["members"]), "修 descriptor 不得改 id 集合"
+    by_version = {str(s["source_version"]): s for s in payload["sources"]}
+    locks = sorted((_CONTRACTS.parent / "docs" / "refs").glob("*-hash.txt"))
+    assert locks, "应有逐源锁文件（docs/refs/*-hash.txt）"
+    seen: set[str] = set()
+    for lock in locks:
+        # 锁文件是 `key<spaces>= value` 形态（对齐用）⇒ **键侧须 strip**。
+        fields = {
+            key.strip(): value
+            for key, value in (
+                line.split("=", 1)
+                for line in lock.read_text(encoding="utf-8").splitlines()
+                if "=" in line and not line.lstrip().startswith("#")
+            )
+        }
+        version = fields["source_version"].strip()
+        seen.add(version)
+        source = by_version.get(version)
+        assert source is not None, f"{lock.name}：members.json 无来源版本 {version}"
+        assert int(fields["members"].strip()) == int(source["members"]), (
+            f"{lock.name}：成员数与 members.json 不一致"
+        )
+        assert fields["source_sha256"].strip() == source["source_sha256"], (
+            f"{lock.name}：sha256 与 members.json 不一致"
+        )
+    assert seen == set(by_version), "每个来源都应有对应锁文件（不得有源无锁）"
+
+
+def test_seed_refuses_missing_descriptor(tmp_path: Path) -> None:
+    """**F6**：成员缺 `descriptor` ⇒ seed **报错**，不得静默回退旧分类。
+
+    负对照本体：构造一份"有成员、无 member_descriptors"的成员集 ⇒ 必须 `SystemExit`。
+    """
+    tool = _load_tool("seed_manifest")
+    payload = {"members": ["X.a"], "source": "spec-webidl", "source_version": "v"}
+    members = tmp_path / "members.json"
+    members.write_text(json.dumps(payload), encoding="utf-8")
+    out = tmp_path / "manifest.json"
+    with pytest.raises(SystemExit, match="缺 `descriptor`"):
+        tool.main([str(members), "--out", str(out)])
+    assert not out.exists(), "拒写时不得产出半成品"
+
+
+def _load_tool(name: str):
+    """按路径加载 `contracts/tools/<name>.py`（非包 ⇒ spec 装载；先注册再执行）。"""
+    spec = importlib.util.spec_from_file_location(name, _CONTRACTS / "tools" / f"{name}.py")
+    assert spec and spec.loader
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module

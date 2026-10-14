@@ -320,6 +320,17 @@ impl StorageService {
             .map_or(0, |p| p.local.used_bytes + p.session.used_bytes)
     }
 
+    /// 某 origin 指定**桶**的已用字节（`G4-⑥` F9：逐桶取数，勿用 origin 合计当代理）。
+    ///
+    /// `used_bytes` 是**两桶合计** —— 把它当"某桶已填满"的代理会在另一桶有数据时失真。
+    #[must_use]
+    pub fn bucket_used_bytes(&self, origin: &str, kind: StorageKind) -> usize {
+        self.partitions.get(origin).map_or(0, |p| match kind {
+            StorageKind::Local => p.local.used_bytes,
+            StorageKind::Session => p.session.used_bytes,
+        })
+    }
+
     /// **导出快照**（`G4-S1-b`）：纯数据副本，**不含**任何进程内共享状态。
     ///
     /// 序：`origin`（字典序）⇒ `local` 先于 `session` ⇒ 桶内**插入序**。
@@ -635,9 +646,14 @@ mod tests {
             }
         }
         assert_eq!(
-            service.used_bytes(origin),
+            service.bucket_used_bytes(origin, StorageKind::Local),
             STORAGE_QUOTA_BYTES,
-            "local 桶应恰被填满"
+            "local 桶应恰被填满（**逐桶**取数：origin 合计在 session 有数据时会失真）"
+        );
+        assert_eq!(
+            service.bucket_used_bytes(origin, StorageKind::Session),
+            0,
+            "此时 session 桶应为空（证明上面的断言确实是 local 桶，而非合计巧合）"
         );
         // 同 origin 的 `session` 桶：**独立配额** ⇒ 仍可写（per-bucket 判据）。
         let mut session = service.storage(origin, StorageKind::Session);
@@ -645,6 +661,11 @@ mod tests {
             .set_item("s", "v")
             .expect("session 桶应仍可写（per-bucket）");
         assert_eq!(session.get_item("s").as_deref(), Some("v"));
+        assert_eq!(
+            service.bucket_used_bytes(origin, StorageKind::Local),
+            STORAGE_QUOTA_BYTES,
+            "写 session 不得改动 local 桶已用字节（两桶独立）"
+        );
     }
 
     #[test]
