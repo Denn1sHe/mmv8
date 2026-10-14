@@ -37,7 +37,7 @@
 | 3.1 | `timer_fires_after_n_rounds` | **第 N 轮**触发（N 钉死；**预算 `16`/轮 · 冲刷 ≤ `64`**，§6-1） | 同步实现 ⇒ 轮次不符 |
 | 3.2 | `timer_does_not_block_load` | `load` 期间**轮不抢**（预算生效） | 阻塞 ⇒ `load` 延后 |
 | 3.3 | `task_queue_ordering` | **严格按序** + 微任务边界 | 乱序 ⇒ 红 |
-| 3.4 | `no_host_try_borrow_panic` | **台账：`.borrow()` 20/22 转 + `.borrow_mut()` 37/39 转；⑦ 4 处具名上游约束（非漏改）**；无 panic + 期望值 | 保留 `borrow` / `borrow_mut` ⇒ panic |
+| 3.4 | `no_host_try_borrow_panic` | **可改 6 路径全覆盖（20 处）+ 宿主面 `borrow_mut` 可改全集（36 处）+ 5 处具名约束标注（`stylo_host` 4 + `opaque` 1；非漏改）**；无 panic + 期望值 | 保留 `borrow` / `borrow_mut` ⇒ panic |
 
 ## §4 风险
 
@@ -94,7 +94,7 @@
 
 > **方法学**（与「全仓扫查 + 可复现命令」同族）：行号随改造漂移（本批 S3a/S3b 后原表行号**已全数失效**），
 > 故站点一律以 **「符号（`fn` 名 + 行内特征）」** 为锚。**实现进度**：`S3c1`（`.borrow()`）已全数转换（**①–④⑥ + ⑤**；
-> **⑦ 具名上游约束**）＝ commit `e20da58`/`36a28bd`；`S3c2`（`.borrow_mut()`）首站 `input.rs` ＝ `3d91edc`；**`S3c2-b` ＝ `bfdc9e1`**（**`sink.rs` 16 站清零**：`tree_mut()`/`with_tree_mut`）⇒ **进度 `39 → 4`**（**`S3c2-c` `2830c21`：`page.rs` 18 站清零**）—— 余 **`opaque` 2（`S3c2-d`）** + **`stylo_host` 2（⑦ 上游约束，不碰）**。
+> **⑦ 具名上游约束**）＝ commit `e20da58`/`36a28bd`；`S3c2`（`.borrow_mut()`）首站 `input.rs` ＝ `3d91edc`；**`S3c2-b` ＝ `bfdc9e1`**（**`sink.rs` 16 站清零**：`tree_mut()`/`with_tree_mut`）⇒ **`S3c2` 全量收口（`a/b/c/d` ✅）** —— 余 **5 处具名约束**（**`stylo_host` 4 + `opaque` 1**）；**§6-3 符号表进度列 → 全清**。
 
 | 路径 | 符号（`fn` + 行内特征） | `.borrow()` | `.borrow_mut()` |
 |---|---|---|---|
@@ -105,16 +105,15 @@
 | ⑤ Python 边界 | `convert.rs`（`PyJsRef` 分支 `js_ref`） | ✅ 已转（`JsError(ReentrantEval)`） | — |
 | ⑥ 解析期 `TreeSink` | `DomSink::new`／`append_text`／`append_based_on_parent_node`／`append_before_sibling`／`add_attrs_if_missing`／`remove_from_parent`／`reparent_children` | ✅ 7 处已转（**(β) 默认值语义各自独立**） | **16 处 ✅ `S3c2-b`（`bfdc9e1`）清零**（`tree_mut()`/`with_tree_mut`） |
 | ⑦ stylo 桥 | `ElementSlot::borrow_data`／`has_styles`／`ensure_data`（`ElementDataWrapper`） | **具名上游约束**（无 `try_borrow`；release 走 `unsafe { &*get() }` ⇒ UB、无护栏） | 同上（上游约束） |
-| ⑧ 其它宿主面 | `SharedBundle::send`（离线 transport）／`opaque.rs`（`opaque`／`rehydrate` 调用者 = `stylo_host`） | ✅ `send` 已转 | `opaque.rs` 2（**S3c2-d 待转**） |
+| ⑧ 其它宿主面 | `SharedBundle::send`（离线 transport）／`opaque.rs`（`opaque`／`rehydrate` 调用者 = `stylo_host`） | ✅ `send` 已转 | `opaque.rs` 1 = **`S3c2-d` ✅**：`reset()` `(β)` + **`with_side<R>` 泛型约束（与 ⑦ 同族、异站点；具名）** |
 
 **计数（2026-10-15 实测）**：`.borrow()` 产品码 **22**（7 路径）；`.borrow_mut()` **39**（`page.rs` 18／`sink.rs` 16／`input.rs` 1✅／`opaque.rs` 2／`stylo_host` 2）——**较 2026-10-14 的 35 增 4，系 `G3X-S3b` 新增**（如实）。**进度（`2830c21` 后）= `39 → 4`**（`input` 1 + `sink` 16 + `page` 18 = **35 已转**）；余 **`opaque` 2（`S3c2-d`）+ `stylo_host` 2（⑦ 上游约束）**。
 
-**📋 最终台账（**验收用**，2026-10-15）**：**`.borrow()` = 22 = **20 转 + 2 上游约束（⑦）**；**`.borrow_mut()` = 39 = **37 转 + 2 上游约束（⑦）**（**终态目标**）；⇒ **可改站点全部转换，⑦ 4 处具名上游约束（非漏改）**。
+**📋 最终台账（**验收用 · 定稿，2026-10-15**）**：**`.borrow()` = 22 = **20 转 + 2（⑦ `stylo_host`）**；**`.borrow_mut()` = 39 = **36 转 + 2（⑦ `stylo_host`） + 1（`opaque::with_side<R>` 泛型约束）**；⇒ **可改站点全部转换，具名约束恰 5 处（`stylo_host` 4 + `opaque` 1；非漏改）**。**主理人残留复核**：产品码未转换点 = **恰 5 处**（`parser`/`binding` 命中均在 `cfg(test)` 区）—— **与架构师清洁复核一致** ✓。
 
-**⚠️ 计数校正（架构师源级复核，2026-10-15）**：
-- **计数命令须排除注释**：`grep -nE '\.borrow_mut\(\)' <f> | grep -vE ': *//'` —— 否则 **`page.rs:1557`（**注释**里的 `timers.borrow_mut()`）** 被计为**幻影站**（**架构师首轮扫描即中招** ⇒ **同族「位置/文本脆弱，须语义级验证」—— 又一次**）。
-- **现行清洁余量**：**`.borrow_mut()` 余 = `3`**（`opaque.rs` **1** + `stylo_host` **2**）⇒ **`S3c2-d` 实为 `opaque.rs` **1**（非 2）** —— **`reset` 已转 `try_borrow_mut`**，余 **`with_side`**。**`.borrow()` 余 = `2`**（`stylo_host` ⑦）✓（**20 转 + 2 上游 = 22** 一致）。
-- **待澄明**：**清洁全集 = `38` 或 `39`**（取决于原 `18` 是否含该**注释幻影**）—— **请工程师以符号表复算澄明**；**两口径下终态一致 = 转 + 2 上游约束**。
+**⚠️ 计数校正（架构师源级复核，2026-10-15 · 已收口）**：
+- **计数命令须排除注释**：`grep -nE '\.borrow_mut\(\)' <f> | grep -vE ': *//'` —— 否则 **`page.rs:1557`（**注释**里的 `timers.borrow_mut()`）** 被计为**幻影站**（**架构师首轮扫描即中招** ⇒ **同族「位置/文本脆弱，须语义级验证」**）。
+- **实体一致性已达**：**架构师清洁余量 = 5**（`.borrow_mut()` 3 = `opaque` 1 + `stylo_host` 2；`.borrow()` 2 = `stylo_host` 2）= **主理人残留复核 5 处** ✓ ⇒ **口径闭合**（**台账按主理人实测 39 = 36+2+1 定稿**）。
 **非 Result fallback 语义（具名）**：**不 panic + `debug_assert!` 可见 + 保守默认**（⑥/只读 getter）；各默认值**不合并**（"跳过属性" ≠ "空表" ≠ "视为有 pending"）。
 
 **伴生族（`.borrow_mut()`，同属决策 3「**宿主驱动路径上的任何 `Rc<RefCell>` 取借一律 `try_borrow`**」）**：产品码 = **39 处（全集）** —— `page.rs` **18** + `sink.rs` **16** + `input.rs` **1**（✅ 已转 `3d91edc`） + `layout-backend/src/opaque.rs` **2** + `stylo_host/mod.rs` **2**（含 `ensure_data`）。**注**：**较首版 35 处 **+4**，系 `S3b`（defer 任务化）新增 `page.rs` 站点**（**架构师源级复算 2026-10-15 = 38 待转 + 1 已转 = 39**）；**位置敏感 ⇒ 以「符号表」（`fn` + 行内特征）为准**。
