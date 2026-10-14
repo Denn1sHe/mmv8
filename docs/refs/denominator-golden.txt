@@ -1,0 +1,15 @@
+# G4 分母 golden 锁（ADR-0028 §3）
+
+# **唯一真源**：本文件。manifest 内**不承载**哈希（F1 教训：
+#   不得把纪律位放进「会被 seed 重跑整体重写」的文件）。
+# 规约与 docs/refs/{webref,cdp,webgl}-hash.txt 同规（U-6：锁的统一可 grep 落点）。
+
+denominator_n      = 1669
+denominator_sha256 = 74f06d62b0ca4dccfdce4017918359ba10882d8c47150097443faa14ddc4eee6
+manifest           = contracts/compat-manifest.json
+members            = contracts/community-v0.1.4-members.json
+adr                = ADR-0028
+updated_at         = 2026-10-16
+
+# 复核口径：sha256("\n".join(sorted(members)))；须与 manifest 的 entries id 集合一致。
+# 增删 ⇒ 须同步更新本文件 + 新 ADR 编号（ADR-0028 §8 五步序），否则写入侧/实物态/类型层三层即红。
