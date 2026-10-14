@@ -139,7 +139,9 @@ class Entry:
         """`behavior_level` 与证据类型**一致性**校验（**错标 ⇒ 抛错 ⇒ 红**，`§6`）。
 
         - ``BEHAVIOUR`` ⇒ ``evidence`` **必须**含行为标记（:data:`BEHAVIOUR_EVIDENCE_MARKERS`）；
-        - ``STUB`` ⇒ ``evidence`` **禁止**含行为标记（面级不得附行为证据）。
+        - ``STUB`` ⇒ ``evidence`` **禁止**含行为标记（面级不得附行为证据）；
+        - ``CONTRACT`` ⇒ ``evidence`` **禁止**含行为标记（**行为证据应标 ``BEHAVIOUR``**；
+          与上两条合观 ⇒ **三态错标格 6 格无留白**）。
         """
         lowered = self.evidence.lower()
         has_behaviour = any(marker in lowered for marker in BEHAVIOUR_EVIDENCE_MARKERS)
