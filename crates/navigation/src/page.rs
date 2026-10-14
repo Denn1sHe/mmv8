@@ -2213,6 +2213,45 @@ mod tests {
     use super::{TIMER_MAX_FLUSH_ROUNDS, TIMER_TASKS_PER_ROUND};
 
     #[test]
+    #[ignore = "S6 未闭合（首轮停报）：动态影子内容未进盒树；已排除「脏位未标」（attachShadow/appendChild shim 均 nDirty）；缺口在重建路径（build_slots 影子级联次序 / build_node 跳过 / style_for_element 静默）"]
+    fn dynamic_shadow_relayout_probe() {
+        // `G3X-S6` 探针：**动态**挂影子 + JS 建影子内容 => 影子内节点几何可读。
+        let mut page = BrowsingContext::new("https://a.example/").expect("new");
+        page.load(&snapshot(
+            "https://a.example/dyn",
+            "<body><x-h id=\"h\"></x-h></body>",
+        ))
+        .expect("load");
+        page.control_eval(
+            "var h = document.getElementById('h'); var sr = h.attachShadow({mode:'open'}); var inner = document.createElement('div'); inner.id='inner'; inner.setAttribute('style','width:60px;height:20px'); sr.appendChild(inner);",
+        )
+        .expect("attach+append");
+        let inner = {
+            let tree = page.tree();
+            let tree = tree.borrow();
+            fn find(tree: &NodeTree, node: NodeId, id: &str) -> Option<NodeId> {
+                for child in tree.children(node) {
+                    if tree.get_attribute(child, "id") == Some(id) {
+                        return Some(child);
+                    }
+                    if let Some(found) = find(tree, child, id) {
+                        return Some(found);
+                    }
+                }
+                None
+            }
+            let host = find(&tree, tree.root(), "h").expect("host");
+            let shadow = tree.element_shadow(host).expect("shadow root");
+            find(&tree, shadow, "inner").expect("inner in shadow")
+        };
+        let geometry = page.node_geometry(inner);
+        assert!(
+            geometry.is_ok(),
+            "动态影子内容应有几何（实得 {geometry:?}）"
+        );
+    }
+
+    #[test]
     fn no_host_try_borrow_panic() {
         // `G3X-S3c2` 验收（Result 站点）：**强持借期内重入** ⇒ **不 panic + 具名错误**。
         // （happy path 由既有 81 测覆盖 ⇒ 默认值/错误分支不介入；此测专钉冲突分支。）
