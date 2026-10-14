@@ -394,6 +394,604 @@
     },
     {
       "target_version": "v0.1.4",
+      "id": "CSS.addRule",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CSS 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CSS.collectClassNames",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CSS 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CSS.computedStyleUpdated",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CSS 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CSS.createStyleSheet",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CSS 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CSS.disable",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CSS 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CSS.enable",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CSS 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CSS.fontsUpdated",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CSS 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CSS.forcePositionTryOption",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CSS 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CSS.forcePseudoState",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CSS 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CSS.forceStartingStyle",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CSS 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CSS.getAnimatedStylesForNode",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CSS 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CSS.getBackgroundColors",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CSS 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CSS.getComputedStyleForNode",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CSS 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CSS.getEnvironmentVariables",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CSS 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CSS.getInlineStylesForNode",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CSS 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CSS.getLayersForNode",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CSS 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CSS.getLocationForSelector",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CSS 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CSS.getLonghandProperties",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CSS 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CSS.getMatchedStylesForNode",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CSS 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CSS.getMediaQueries",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CSS 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CSS.getPlatformFontsForNode",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CSS 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CSS.getStyleSheetText",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CSS 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CSS.mediaQueryResultChanged",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CSS 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CSS.resolveValues",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CSS 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CSS.setContainerQueryConditionText",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CSS 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CSS.setContainerQueryText",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CSS 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CSS.setEffectivePropertyValueForNode",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CSS 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CSS.setKeyframeKey",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CSS 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CSS.setLocalFontsEnabled",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CSS 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CSS.setMediaText",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CSS 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CSS.setNavigationText",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CSS 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CSS.setPropertyRulePropertyName",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CSS 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CSS.setRuleSelector",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CSS 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CSS.setScopeText",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CSS 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CSS.setStyleSheetText",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CSS 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CSS.setStyleTexts",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CSS 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CSS.setSupportsText",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CSS 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CSS.startRuleUsageTracking",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CSS 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CSS.stopRuleUsageTracking",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CSS 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CSS.styleSheetAdded",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CSS 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CSS.styleSheetChanged",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CSS 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CSS.styleSheetRemoved",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CSS 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CSS.takeComputedStyleUpdates",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CSS 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CSS.takeCoverageDelta",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CSS 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CSS.trackComputedStyleUpdates",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CSS 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CSS.trackComputedStyleUpdatesForNode",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CSS 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
       "id": "Cache.add",
       "realm": "main",
       "descriptor": "attribute",
@@ -1678,6 +2276,1618 @@
       "status": "missing",
       "evidence": "face: CryptoKey 见 webref IDL（面级存在性；行为取证待 S1~S5）",
       "implementation_owner": "engine-v8"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "DOM.adRelatedStateUpdated",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: DOM 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "DOM.adoptedStyleSheetsModified",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: DOM 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "DOM.affectedByStartingStylesFlagUpdated",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: DOM 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "DOM.attributeModified",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: DOM 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "DOM.attributeRemoved",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: DOM 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "DOM.characterDataModified",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: DOM 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "DOM.childNodeCountUpdated",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: DOM 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "DOM.childNodeInserted",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: DOM 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "DOM.childNodeRemoved",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: DOM 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "DOM.clearTextMarkers",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: DOM 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "DOM.collectClassNamesFromSubtree",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: DOM 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "DOM.copyTo",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: DOM 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "DOM.describeNode",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: DOM 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "DOM.disable",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: DOM 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "DOM.discardSearchResults",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: DOM 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "DOM.distributedNodesUpdated",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: DOM 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "DOM.documentUpdated",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: DOM 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "DOM.enable",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: DOM 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "DOM.focus",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: DOM 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "DOM.forceShowInterest",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: DOM 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "DOM.forceShowPopover",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: DOM 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "DOM.getAnchorElement",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: DOM 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "DOM.getAttributes",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: DOM 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "DOM.getBoxModel",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: DOM 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "DOM.getContainerForNode",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: DOM 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "DOM.getContentQuads",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: DOM 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "DOM.getDetachedDomNodes",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: DOM 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "DOM.getDocument",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: DOM 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "DOM.getElementByRelation",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: DOM 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "DOM.getFileInfo",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: DOM 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "DOM.getFlattenedDocument",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: DOM 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "DOM.getFrameOwner",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: DOM 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "DOM.getImplicitAnchorCandidates",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: DOM 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "DOM.getNodeForLocation",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: DOM 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "DOM.getNodeStackTraces",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: DOM 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "DOM.getNodesForSubtreeByStyle",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: DOM 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "DOM.getOuterHTML",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: DOM 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "DOM.getQueryingDescendantsForContainer",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: DOM 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "DOM.getRelayoutBoundary",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: DOM 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "DOM.getSearchResults",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: DOM 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "DOM.getTopLayerElements",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: DOM 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "DOM.hideHighlight",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: DOM 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "DOM.highlightNode",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: DOM 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "DOM.highlightRect",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: DOM 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "DOM.inlineStyleInvalidated",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: DOM 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "DOM.markUndoableState",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: DOM 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "DOM.moveTo",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: DOM 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "DOM.performSearch",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: DOM 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "DOM.pseudoElementAdded",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: DOM 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "DOM.pseudoElementRemoved",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: DOM 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "DOM.pushNodeByPathToFrontend",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: DOM 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "DOM.pushNodesByBackendIdsToFrontend",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: DOM 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "DOM.querySelector",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: DOM 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "DOM.querySelectorAll",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: DOM 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "DOM.redo",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: DOM 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "DOM.removeAttribute",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: DOM 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "DOM.removeNode",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: DOM 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "DOM.requestChildNodes",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: DOM 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "DOM.requestNode",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: DOM 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "DOM.resolveNode",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: DOM 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "DOM.scrollIntoViewIfNeeded",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: DOM 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "DOM.scrollableFlagUpdated",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: DOM 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "DOM.setAttributeValue",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: DOM 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "DOM.setAttributesAsText",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: DOM 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "DOM.setChildNodes",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: DOM 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "DOM.setFileInputFiles",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: DOM 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "DOM.setInspectedNode",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: DOM 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "DOM.setNodeName",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: DOM 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "DOM.setNodeStackTracesEnabled",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: DOM 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "DOM.setNodeValue",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: DOM 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "DOM.setOuterHTML",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: DOM 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "DOM.setTextMarker",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: DOM 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "DOM.shadowRootPopped",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: DOM 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "DOM.shadowRootPushed",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: DOM 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "DOM.topLayerElementsUpdated",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: DOM 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "DOM.undo",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: DOM 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "DOMStorage.clear",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: DOMStorage 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "DOMStorage.disable",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: DOMStorage 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "DOMStorage.domStorageItemAdded",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: DOMStorage 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "DOMStorage.domStorageItemRemoved",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: DOMStorage 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "DOMStorage.domStorageItemUpdated",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: DOMStorage 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "DOMStorage.domStorageItemsCleared",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: DOMStorage 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "DOMStorage.enable",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: DOMStorage 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "DOMStorage.getDOMStorageItems",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: DOMStorage 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "DOMStorage.removeDOMStorageItem",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: DOMStorage 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "DOMStorage.setDOMStorageItem",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: DOMStorage 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Debugger.breakpointResolved",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Debugger 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Debugger.continueToLocation",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Debugger 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Debugger.disable",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Debugger 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Debugger.disassembleWasmModule",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Debugger 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Debugger.enable",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Debugger 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Debugger.evaluateOnCallFrame",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Debugger 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Debugger.getPossibleBreakpoints",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Debugger 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Debugger.getScriptSource",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Debugger 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Debugger.getStackTrace",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Debugger 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Debugger.getWasmBytecode",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Debugger 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Debugger.nextWasmDisassemblyChunk",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Debugger 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Debugger.pause",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Debugger 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Debugger.pauseOnAsyncCall",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Debugger 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Debugger.paused",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Debugger 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Debugger.removeBreakpoint",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Debugger 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Debugger.restartFrame",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Debugger 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Debugger.resume",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Debugger 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Debugger.resumed",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Debugger 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Debugger.scriptFailedToParse",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Debugger 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Debugger.scriptParsed",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Debugger 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Debugger.searchInContent",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Debugger 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Debugger.setAsyncCallStackDepth",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Debugger 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Debugger.setBlackboxExecutionContexts",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Debugger 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Debugger.setBlackboxPatterns",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Debugger 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Debugger.setBlackboxedRanges",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Debugger 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Debugger.setBreakpoint",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Debugger 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Debugger.setBreakpointByUrl",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Debugger 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Debugger.setBreakpointOnFunctionCall",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Debugger 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Debugger.setBreakpointsActive",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Debugger 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Debugger.setInstrumentationBreakpoint",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Debugger 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Debugger.setPauseOnExceptions",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Debugger 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Debugger.setReturnValue",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Debugger 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Debugger.setScriptSource",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Debugger 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Debugger.setSkipAllPauses",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Debugger 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Debugger.setVariableValue",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Debugger 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Debugger.stepInto",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Debugger 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Debugger.stepOut",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Debugger 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Debugger.stepOver",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Debugger 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
     },
     {
       "target_version": "v0.1.4",
@@ -3657,6 +5867,123 @@
     },
     {
       "target_version": "v0.1.4",
+      "id": "IndexedDB.clearObjectStore",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: IndexedDB 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "IndexedDB.deleteDatabase",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: IndexedDB 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "IndexedDB.deleteObjectStoreEntries",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: IndexedDB 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "IndexedDB.disable",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: IndexedDB 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "IndexedDB.enable",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: IndexedDB 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "IndexedDB.getMetadata",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: IndexedDB 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "IndexedDB.requestData",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: IndexedDB 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "IndexedDB.requestDatabase",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: IndexedDB 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "IndexedDB.requestDatabaseNames",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: IndexedDB 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
       "id": "MediaStream.active",
       "realm": "main",
       "descriptor": "attribute",
@@ -3992,6 +6319,1020 @@
       "status": "missing",
       "evidence": "face: MediaStreamTrack 见 webref IDL（面级存在性；行为取证待 S1~S5）",
       "implementation_owner": "graphics"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Network.canClearBrowserCache",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Network 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Network.canClearBrowserCookies",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Network 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Network.canEmulateNetworkConditions",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Network 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Network.clearBrowserCache",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Network 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Network.clearBrowserCookies",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Network 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Network.configureDurableMessages",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Network 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Network.dataReceived",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Network 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Network.deleteCookies",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Network 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Network.deleteDeviceBoundSession",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Network 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Network.deviceBoundSessionEventOccurred",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Network 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Network.deviceBoundSessionsAdded",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Network 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Network.directTCPSocketAborted",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Network 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Network.directTCPSocketChunkReceived",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Network 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Network.directTCPSocketChunkSent",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Network 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Network.directTCPSocketClosed",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Network 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Network.directTCPSocketCreated",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Network 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Network.directTCPSocketOpened",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Network 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Network.directUDPSocketAborted",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Network 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Network.directUDPSocketChunkReceived",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Network 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Network.directUDPSocketChunkSent",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Network 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Network.directUDPSocketClosed",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Network 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Network.directUDPSocketCreated",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Network 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Network.directUDPSocketJoinedMulticastGroup",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Network 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Network.directUDPSocketLeftMulticastGroup",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Network 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Network.directUDPSocketOpened",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Network 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Network.disable",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Network 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Network.emulateNetworkConditions",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Network 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Network.emulateNetworkConditionsByRule",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Network 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Network.enable",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Network 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Network.enableDeviceBoundSessions",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Network 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Network.enableReportingApi",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Network 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Network.eventSourceMessageReceived",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Network 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Network.fetchSchemefulSite",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Network 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Network.getAllCookies",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Network 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Network.getCertificate",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Network 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Network.getCookies",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Network 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Network.getRequestPostData",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Network 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Network.getResponseBody",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Network 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Network.getSecurityIsolationStatus",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Network 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Network.loadNetworkResource",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Network 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Network.loadingFailed",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Network 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Network.loadingFinished",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Network 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Network.overrideNetworkState",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Network 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Network.policyUpdated",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Network 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Network.replayXHR",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Network 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Network.reportingApiEndpointsChangedForOrigin",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Network 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Network.reportingApiReportAdded",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Network 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Network.reportingApiReportUpdated",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Network 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Network.requestServedFromCache",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Network 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Network.requestWillBeSent",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Network 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Network.requestWillBeSentExtraInfo",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Network 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Network.resourceChangedPriority",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Network 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Network.responseReceived",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Network 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Network.responseReceivedEarlyHints",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Network 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Network.responseReceivedExtraInfo",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Network 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Network.searchInResponseBody",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Network 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Network.setAttachDebugStack",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Network 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Network.setBlockedURLs",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Network 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Network.setBypassServiceWorker",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Network 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Network.setCacheDisabled",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Network 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Network.setCookie",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Network 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Network.setCookieControls",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Network 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Network.setCookies",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Network 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Network.setExtraHTTPHeaders",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Network 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Network.setUserAgentOverride",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Network 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Network.signedExchangeReceived",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Network 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Network.streamResourceContent",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Network 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Network.trustTokenOperationDone",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Network 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Network.webSocketClosed",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Network 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Network.webSocketCreated",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Network 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Network.webSocketFrameError",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Network 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Network.webSocketFrameReceived",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Network 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Network.webSocketFrameSent",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Network 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Network.webSocketHandshakeResponseReceived",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Network 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Network.webSocketWillSendHandshakeRequest",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Network 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Network.webTransportClosed",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Network 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Network.webTransportConnectionEstablished",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Network 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Network.webTransportCreated",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Network 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
     },
     {
       "target_version": "v0.1.4",
@@ -4398,6 +7739,1241 @@
     },
     {
       "target_version": "v0.1.4",
+      "id": "Page.addCompilationCache",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Page 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Page.addScriptToEvaluateOnLoad",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Page 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Page.addScriptToEvaluateOnNewDocument",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Page 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Page.backForwardCacheNotUsed",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Page 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Page.bringToFront",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Page 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Page.captureScreenshot",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Page 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Page.captureSnapshot",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Page 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Page.clearCompilationCache",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Page 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Page.clearDeviceMetricsOverride",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Page 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Page.clearDeviceOrientationOverride",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Page 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Page.clearGeolocationOverride",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Page 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Page.close",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Page 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Page.compilationCacheProduced",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Page 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Page.crash",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Page 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Page.createIsolatedWorld",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Page 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Page.deleteCookie",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Page 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Page.disable",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Page 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Page.documentOpened",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Page 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Page.domContentEventFired",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Page 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Page.downloadProgress",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Page 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Page.downloadWillBegin",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Page 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Page.enable",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Page 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Page.fileChooserOpened",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Page 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Page.frameAttached",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Page 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Page.frameClearedScheduledNavigation",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Page 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Page.frameDetached",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Page 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Page.frameNavigated",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Page 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Page.frameRequestedNavigation",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Page 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Page.frameResized",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Page 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Page.frameScheduledNavigation",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Page 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Page.frameStartedLoading",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Page 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Page.frameStartedNavigating",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Page 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Page.frameStoppedLoading",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Page 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Page.frameSubtreeWillBeDetached",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Page 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Page.generateTestReport",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Page 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Page.getAdScriptAncestry",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Page 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Page.getAnnotatedPageContent",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Page 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Page.getAppId",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Page 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Page.getAppManifest",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Page 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Page.getFrameTree",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Page 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Page.getInstallabilityErrors",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Page 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Page.getLayoutMetrics",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Page 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Page.getManifestIcons",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Page 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Page.getNavigationHistory",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Page 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Page.getOriginTrials",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Page 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Page.getPermissionsPolicyState",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Page 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Page.getResourceContent",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Page 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Page.getResourceTree",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Page 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Page.getSiblingSubApps",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Page 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Page.getSpellCheckCustomDictionary",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Page 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Page.getSubApps",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Page 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Page.handleJavaScriptDialog",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Page 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Page.interstitialHidden",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Page 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Page.interstitialShown",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Page 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Page.javascriptDialogClosed",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Page 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Page.javascriptDialogOpening",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Page 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Page.lifecycleEvent",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Page 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Page.loadEventFired",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Page 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Page.navigate",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Page 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Page.navigateToHistoryEntry",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Page 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Page.navigatedWithinDocument",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Page 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Page.printToPDF",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Page 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Page.produceCompilationCache",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Page 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Page.reload",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Page 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Page.removeScriptToEvaluateOnLoad",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Page 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Page.removeScriptToEvaluateOnNewDocument",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Page 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Page.resetNavigationHistory",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Page 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Page.screencastFrame",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Page 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Page.screencastFrameAck",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Page 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Page.screencastVisibilityChanged",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Page 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Page.searchInResource",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Page 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Page.setAdBlockingEnabled",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Page 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Page.setBypassCSP",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Page 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Page.setDeviceMetricsOverride",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Page 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Page.setDeviceOrientationOverride",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Page 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Page.setDocumentContent",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Page 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Page.setDownloadBehavior",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Page 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Page.setFontFamilies",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Page 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Page.setFontSizes",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Page 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Page.setGeolocationOverride",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Page 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Page.setInputVisualization",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Page 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Page.setInterceptFileChooserDialog",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Page 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Page.setLifecycleEventsEnabled",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Page 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Page.setPrerenderingAllowed",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Page 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Page.setRPHRegistrationMode",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Page 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Page.setSPCTransactionMode",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Page 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Page.setTouchEmulationEnabled",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Page 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Page.setWebLifecycleState",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Page 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Page.startScreenRecording",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Page 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Page.startScreencast",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Page 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Page.stopLoading",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Page 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Page.stopScreenRecording",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Page 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Page.stopScreencast",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Page 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Page.waitForDebugger",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Page 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Page.windowOpen",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Page 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
       "id": "PermissionStatus.name",
       "realm": "main",
       "descriptor": "attribute",
@@ -4541,6 +9117,435 @@
     },
     {
       "target_version": "v0.1.4",
+      "id": "Runtime.addBinding",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Runtime 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Runtime.awaitPromise",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Runtime 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Runtime.bindingCalled",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Runtime 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Runtime.callFunctionOn",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Runtime 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Runtime.compileScript",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Runtime 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Runtime.consoleAPICalled",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Runtime 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Runtime.disable",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Runtime 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Runtime.discardConsoleEntries",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Runtime 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Runtime.enable",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Runtime 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Runtime.evaluate",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Runtime 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Runtime.exceptionRevoked",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Runtime 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Runtime.exceptionThrown",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Runtime 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Runtime.executionContextCreated",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Runtime 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Runtime.executionContextDestroyed",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Runtime 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Runtime.executionContextsCleared",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Runtime 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Runtime.getExceptionDetails",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Runtime 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Runtime.getHeapUsage",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Runtime 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Runtime.getIsolateId",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Runtime 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Runtime.getProperties",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Runtime 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Runtime.globalLexicalScopeNames",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Runtime 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Runtime.inspectRequested",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Runtime 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Runtime.queryObjects",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Runtime 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Runtime.releaseObject",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Runtime 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Runtime.releaseObjectGroup",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Runtime 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Runtime.removeBinding",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Runtime 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Runtime.runIfWaitingForDebugger",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Runtime 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Runtime.runScript",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Runtime 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Runtime.setAsyncCallStackDepth",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Runtime 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Runtime.setCustomObjectFormatterEnabled",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Runtime 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Runtime.setMaxCallStackSizeToCapture",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Runtime 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Runtime.terminateExecution",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Runtime 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Storage.cacheStorageContentUpdated",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Storage 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "web-dom"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Storage.cacheStorageListUpdated",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Storage 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "web-dom"
+    },
+    {
+      "target_version": "v0.1.4",
       "id": "Storage.clear",
       "realm": "main",
       "descriptor": "attribute",
@@ -4554,7 +9559,215 @@
     },
     {
       "target_version": "v0.1.4",
+      "id": "Storage.clearCookies",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Storage 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "web-dom"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Storage.clearDataForOrigin",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Storage 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "web-dom"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Storage.clearDataForStorageKey",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Storage 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "web-dom"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Storage.clearPrivateVerificationTokens",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Storage 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "web-dom"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Storage.clearTrustTokens",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Storage 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "web-dom"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Storage.deletePrivateVerificationToken",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Storage 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "web-dom"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Storage.deleteStorageBucket",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Storage 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "web-dom"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Storage.getCookies",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Storage 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "web-dom"
+    },
+    {
+      "target_version": "v0.1.4",
       "id": "Storage.getItem",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Storage 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "web-dom"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Storage.getPrivateVerificationTokens",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Storage 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "web-dom"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Storage.getPrivateVerificationTokensIssuerConfigs",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Storage 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "web-dom"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Storage.getStorageKey",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Storage 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "web-dom"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Storage.getStorageKeyForFrame",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Storage 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "web-dom"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Storage.getTrustTokens",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Storage 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "web-dom"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Storage.getUsageAndQuota",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Storage 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "web-dom"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Storage.indexedDBContentUpdated",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Storage 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "web-dom"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Storage.indexedDBListUpdated",
       "realm": "main",
       "descriptor": "attribute",
       "behavior_level": "stub",
@@ -4593,6 +9806,32 @@
     },
     {
       "target_version": "v0.1.4",
+      "id": "Storage.overrideQuotaForOrigin",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Storage 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "web-dom"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Storage.privateVerificationTokensUpdated",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Storage 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "web-dom"
+    },
+    {
+      "target_version": "v0.1.4",
       "id": "Storage.removeItem",
       "realm": "main",
       "descriptor": "attribute",
@@ -4606,7 +9845,189 @@
     },
     {
       "target_version": "v0.1.4",
+      "id": "Storage.runBounceTrackingMitigations",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Storage 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "web-dom"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Storage.setCookies",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Storage 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "web-dom"
+    },
+    {
+      "target_version": "v0.1.4",
       "id": "Storage.setItem",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Storage 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "web-dom"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Storage.setPrivateVerificationTokensTracking",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Storage 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "web-dom"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Storage.setStorageBucketTracking",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Storage 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "web-dom"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Storage.storageBucketCreatedOrUpdated",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Storage 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "web-dom"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Storage.storageBucketDeleted",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Storage 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "web-dom"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Storage.trackCacheStorageForOrigin",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Storage 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "web-dom"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Storage.trackCacheStorageForStorageKey",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Storage 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "web-dom"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Storage.trackIndexedDBForOrigin",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Storage 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "web-dom"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Storage.trackIndexedDBForStorageKey",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Storage 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "web-dom"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Storage.untrackCacheStorageForOrigin",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Storage 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "web-dom"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Storage.untrackCacheStorageForStorageKey",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Storage 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "web-dom"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Storage.untrackIndexedDBForOrigin",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Storage 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "web-dom"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Storage.untrackIndexedDBForStorageKey",
       "realm": "main",
       "descriptor": "attribute",
       "behavior_level": "stub",
@@ -4850,6 +10271,344 @@
       "status": "missing",
       "evidence": "face: SubtleCrypto 见 webref IDL（面级存在性；行为取证待 S1~S5）",
       "implementation_owner": "engine-v8"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Target.activateTarget",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Target 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Target.attachToBrowserTarget",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Target 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Target.attachToTarget",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Target 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Target.attachedToTarget",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Target 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Target.autoAttachRelated",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Target 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Target.closeTarget",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Target 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Target.createBrowserContext",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Target 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Target.createTarget",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Target 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Target.detachFromTarget",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Target 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Target.detachedFromTarget",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Target 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Target.disposeBrowserContext",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Target 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Target.exposeDevToolsProtocol",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Target 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Target.getBrowserContexts",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Target 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Target.getDevToolsTarget",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Target 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Target.getTargetInfo",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Target 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Target.getTargets",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Target 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Target.openDevTools",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Target 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Target.receivedMessageFromTarget",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Target 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Target.sendMessageToTarget",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Target 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Target.setAutoAttach",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Target 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Target.setDiscoverTargets",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Target 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Target.setRemoteLocations",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Target 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Target.targetCrashed",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Target 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Target.targetCreated",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Target 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Target.targetDestroyed",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Target 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "Target.targetInfoChanged",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: Target 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "uncategorized"
     },
     {
       "target_version": "v0.1.4",

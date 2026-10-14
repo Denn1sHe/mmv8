@@ -25,7 +25,8 @@ import pytest
 #:       继承不误归 / 注释剔除 / partial 合并 / 产出必带 needs_community_review / 可被 load_members 读）。
 #:       2026-10-16 = 97（**G4-S0b**：双门禁对接 —— 真集绿 + 漏/造/空三负对照保持红，8 条）。
 #:       2026-10-16 = 99（**G4-S0b**：mixin 合入修 —— `X includes M` 合入 + mixin 自身不作分母接口，2 条）。
-COLLECTION_FLOOR = 99
+#:       2026-10-16 = 100（**G4-S0b**：CDP 族另源立项 —— 抽取器 + 并集 + 两源登记 + CDP 覆盖探针）。
+COLLECTION_FLOOR = 100
 
 
 def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:

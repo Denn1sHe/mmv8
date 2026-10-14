@@ -62,14 +62,31 @@ def test_seed_behavior_level_is_stub_without_behaviour_evidence() -> None:
         entry.assert_behavior_evidence()
 
 
-def test_members_payload_declares_spec_source_and_review_flag() -> None:
-    """**口径声明**：产出必标 `source=spec-webidl` + **`needs_community_review: true`**（`R-3`）。"""
+def test_members_payload_declares_sources_and_review_flag() -> None:
+    """**口径声明**：产出必标**两源**（`spec-webidl` + `cdp-protocol`）+ **`needs_community_review: true`**。
+
+    `R-3`：规范面 **非定义源** ⇒ 逐源登记 `source`/`source_version`/`source_sha256`/`method`
+    （**可追性 + 可证复现**）；并集 `source` = 两源名相加。
+    """
     payload = json.loads(MEMBERS.read_text(encoding="utf-8"))
-    assert payload["source"] == "spec-webidl"
     assert payload["needs_community_review"] is True
-    assert payload["source_version"].startswith("webref@")
-    assert len(payload["source_sha256"]) == 64
-    assert payload["method"]
+    assert payload["source"] == "spec-webidl+cdp-protocol"
+
+    sources = {s["source"]: s for s in payload["sources"]}
+    assert set(sources) == {"spec-webidl", "cdp-protocol"}, "两源都必须登记（防静默丢源）"
+    for source in sources.values():
+        assert source["members"] > 0, f"{source['source']} 源不得为空"
+        assert len(str(source["source_sha256"])) == 64, f"{source['source']} 缺哈希锁"
+        assert source["method"], f"{source['source']} 缺逐字命令"
+    assert sources["spec-webidl"]["source_version"].startswith("webref@")
+    assert sources["cdp-protocol"]["source_version"].startswith("devtools-protocol@")
+
+
+def test_cdp_family_members_present() -> None:
+    """**CDP 族落行**（裁定 ⑤-1：另源立项）：`<Domain>.<method|event>` 形成员确在并集中。"""
+    members = load_members(MEMBERS)
+    for probe in ("Runtime.evaluate", "DOM.getDocument", "Network.enable", "Page.navigate"):
+        assert probe in members, f"CDP 族应覆盖 {probe}"
 
 
 # ---------------------------------------------------------------- 三条负对照（保持红）
