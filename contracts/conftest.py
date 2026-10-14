@@ -33,7 +33,9 @@ import pytest
 #:       2026-10-16 = 109（**G4-S0b ②**：descriptor 修真 —— 四类齐 / CDP 映射 / 分母不变，3 条）。
 #:       2026-10-16 = 110（**G4-S1a ⑥**：配额 `5 MiB`（per-bucket）上 Rust+Python 双侧能力面 ——
 #:       契约侧新增 `test_storage_quota_matches_rust_const`（读 Rust 源文本对撞，1 条）。
-COLLECTION_FLOOR = 110
+#:       2026-10-16 = 113（**`F1` 修复（P0）**：分母冻结位被 seed 静默打回 ——
+#:       发货态实物断言 + seed 保留冻结位 + 冻结期禁缩水，3 条）。
+COLLECTION_FLOOR = 113
 
 
 def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:

@@ -7,7 +7,9 @@
 
 from __future__ import annotations
 
+import importlib.util
 import json
+import sys
 from pathlib import Path
 
 import pytest
@@ -21,6 +23,31 @@ from iv8_contract.manifest import (
     Manifest,
     ManifestError,
 )
+
+
+#: 仓库根（`contracts/tests/` ↑2）。
+REPO_ROOT = Path(__file__).resolve().parents[2]
+#: **发货态**实物：manifest 与成员集（`F1` 实物断言的读取对象）。
+SHIPPED_MANIFEST = REPO_ROOT / "contracts" / "compat-manifest.json"
+SHIPPED_MEMBERS = REPO_ROOT / "contracts" / "community-v0.1.4-members.json"
+#: **冻结分母**（`S0` 封口值；此后增删须 `ADR` 显式）。
+FROZEN_DENOMINATOR = 1669
+
+
+def _load_seed_tool():
+    """按路径加载 `tools/seed_manifest.py`（`contracts/tools/` 非包，故用 spec 装载）。"""
+    tool = REPO_ROOT / "contracts" / "tools" / "seed_manifest.py"
+    spec = importlib.util.spec_from_file_location("seed_manifest", tool)
+    assert spec and spec.loader
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+def _seed_main(argv: list[str]) -> int:
+    """跑一次 seed 生成器，返回退出码（`main` 的 `SystemExit` 由调用方断言）。"""
+    return _load_seed_tool().main(argv)
 
 
 def _complete_entry(**overrides: object) -> Entry:
@@ -153,6 +180,68 @@ def test_denominator_fixed_roundtrip(tmp_path: Path) -> None:
     assert reloaded.denominator_fixed is True
     assert reloaded.entries[0].test_ids == original.entries[0].test_ids
     assert reloaded.entries[0].behavior_level is BehaviorLevel.CONTRACT
+
+
+# ---------------------------------------------------------------- 发货态（`F1`）
+
+
+def test_shipped_manifest_denominator_is_fixed() -> None:
+    """**发货态断言**（`F1`）：仓库内**实物** `compat-manifest.json` 的冻结位**必须为真**。
+
+    **为什么必须有本测**：既有 `test_denominator_fixed_roundtrip` 只在 `tmp_path` 上验**内存往返**，
+    **从不读实物** ⇒ 实物被 seed 静默打回 `false` 时**无人红**（静默家族原型，`F1` 实证）。
+    **负对照**：把实物 `denominator_fixed` 置回 `false` ⇒ 本测红。
+    """
+    shipped = Manifest.from_json(json.loads(SHIPPED_MANIFEST.read_text(encoding="utf-8")))
+    assert shipped.denominator_fixed is True, (
+        f"实发 {SHIPPED_MANIFEST} 的 denominator_fixed 应为 true（S0 末已冻结）；"
+        "若为 false —— 多半是 seed 重跑时把它静默打回了"
+    )
+    assert len(shipped.entries) == FROZEN_DENOMINATOR, (
+        f"冻结分母应为 {FROZEN_DENOMINATOR} 条（S0 封口值；**此后增删须 `ADR` 显式**），"
+        f"实得 {len(shipped.entries)}"
+    )
+
+
+def test_seed_preserves_denominator_freeze(tmp_path: Path) -> None:
+    """`F1`：重跑 seed ⇒ **保留**已冻结的 `denominator_fixed`（不得静默打回 `false`）。
+
+    **负对照**：撤掉 `seed_manifest.main` 的「保留冻结位」逻辑（无条件写 `False`）⇒ 本测红。
+    """
+    out = tmp_path / "manifest.json"
+    frozen = Manifest(version=1, entries=(_complete_entry(),), denominator_fixed=True)
+    out.write_text(frozen.to_text(), encoding="utf-8")
+
+    assert _seed_main([str(SHIPPED_MEMBERS), "--out", str(out)]) == 0
+
+    reloaded = Manifest.from_json(json.loads(out.read_text(encoding="utf-8")))
+    assert reloaded.denominator_fixed is True, "seed 重跑不得静默解冻分母"
+
+
+def test_seed_refuses_shrinking_frozen_denominator(tmp_path: Path) -> None:
+    """`F1`：已冻结且新成员集**条目更少** ⇒ **拒绝写入**（分母**只防删**；缩水须 `ADR` 显式）。
+
+    **负对照**：撤掉 seed 的 `len(members) < frozen_entries` 拒绝分支 ⇒ 本测红（文件被悄悄缩水）。
+    """
+    out = tmp_path / "manifest.json"
+    frozen = Manifest(
+        version=1,
+        entries=(
+            _complete_entry(id="Alpha.one"),
+            _complete_entry(id="Beta.two"),
+        ),
+        denominator_fixed=True,
+    )
+    out.write_text(frozen.to_text(), encoding="utf-8")
+    members = tmp_path / "members.json"
+    members.write_text(json.dumps({"members": ["Alpha.one"]}), encoding="utf-8")
+
+    with pytest.raises(SystemExit):
+        _seed_main([str(members), "--out", str(out)])
+
+    untouched = Manifest.from_json(json.loads(out.read_text(encoding="utf-8")))
+    assert len(untouched.entries) == 2, "拒绝写入后原文件不得被改动"
+    assert untouched.denominator_fixed is True
 
 
 # ---------------------------------------------------------------- 完备性双门禁

@@ -82,8 +82,27 @@ def build_entry(member: str, source_slug: str, descriptor: str | None = None) ->
     }
 
 
+def freeze_state_of(path: Path) -> tuple[bool, int]:
+    """读既有 manifest 的**冻结态** = `(denominator_fixed, 条目数)`；文件不存在 ⇒ `(False, 0)`。
+
+    `F1`：本函数存在的唯一理由 —— **重跑 seed 不得静默打回冻结位**
+    （`93ae891`/`28da287` 重跑时无条件写 `False`，把 `M0c` 已置的 `true` 抹掉了）。
+    """
+    if not path.exists():
+        return False, 0
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    entries = payload.get("entries") or []
+    return bool(payload.get("denominator_fixed", False)), len(entries)
+
+
 def main(argv: list[str] | None = None) -> int:
-    """读成员集 ⇒ 写九字段 manifest 种子（**denominator_fixed 保持 false**，待核可）。"""
+    """读成员集 ⇒ 写九字段 manifest 种子。
+
+    **分母冻结纪律（`F1`）**：
+    - 输出文件**已冻结** ⇒ **保留** `denominator_fixed: true`（**绝不**静默打回 `false`）；
+    - 已冻结且新成员集**条目更少** ⇒ **拒绝写入**（分母只防删；缩水须 `ADR` 显式）；
+    - 未冻结（首次生成）⇒ 写 `false`，冻结由 `M0c` 另笔显式置真。
+    """
     parser = argparse.ArgumentParser(description="G4-S0b 种子生成器（成员集 ⇒ manifest 种子）")
     parser.add_argument("members", type=Path, help="community 成员集 JSON（计划 §4 格式）")
     parser.add_argument("--out", type=Path, required=True, help="输出 compat-manifest.json")
@@ -97,10 +116,17 @@ def main(argv: list[str] | None = None) -> int:
 
     provenance = payload.get("member_sources") or {}
     descriptors = payload.get("member_descriptors") or {}
+    frozen_before, frozen_entries = freeze_state_of(args.out)
+    if frozen_before and len(members) < frozen_entries:
+        raise SystemExit(
+            f"[seed] 拒绝写入 {args.out}：分母已冻结（{frozen_entries} 条），而本次成员集只有 "
+            f"{len(members)} 条 ⇒ **缩减分母须 `ADR` 显式**（禁静默删分母）"
+        )
     manifest = {
         "version": args.version,
-        # `M0c`（`denominator_fixed: true`）**须经核可**后另笔设置（本生成器不动它）。
-        "denominator_fixed": False,
+        # `M0c` 的冻结位由**另笔显式**置真；本生成器**只保留、不覆写**（`F1`：
+        # 无条件写 `False` 会把已冻结的分母静默打回未冻结 —— 静默家族原型）。
+        "denominator_fixed": frozen_before,
         "entries": [
             build_entry(
                 member,
@@ -117,6 +143,14 @@ def main(argv: list[str] | None = None) -> int:
         f"[seed] 写出 {args.out}：{len(manifest['entries'])} 条（status=missing；"
         f"behavior_level=stub；source={payload.get('source')}）"
     )
+    if frozen_before:
+        # **显名**（不静默）：冻结位被保留这件事必须出现在输出里，供人复核。
+        print(
+            f"[seed] ⚠️ 分母已冻结（既有 {frozen_entries} 条）⇒ **保留 "
+            f"denominator_fixed=true**；本次仅重写 entries（{len(manifest['entries'])} 条）"
+        )
+    else:
+        print("[seed] 分母未冻结（首次生成）⇒ `denominator_fixed` 保持 false（待 `M0c` 显式置真）")
     return 0
 
 

@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "denominator_fixed": false,
+  "denominator_fixed": true,
   "entries": [
     {
       "target_version": "v0.1.4",
