@@ -72,14 +72,23 @@ def test_members_payload_declares_sources_and_review_flag() -> None:
     assert payload["needs_community_review"] is True
     assert payload["source"] == "spec-webidl+cdp-protocol"
 
-    sources = {s["source"]: s for s in payload["sources"]}
-    assert set(sources) == {"spec-webidl", "cdp-protocol"}, "两源都必须登记（防静默丢源）"
-    for source in sources.values():
+    sources = payload["sources"]
+    assert len(sources) >= 3, "三源都必须登记（webref / devtools / khronos；防静默丢源）"
+    for source in sources:
         assert source["members"] > 0, f"{source['source']} 源不得为空"
         assert len(str(source["source_sha256"])) == 64, f"{source['source']} 缺哈希锁"
         assert source["method"], f"{source['source']} 缺逐字命令"
-    assert sources["spec-webidl"]["source_version"].startswith("webref@")
-    assert sources["cdp-protocol"]["source_version"].startswith("devtools-protocol@")
+    versions = " ".join(str(s["source_version"]) for s in sources)
+    assert "webref@" in versions, "缺 webref 源登记"
+    assert "devtools-protocol@" in versions, "缺 devtools-protocol 源登记"
+    assert "khronos-webgl@" in versions, "缺 khronos-webgl 源登记"
+
+
+def test_webgl_family_members_present() -> None:
+    """**WebGL 族落行**（裁定 ⑤-2：Khronos 另源）：`WebGLRenderingContext.*` 确在并集中。"""
+    members = load_members(MEMBERS)
+    assert any(m.startswith("WebGLRenderingContext.") for m in members), "缺 WebGL 1 接口成员"
+    assert any(m.startswith("WebGL2RenderingContext.") for m in members), "缺 WebGL 2 接口成员"
 
 
 def test_cdp_family_members_present() -> None:

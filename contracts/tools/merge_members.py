@@ -39,16 +39,20 @@ def main(argv: list[str] | None = None) -> int:
         if not source_members:
             raise SystemExit(f"[merge] 源 {path} 为空 ⇒ 拒绝合并（防静默丢源）")
         members.update(source_members)
-        sources.append(
-            {
-                "source": payload["source"],
-                "source_version": payload.get("source_version", ""),
-                "source_sha256": payload.get("source_sha256", ""),
-                "method": payload.get("method", ""),
-                "members": len(source_members),
-                "needs_community_review": payload.get("needs_community_review", True),
-            }
-        )
+        # **续接已有 `sources`**（输入本身可能是已合并文件）——否则 provenance 被**展平**（源数静默减少）。
+        if payload.get("sources"):
+            sources.extend(payload["sources"])
+        else:
+            sources.append(
+                {
+                    "source": payload["source"],
+                    "source_version": payload.get("source_version", ""),
+                    "source_sha256": payload.get("source_sha256", ""),
+                    "method": payload.get("method", ""),
+                    "members": len(source_members),
+                    "needs_community_review": payload.get("needs_community_review", True),
+                }
+            )
 
     merged = {
         "members": sorted(members),
