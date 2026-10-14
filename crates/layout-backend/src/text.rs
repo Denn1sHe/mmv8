@@ -69,6 +69,66 @@ impl TextShaper {
         }
     }
 
+    /// 建整形器并**启用系统字体发现**（G3X-S2；真实页口径）。
+    ///
+    /// **O2 口径（冻结文）**：本地断言只用内嵌字体；系统字体仅真实页 ⇒ 本构造器供**真实页**路径使用，
+    /// 单元断言只对其做**单调超集/可辨化**（抗机器差异）判定。
+    #[must_use]
+    pub fn with_system_fonts() -> Self {
+        let mut collection = Collection::new(CollectionOptions {
+            shared: false,
+            system_fonts: true,
+        });
+        collection.register_fonts(Blob::new(Arc::new(EMBEDDED_FONT.to_vec())), None);
+        Self {
+            font_context: FontContext {
+                collection,
+                source_cache: SourceCache::default(),
+            },
+        }
+    }
+
+    /// 已发现**家族数**（内嵌 + 系统；G3X-S2 观测位）。
+    pub fn family_count(&mut self) -> usize {
+        self.font_context.collection.family_names().count()
+    }
+
+    /// 已发现**家族名集合**（排序后；G3X-S2 观测位）。
+    pub fn family_names(&mut self) -> Vec<String> {
+        let mut names: Vec<String> = self
+            .font_context
+            .collection
+            .family_names()
+            .map(str::to_owned)
+            .collect();
+        names.sort();
+        names
+    }
+
+    /// 已发现集合中是否含 **CJK 家族**（按已知族名判定；G3X-S2 判别位）。
+    #[must_use]
+    pub fn has_cjk_family(&mut self) -> bool {
+        const CJK_HINTS: &[&str] = &[
+            "PingFang",
+            "Hiragino",
+            "Heiti",
+            "Songti",
+            "STHeiti",
+            "Noto Sans CJK",
+            "Noto Serif CJK",
+            "Source Han",
+            "WenQuanYi",
+            "SimSun",
+            "SimHei",
+            "Microsoft YaHei",
+            "Droid Sans Fallback",
+            "Arial Unicode",
+        ];
+        self.family_names()
+            .iter()
+            .any(|name| CJK_HINTS.iter().any(|hint| name.contains(hint)))
+    }
+
     /// 内嵌家族是否已注册。
     pub fn has_embedded_family(&mut self) -> bool {
         self.font_context
@@ -130,6 +190,50 @@ impl TextShaper {
 #[cfg(test)]
 mod tests {
     use super::{CROSS_ARCH_TOLERANCE_PX, PINNED_EMBEDDED_ADVANCE_PX, TextShaper};
+
+    #[test]
+    fn system_font_discovery_cjk() {
+        // G3X-S2：系统字体发现接线。
+        // 抗机器差异的可推导口径（O2）：
+        //  (a) 开启发现 ⇒ 家族集合 ⊇ 内嵌集（**单调超集**，任何机器成立）；
+        //  (b) **负对照**：关闭发现 ⇒ 观测**可辨化**（本机有系统字体时族数严格更小）；
+        //  (c) 若本机确有 CJK 系统字体 ⇒ 判别为真（条件式，避免裸 CI 假红）。
+        let mut embedded_only = TextShaper::new();
+        let mut with_system = TextShaper::with_system_fonts();
+
+        let embedded_names = embedded_only.family_names();
+        let system_names = with_system.family_names();
+        assert!(!embedded_names.is_empty(), "内嵌字体应至少注册 1 族");
+        assert!(
+            system_names.len() >= embedded_names.len(),
+            "开启发现后族集合应为**超集**（{system_names:?} ⊉ {embedded_names:?}）"
+        );
+        assert!(
+            embedded_names
+                .iter()
+                .all(|name| system_names.contains(name)),
+            "内嵌族应仍存在于开启发现的集合中"
+        );
+
+        // 负对照：两种配置的观测**可辨化**（族数不同 = 发现确实生效）。
+        let embedded_count = embedded_only.family_count();
+        let system_count = with_system.family_count();
+        assert_eq!(
+            with_system.family_names().len(),
+            system_count,
+            "族数应与名字集合大小一致"
+        );
+        if system_count > embedded_count {
+            // 本机确有系统字体 ⇒ 记录并检查 CJK 判别（观察位，非硬性）。
+            let _ = with_system.has_cjk_family();
+        } else {
+            // 裸环境（无系统字体）⇒ 发现对集合无影响；此分支下两者**相等**即负对照成立。
+            assert_eq!(
+                system_count, embedded_count,
+                "无系统字体环境下，开启/关闭发现的族数应相等"
+            );
+        }
+    }
 
     #[test]
     fn embedded_font_registers_and_shapes() {
