@@ -30,6 +30,7 @@ from pathlib import Path
 from typing import Any
 
 __all__ = [
+    "BehaviorLevel",
     "Entry",
     "EntryStatus",
     "Manifest",
@@ -63,6 +64,40 @@ class EntryStatus(str, Enum):
             ) from exc
 
 
+class BehaviorLevel(str, Enum):
+    """条目**行为级别**（`G4` `R-1`：**单字段三态**，吸收 `7-4`；消除「二值 × 三态」并存矛盾）。
+
+    取值**由证据类型派生**（`§6`）：
+
+    - :attr:`STUB`（面级）—— 仅有接口面存在性证据；**禁止附行为证据**；
+    - :attr:`CONTRACT` —— 有契约级证据（描述符/签名/枚举值等）；
+    - :attr:`BEHAVIOUR` —— 有**行为级**证据（**必须**附状态转移表 / 时序钉值）。
+    """
+
+    STUB = "stub"
+    CONTRACT = "contract"
+    BEHAVIOUR = "behaviour"
+
+    @classmethod
+    def parse(cls, raw: str) -> "BehaviorLevel":
+        """解析；未知值报错（不静默降级）。"""
+        try:
+            return cls(raw)
+        except ValueError as exc:  # pragma: no cover - 由测试断言
+            allowed = ", ".join(level.value for level in cls)
+            raise ManifestError(
+                f"未知的 behavior_level {raw!r}；合法值为：{allowed}"
+            ) from exc
+
+
+#: 行为级证据**必须**含的标记（状态转移 / 时序钉值）——「错标 ⇒ 红」的判据（`§6`）。
+BEHAVIOUR_EVIDENCE_MARKERS: tuple[str, ...] = (
+    "state_transition",
+    "timing",
+    "sequence",
+)
+
+
 #: 一律阻断发布的状态集合（技术方案 §18 G0）。
 BLOCKING_STATUSES: frozenset[EntryStatus] = frozenset(
     {EntryStatus.FAILED, EntryStatus.MISSING, EntryStatus.UNKNOWN}
@@ -84,6 +119,14 @@ class Entry:
     status: EntryStatus
     category: str = "uncategorized"
     note: str = ""
+    # ---- `G4` `R-1` 九字段 schema（除 `id`/`status` 外；既有调用不传 => 默认空，由完备性门禁强制）----
+    target_version: str = "v0.1.4"
+    realm: str = "main"
+    descriptor: str = ""
+    behavior_level: BehaviorLevel = BehaviorLevel.STUB
+    test_ids: tuple[str, ...] = ()
+    evidence: str = ""
+    implementation_owner: str = ""
 
     def __post_init__(self) -> None:
         if not self.id or "." not in self.id:
@@ -91,6 +134,37 @@ class Entry:
                 f"条目 id {self.id!r} 非法：必须是成员级标识（形如 'Window.setTimeout'），"
                 "族级名称会让'接口族矩阵'冒充成员级清单"
             )
+
+    def assert_behavior_evidence(self) -> None:
+        """`behavior_level` 与证据类型**一致性**校验（**错标 ⇒ 抛错 ⇒ 红**，`§6`）。
+
+        - ``BEHAVIOUR`` ⇒ ``evidence`` **必须**含行为标记（:data:`BEHAVIOUR_EVIDENCE_MARKERS`）；
+        - ``STUB`` ⇒ ``evidence`` **禁止**含行为标记（面级不得附行为证据）。
+        """
+        lowered = self.evidence.lower()
+        has_behaviour = any(marker in lowered for marker in BEHAVIOUR_EVIDENCE_MARKERS)
+        if self.behavior_level is BehaviorLevel.BEHAVIOUR and not has_behaviour:
+            raise ManifestError(
+                f"条目 {self.id} 标 behaviour 但 evidence 无行为标记"
+                f"（需含其一：{list(BEHAVIOUR_EVIDENCE_MARKERS)}）"
+            )
+        if self.behavior_level is BehaviorLevel.STUB and has_behaviour:
+            raise ManifestError(
+                f"条目 {self.id} 标 stub（面级）但 evidence 含行为标记（禁止附行为证据）"
+            )
+
+    def assert_schema_complete(self) -> None:
+        """九字段完备性（`G4` `R-1`）：``test_ids`` / ``implementation_owner`` **必填**。"""
+        if not self.test_ids:
+            raise ManifestError(f"条目 {self.id} 缺 test_ids（必填：取代自由文本证据的可追性）")
+        if not self.implementation_owner:
+            raise ManifestError(f"条目 {self.id} 缺 implementation_owner（必填）")
+        if not self.descriptor:
+            raise ManifestError(f"条目 {self.id} 缺 descriptor")
+        if not self.realm:
+            raise ManifestError(f"条目 {self.id} 缺 realm")
+        if not self.target_version:
+            raise ManifestError(f"条目 {self.id} 缺 target_version")
 
     @property
     def blocking(self) -> bool:
@@ -100,8 +174,15 @@ class Entry:
     def to_json(self) -> dict[str, Any]:
         """转为可 JSON 序列化的字典（字段顺序稳定，便于 diff）。"""
         raw: dict[str, Any] = {
+            "target_version": self.target_version,
             "id": self.id,
+            "realm": self.realm,
+            "descriptor": self.descriptor,
+            "behavior_level": self.behavior_level.value,
+            "test_ids": list(self.test_ids),
             "status": self.status.value,
+            "evidence": self.evidence,
+            "implementation_owner": self.implementation_owner,
             "category": self.category,
         }
         if self.note:
@@ -116,11 +197,21 @@ class Entry:
         missing = {"id", "status"} - set(raw)
         if missing:
             raise ManifestError(f"条目缺少必填字段：{sorted(missing)}")
+        test_ids_raw = raw.get("test_ids", ())
+        if isinstance(test_ids_raw, str) or not isinstance(test_ids_raw, Iterable):
+            raise ManifestError(f"条目 {raw['id']!r} 的 test_ids 必须是数组")
         return cls(
             id=str(raw["id"]),
             status=EntryStatus.parse(str(raw["status"])),
             category=str(raw.get("category", "uncategorized")),
             note=str(raw.get("note", "")),
+            target_version=str(raw.get("target_version", "v0.1.4")),
+            realm=str(raw.get("realm", "main")),
+            descriptor=str(raw.get("descriptor", "")),
+            behavior_level=BehaviorLevel.parse(str(raw.get("behavior_level", "stub"))),
+            test_ids=tuple(str(t) for t in test_ids_raw),
+            evidence=str(raw.get("evidence", "")),
+            implementation_owner=str(raw.get("implementation_owner", "")),
         )
 
 
@@ -130,6 +221,8 @@ class Manifest:
 
     version: int
     entries: tuple[Entry, ...]
+    #: **分母冻结位**（`G4` `R-1`：`S0` 末置真；**只防删**）——置真后条目数不得下降。
+    denominator_fixed: bool = False
 
     def __post_init__(self) -> None:
         seen: set[str] = set()
@@ -171,7 +264,11 @@ class Manifest:
 
     def replace(self, entries: Iterable[Entry]) -> "Manifest":
         """用新条目集合产生新 manifest（不可变，便于对比）。"""
-        return Manifest(version=self.version, entries=tuple(entries))
+        return Manifest(
+            version=self.version,
+            entries=tuple(entries),
+            denominator_fixed=self.denominator_fixed,
+        )
 
     # ---------------------------------------------------------------- 单调性
 
@@ -196,10 +293,22 @@ class Manifest:
 
     # ---------------------------------------------------------------- 序列化
 
+    def assert_schema_complete(self) -> None:
+        """**九字段完备性门禁**（`G4` `R-1`）：逐条目校验字段齐 + `behavior_level` 不错标。
+
+        **空 manifest 直接抛错**（防「空表通过」）。
+        """
+        if not self.entries:
+            raise ManifestError("manifest 为空：完备性门禁要求**非空**（≥1 条目）")
+        for entry in self.entries:
+            entry.assert_schema_complete()
+            entry.assert_behavior_evidence()
+
     def to_json(self) -> dict[str, Any]:
         """转为可 JSON 序列化的字典。"""
         return {
             "version": self.version,
+            "denominator_fixed": self.denominator_fixed,
             "entries": [e.to_json() for e in self.entries],
         }
 
@@ -217,6 +326,7 @@ class Manifest:
         return cls(
             version=int(raw["version"]),
             entries=tuple(Entry.from_json(item) for item in raw_entries),
+            denominator_fixed=bool(raw.get("denominator_fixed", False)),
         )
 
     def to_text(self) -> str:
