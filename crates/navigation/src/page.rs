@@ -2236,6 +2236,13 @@ mod tests {
             matches!(x, HostValue::Number(value) if (value - 1.0).abs() < 1e-9),
             "defer 仍应跑完（实得 {x:?}）"
         );
+        // (b) **反向钉**：`load` 返回后由**宿主推进钟** ⇒ timer 正常触发（证明被排除的是「内泵」，非 timer 机制本身）。
+        let report = page.pump_timer_rounds(2).expect("pump");
+        assert_eq!(
+            report.fired, 1,
+            "load 后宿主泵应触发该 timer（实测 fired={}）",
+            report.fired
+        );
     }
 
     #[test]
