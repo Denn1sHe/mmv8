@@ -87,11 +87,14 @@
 ### ③ `Message` 变体化（**裁定**）
 - **规则（主理人裁）**：**非变体 ⇒ 显式载荷**；**不改 `scheduler` 枚举**。
 - **✅ 裁定注落定（主理人 2026-10-15 亲验）= 「已区分」**：工程师以 **`DEFER_TOKEN_TAG` 显式区分** ⇒ **不新增变体、不碰 `scheduler` 枚举** ✓（**无需 `Message::Defer`**）。
-- **状态**：**✅ 落定**。
+- **架构师源级核可（2026-10-15）**：**形态核实** —— **`Message` 是 `TaskSource` 的枚举变体**（`scheduler/src/task.rs`），**无独立「载荷类型」** ⇒ 工程师判断**正确**（`Message::Defer{..}` **不可用**；**改它 = 动公共枚举**，与裁定 (b) 冲突）。现形态 = **`token = DEFER_TOKEN_TAG | 文档序下标`**；`run_task` **`raw & TAG == 0 ⇒ Done`**（非 defer 载荷**不由本分支处理**）。
+  - **生产者核实**：`TaskSource::Message` 的**唯一产品码生产者 = defer（`page.rs:880`）**；`runloop.rs:448` 为 **`#[test]`** ⇒ **当前无冲突** ✓。**索引 `< 2^63`**（文档序）**天然满足**。
+  - **✅ 认 —— 附 2 加固条件**：**(i) 文档化不变式**（**bit 63 保留给 defer**；**未来 `Message` 生产者不得置位**）⇒ 落 **`DEFER_TOKEN_TAG` 定义 + `TaskSource::Message` 文档**；**(ii) 补 1 判别测试** —— **非标签 `Message` token（如 `TaskToken::new(4)`）⇒ 不由 defer 分支处理**（`deferred` **不被取**）⇒ **把「防混淆」变机器断言**（**同 `T7` 精神**）。
+- **状态**：**✅ 落定（附 2 加固条件 i/ii）**。
 
 ## §7 `S3b-3b` 落定与自纠（2026-10-15）
 
-- **`T1–T9` 全对齐**（`navigation 81/81`、零 `ignore`）✓。
+- **`T1–T9` 全对齐**（`navigation 81/81`、零 `ignore`）✓；**`T7` 双向钉已实现**（`4dd5ba4`）—— **(a)** `load` 内直取 `timers_fired() == 0`（同段断言 defer 已跑完）；**(b) 反向钉**：`load` 返回后 `pump_timer_rounds(2) ⇒ fired == 1`（**证明被排除者 = 「内泵」而非 timer 机制本身**）；**独立函数、不折叠 `T5`、不靠时序巧合**；**负对照**：内泵含 timer ⇒ **(a) 立即红** + `S3a` 同红 ✓。
 - **`Message` ③ = 「已区分」**（`DEFER_TOKEN_TAG`）—— 见 §6-③。
 - **`parser.rs` 未改的如实说明**：**入队落在 `page` 侧** ⇒ **`classic` 红线天然满足**（**未改 ≠ 漏改**，且**主动说清** ✓）。
 - **`T6` 前提自纠**：`defer_write_after_load_is_named_error`（**与 ADR-0017·D4 对齐**）⇒ **教训族关联 = 「前提自纠」**（**与「接线 = 调用点存在性」同族：先验前提成立与否**）。
