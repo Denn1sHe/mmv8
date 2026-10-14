@@ -51,8 +51,15 @@ _LINE_COMMENT = re.compile(r"//[^\n]*")
 
 #: `(partial )?interface <Name>( : <Base>)? { <body> }`（**不嵌套**；body 由花括号配平取）。
 _INTERFACE_HEAD = re.compile(
-    r"\b(?:partial\s+)?(?:callback\s+)?interface\s+([A-Za-z_]\w*)(?:\s*:\s*[A-Za-z_]\w*)?\s*\{"
+    r"\b(?:partial\s+)?(?:callback\s+)?interface\s+(?:mixin\s+)?([A-Za-z_]\w*)"
+    r"(?:\s*:\s*[A-Za-z_]\w*)?\s*\{"
 )
+
+#: `X includes Y;`（mixin 合入）——`includer` 的**接口表面**含 `mixin` 的成员（WebIDL 语义）。
+_INCLUDES = re.compile(r"\b([A-Za-z_]\w*)\s+includes\s+([A-Za-z_]\w*)\s*;")
+
+#: `interface mixin <Name>` —— **mixin 本身不是分母接口**（其成员归 includer；自身不得作接口名）。
+_MIXIN_HEAD = re.compile(r"\binterface\s+mixin\s+([A-Za-z_]\w*)")
 
 #: body 内：属性（含 `readonly`；**类型允许多词**，如 `unsigned long long`）。
 _ATTRIBUTE = re.compile(
@@ -128,7 +135,12 @@ def _interface_bodies(text: str) -> dict[str, str]:
                 depth -= 1
             index += 1
         bodies.setdefault(name, []).append(text[head.end() : index - 1])
-    return {name: "\n".join(chunks) for name, chunks in bodies.items()}
+    merged = {name: "\n".join(chunks) for name, chunks in bodies.items()}
+    # **mixin 合入**（`X includes Y;`）：`Y` 的成员属 `X` 的接口表面（否则**分母被静默剪小**）。
+    for includer, mixin in _INCLUDES.findall(text):
+        if includer in merged and mixin in merged:
+            merged[includer] = merged[includer] + "\n" + merged[mixin]
+    return merged
 
 
 def extract_members(
@@ -142,7 +154,11 @@ def extract_members(
             **范围收窄纪律**：共用 IDL 文件（如 `html.idl`）含数千接口 ⇒ 必以自名单收窄，**不外扩**。
     """
     members: set[str] = set()
-    for iface, body in _interface_bodies(_strip_comments(idl_text)).items():
+    cleaned = _strip_comments(idl_text)
+    mixins = {name for name in _MIXIN_HEAD.findall(cleaned)}
+    for iface, body in _interface_bodies(cleaned).items():
+        if iface in mixins:  # **mixin 非分母接口**（成员已并入 includer）
+            continue
         if interfaces is not None and iface not in interfaces:
             continue
         for match in _ATTRIBUTE.finditer(body):

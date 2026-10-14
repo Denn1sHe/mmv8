@@ -24,7 +24,8 @@ import pytest
 #:       2026-10-16 = 89（**G4-S0b**：候选源 B 工具 —— WebIDL 成员抽取器自测 9 条，含 constructor 排除 /
 #:       继承不误归 / 注释剔除 / partial 合并 / 产出必带 needs_community_review / 可被 load_members 读）。
 #:       2026-10-16 = 97（**G4-S0b**：双门禁对接 —— 真集绿 + 漏/造/空三负对照保持红，8 条）。
-COLLECTION_FLOOR = 97
+#:       2026-10-16 = 99（**G4-S0b**：mixin 合入修 —— `X includes M` 合入 + mixin 自身不作分母接口，2 条）。
+COLLECTION_FLOOR = 99
 
 
 def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:

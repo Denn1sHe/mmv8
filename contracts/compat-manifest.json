@@ -550,7 +550,917 @@
     },
     {
       "target_version": "v0.1.4",
+      "id": "CanvasRenderingContext2D.arc",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CanvasRenderingContext2D 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "graphics"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CanvasRenderingContext2D.arcTo",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CanvasRenderingContext2D 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "graphics"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CanvasRenderingContext2D.beginPath",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CanvasRenderingContext2D 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "graphics"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CanvasRenderingContext2D.bezierCurveTo",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CanvasRenderingContext2D 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "graphics"
+    },
+    {
+      "target_version": "v0.1.4",
       "id": "CanvasRenderingContext2D.canvas",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CanvasRenderingContext2D 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "graphics"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CanvasRenderingContext2D.clearRect",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CanvasRenderingContext2D 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "graphics"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CanvasRenderingContext2D.clip",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CanvasRenderingContext2D 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "graphics"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CanvasRenderingContext2D.closePath",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CanvasRenderingContext2D 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "graphics"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CanvasRenderingContext2D.createConicGradient",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CanvasRenderingContext2D 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "graphics"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CanvasRenderingContext2D.createImageData",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CanvasRenderingContext2D 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "graphics"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CanvasRenderingContext2D.createLinearGradient",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CanvasRenderingContext2D 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "graphics"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CanvasRenderingContext2D.createPattern",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CanvasRenderingContext2D 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "graphics"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CanvasRenderingContext2D.createRadialGradient",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CanvasRenderingContext2D 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "graphics"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CanvasRenderingContext2D.direction",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CanvasRenderingContext2D 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "graphics"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CanvasRenderingContext2D.drawFocusIfNeeded",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CanvasRenderingContext2D 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "graphics"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CanvasRenderingContext2D.drawImage",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CanvasRenderingContext2D 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "graphics"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CanvasRenderingContext2D.ellipse",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CanvasRenderingContext2D 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "graphics"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CanvasRenderingContext2D.fill",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CanvasRenderingContext2D 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "graphics"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CanvasRenderingContext2D.fillRect",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CanvasRenderingContext2D 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "graphics"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CanvasRenderingContext2D.fillText",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CanvasRenderingContext2D 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "graphics"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CanvasRenderingContext2D.filter",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CanvasRenderingContext2D 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "graphics"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CanvasRenderingContext2D.font",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CanvasRenderingContext2D 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "graphics"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CanvasRenderingContext2D.fontKerning",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CanvasRenderingContext2D 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "graphics"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CanvasRenderingContext2D.fontStretch",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CanvasRenderingContext2D 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "graphics"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CanvasRenderingContext2D.fontVariantCaps",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CanvasRenderingContext2D 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "graphics"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CanvasRenderingContext2D.getContextAttributes",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CanvasRenderingContext2D 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "graphics"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CanvasRenderingContext2D.getImageData",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CanvasRenderingContext2D 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "graphics"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CanvasRenderingContext2D.getLineDash",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CanvasRenderingContext2D 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "graphics"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CanvasRenderingContext2D.getTransform",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CanvasRenderingContext2D 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "graphics"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CanvasRenderingContext2D.globalAlpha",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CanvasRenderingContext2D 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "graphics"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CanvasRenderingContext2D.globalCompositeOperation",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CanvasRenderingContext2D 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "graphics"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CanvasRenderingContext2D.imageSmoothingEnabled",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CanvasRenderingContext2D 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "graphics"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CanvasRenderingContext2D.imageSmoothingQuality",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CanvasRenderingContext2D 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "graphics"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CanvasRenderingContext2D.isContextLost",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CanvasRenderingContext2D 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "graphics"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CanvasRenderingContext2D.isPointInPath",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CanvasRenderingContext2D 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "graphics"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CanvasRenderingContext2D.isPointInStroke",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CanvasRenderingContext2D 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "graphics"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CanvasRenderingContext2D.lang",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CanvasRenderingContext2D 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "graphics"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CanvasRenderingContext2D.letterSpacing",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CanvasRenderingContext2D 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "graphics"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CanvasRenderingContext2D.lineCap",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CanvasRenderingContext2D 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "graphics"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CanvasRenderingContext2D.lineDashOffset",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CanvasRenderingContext2D 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "graphics"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CanvasRenderingContext2D.lineJoin",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CanvasRenderingContext2D 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "graphics"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CanvasRenderingContext2D.lineTo",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CanvasRenderingContext2D 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "graphics"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CanvasRenderingContext2D.lineWidth",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CanvasRenderingContext2D 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "graphics"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CanvasRenderingContext2D.measureText",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CanvasRenderingContext2D 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "graphics"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CanvasRenderingContext2D.miterLimit",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CanvasRenderingContext2D 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "graphics"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CanvasRenderingContext2D.moveTo",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CanvasRenderingContext2D 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "graphics"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CanvasRenderingContext2D.putImageData",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CanvasRenderingContext2D 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "graphics"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CanvasRenderingContext2D.quadraticCurveTo",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CanvasRenderingContext2D 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "graphics"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CanvasRenderingContext2D.rect",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CanvasRenderingContext2D 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "graphics"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CanvasRenderingContext2D.reset",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CanvasRenderingContext2D 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "graphics"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CanvasRenderingContext2D.resetTransform",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CanvasRenderingContext2D 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "graphics"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CanvasRenderingContext2D.restore",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CanvasRenderingContext2D 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "graphics"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CanvasRenderingContext2D.rotate",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CanvasRenderingContext2D 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "graphics"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CanvasRenderingContext2D.roundRect",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CanvasRenderingContext2D 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "graphics"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CanvasRenderingContext2D.save",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CanvasRenderingContext2D 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "graphics"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CanvasRenderingContext2D.scale",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CanvasRenderingContext2D 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "graphics"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CanvasRenderingContext2D.setLineDash",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CanvasRenderingContext2D 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "graphics"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CanvasRenderingContext2D.setTransform",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CanvasRenderingContext2D 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "graphics"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CanvasRenderingContext2D.shadowBlur",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CanvasRenderingContext2D 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "graphics"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CanvasRenderingContext2D.shadowColor",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CanvasRenderingContext2D 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "graphics"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CanvasRenderingContext2D.shadowOffsetX",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CanvasRenderingContext2D 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "graphics"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CanvasRenderingContext2D.shadowOffsetY",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CanvasRenderingContext2D 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "graphics"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CanvasRenderingContext2D.stroke",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CanvasRenderingContext2D 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "graphics"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CanvasRenderingContext2D.strokeRect",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CanvasRenderingContext2D 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "graphics"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CanvasRenderingContext2D.strokeText",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CanvasRenderingContext2D 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "graphics"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CanvasRenderingContext2D.textAlign",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CanvasRenderingContext2D 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "graphics"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CanvasRenderingContext2D.textBaseline",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CanvasRenderingContext2D 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "graphics"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CanvasRenderingContext2D.textRendering",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CanvasRenderingContext2D 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "graphics"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CanvasRenderingContext2D.transform",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CanvasRenderingContext2D 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "graphics"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CanvasRenderingContext2D.translate",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: CanvasRenderingContext2D 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "graphics"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "CanvasRenderingContext2D.wordSpacing",
       "realm": "main",
       "descriptor": "attribute",
       "behavior_level": "stub",
@@ -3956,6 +4866,45 @@
     },
     {
       "target_version": "v0.1.4",
+      "id": "TextDecoder.encoding",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: TextDecoder 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "bindings"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "TextDecoder.fatal",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: TextDecoder 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "bindings"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "TextDecoder.ignoreBOM",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: TextDecoder 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "bindings"
+    },
+    {
+      "target_version": "v0.1.4",
       "id": "TextEncoder.encode",
       "realm": "main",
       "descriptor": "attribute",
@@ -3970,6 +4919,19 @@
     {
       "target_version": "v0.1.4",
       "id": "TextEncoder.encodeInto",
+      "realm": "main",
+      "descriptor": "attribute",
+      "behavior_level": "stub",
+      "test_ids": [
+        "g4-seed:pending"
+      ],
+      "status": "missing",
+      "evidence": "face: TextEncoder 见 webref IDL（面级存在性；行为取证待 S1~S5）",
+      "implementation_owner": "bindings"
+    },
+    {
+      "target_version": "v0.1.4",
+      "id": "TextEncoder.encoding",
       "realm": "main",
       "descriptor": "attribute",
       "behavior_level": "stub",

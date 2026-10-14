@@ -83,6 +83,31 @@ def test_partial_interface_is_merged() -> None:
     assert {"IDBFactory.name", "IDBFactory.VERSION"} <= set(members)
 
 
+def test_mixin_members_are_merged_into_includer() -> None:
+    """**mixin 合入**：`X includes M;` ⇒ `M` 的成员属 `X` 的接口表面（**不修 = 分母被静默剪小**）。
+
+    实测背景：`encoding.idl` 的 `TextDecoder` 原只抽到自有成员 `decode`；
+    `encoding`/`fatal`/`ignoreBOM` 在 `interface mixin TextDecoderCommon` 内 ⇒ 修复后四项齐。
+    """
+    idl = """
+    interface mixin Common { readonly attribute boolean shared; };
+    interface Widget { undefined own(); };
+    Widget includes Common;
+    """
+    members = _load_tool().extract_members(idl)
+    assert members == ("Widget.own", "Widget.shared")
+
+
+def test_mixin_not_included_is_absent() -> None:
+    """**负对照**：**未** `includes` 的 mixin 成员**不得**归到任何接口（防张冠李戴）。"""
+    idl = """
+    interface mixin Orphan { readonly attribute boolean lonely; };
+    interface Widget { undefined own(); };
+    """
+    members = _load_tool().extract_members(idl)
+    assert members == ("Widget.own",)
+
+
 def test_members_are_member_level_ids() -> None:
     """**全部产出必须是成员级 `id`**（含点）⇒ 可被 manifest 门禁接受（族级名当场拒）。"""
     members = _load_tool().extract_members(IDL_SAMPLE)
