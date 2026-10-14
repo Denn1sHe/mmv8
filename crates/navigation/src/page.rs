@@ -316,7 +316,11 @@ impl BrowsingContext {
         self.shared.network.abort_epoch(previous_epoch);
         let base = u32::try_from(epoch.get()).unwrap_or(u32::MAX);
         let tree = Rc::new(RefCell::new(NodeTree::with_generation_base(base)));
-        let document = tree.borrow().root();
+        // `G3X-S3c1`（①）：可判定错误（此时树刚建、无并存借；保守起见仍走 `try_borrow`）。
+        let document = tree
+            .try_borrow()
+            .map_err(|_| PageError::new(PageErrorKind::Internal, "NodeTree 借用冲突"))?
+            .root();
         // 重绑：清各别名单元（`Rc` 整体替换 ⇒ 旧闭包捕获的旧单元被丢弃）。
         self.shared.tree = Rc::clone(&tree);
         self.shared.registry = Rc::new(RefCell::new(ListenerRegistry::new()));
@@ -430,7 +434,14 @@ impl BrowsingContext {
     /// **定时器回调错误登记**（`G3X-S3b`；空 = 无错误）。
     #[must_use]
     pub fn timer_errors(&self) -> Vec<String> {
-        self.shared.timer_errors.borrow().clone()
+        // `G3X-S3c1`（非 Result，(β)）：**不 panic** —— 冲突 ⇒ `debug_assert!` + 空表（保守读）。
+        self.shared.timer_errors.try_borrow().map_or_else(
+            |_| {
+                debug_assert!(false, "timer_errors：借用冲突（宿主重入）");
+                Vec::new()
+            },
+            |errors| errors.clone(),
+        )
     }
 
     /// **轮冲刷**（`G3X-S3a`）：`≤ min(max_rounds, 64)` 轮、**每轮 `RunBudget::tasks(16)`**。
@@ -532,7 +543,14 @@ impl BrowsingContext {
     /// user activation 状态（G2 只置位 `sticky`）。
     #[must_use]
     pub fn user_activation(&self) -> UserActivation {
-        *self.shared.activation.borrow()
+        // `G3X-S3c1`（非 Result，(α)+(β)）：**不 panic** —— 冲突 ⇒ `debug_assert!` + 默认（未激活）。
+        self.shared.activation.try_borrow().map_or_else(
+            |_| {
+                debug_assert!(false, "user_activation：借用冲突（宿主重入）");
+                UserActivation::default()
+            },
+            |activation| *activation,
+        )
     }
 
     /// `document.activeElement` 最小态。
@@ -581,7 +599,12 @@ impl BrowsingContext {
         })?;
         let document = self.shared.controller.document();
         let (valid, in_document) = {
-            let tree = self.shared.tree.borrow();
+            // `G3X-S3c1`（②）：可判定错误。
+            let tree = self
+                .shared
+                .tree
+                .try_borrow()
+                .map_err(|_| PageError::new(PageErrorKind::Internal, "NodeTree 借用冲突"))?;
             (
                 tree.is_valid(target),
                 input::is_descendant_or_self(&tree, target, document),
@@ -765,12 +788,20 @@ impl BrowsingContext {
                     let src = self
                         .shared
                         .tree
-                        .borrow()
+                        .try_borrow()
+                        .map_err(|_| PageError::new(PageErrorKind::Internal, "NodeTree 借用冲突"))?
                         .get_attribute(node, "src")
                         .map(str::to_owned);
                     if let Some(src) = src {
                         let url = resolve_script_src(self.shared.controller.url(), &src);
-                        let response = self.shared.offline.borrow().resolve(&url);
+                        let response = self
+                            .shared
+                            .offline
+                            .try_borrow()
+                            .map_err(|_| {
+                                PageError::new(PageErrorKind::Internal, "OfflineBundle 借用冲突")
+                            })?
+                            .resolve(&url);
                         if let Some(response) = response {
                             let body = String::from_utf8_lossy(&response.body).into_owned();
                             self.eval_page_script(&body)?;
@@ -784,7 +815,12 @@ impl BrowsingContext {
                             return Ok(false);
                         }
                     } else {
-                        let kind = script_kind(&self.shared.tree.borrow(), node);
+                        let kind = {
+                            let tree = self.shared.tree.try_borrow().map_err(|_| {
+                                PageError::new(PageErrorKind::Internal, "NodeTree 借用冲突")
+                            })?;
+                            script_kind(&tree, node)
+                        };
                         match kind {
                             ScriptKind::Module | ScriptKind::DeferredClassic => {
                                 let module = kind == ScriptKind::Module;
@@ -794,7 +830,14 @@ impl BrowsingContext {
                                     .push(DeferredScript { node, module });
                             }
                             ScriptKind::BlockingClassic => {
-                                let text = self.shared.tree.borrow().text_content(node);
+                                let text = self
+                                    .shared
+                                    .tree
+                                    .try_borrow()
+                                    .map_err(|_| {
+                                        PageError::new(PageErrorKind::Internal, "NodeTree 借用冲突")
+                                    })?
+                                    .text_content(node);
                                 self.eval_page_script(&text)?;
                                 self.flush_writes();
                             }
@@ -861,10 +904,20 @@ impl BrowsingContext {
         self.shared.deferred_base_url.replace(base_url.to_owned());
         // 先**预扫**模块顶层 await（保 `ModuleTopLevelAwaitUnsupported` 具名错误不被调度器错误面吞掉）。
         {
-            let specs: Vec<DeferredScript> = self.shared.deferred.borrow().clone();
+            let specs: Vec<DeferredScript> = self
+                .shared
+                .deferred
+                .try_borrow()
+                .map_err(|_| PageError::new(PageErrorKind::Internal, "deferred 借用冲突"))?
+                .clone();
             for spec in &specs {
                 if spec.module {
-                    let text = self.shared.tree.borrow().text_content(spec.node);
+                    let text = self
+                        .shared
+                        .tree
+                        .try_borrow()
+                        .map_err(|_| PageError::new(PageErrorKind::Internal, "NodeTree 借用冲突"))?
+                        .text_content(spec.node);
                     if contains_top_level_await(&text) {
                         return Err(PageError::new(
                             PageErrorKind::ModuleTopLevelAwaitUnsupported,
@@ -874,7 +927,12 @@ impl BrowsingContext {
                 }
             }
         }
-        let count = self.shared.deferred.borrow().len();
+        let count = self
+            .shared
+            .deferred
+            .try_borrow()
+            .map_err(|_| PageError::new(PageErrorKind::Internal, "deferred 借用冲突"))?
+            .len();
         for index in 0..count {
             self.runloop
                 .schedule(TaskSource::Message, defer_task_token(index as u64));
@@ -958,7 +1016,14 @@ impl BrowsingContext {
             let spec = RequestSpec::simple(id, &ticket.url, epoch);
             match self.shared.network.fetch(spec) {
                 Ok(FetchOutcome::Ready(_)) => {
-                    let response = self.shared.offline.borrow().resolve(&ticket.url);
+                    let response = self
+                        .shared
+                        .offline
+                        .try_borrow()
+                        .map_err(|_| {
+                            PageError::new(PageErrorKind::Internal, "OfflineBundle 借用冲突")
+                        })?
+                        .resolve(&ticket.url);
                     let object = build_response_object(self.plane.realm_mut(), response.as_ref())
                         .map_err(map_js)?;
                     let handle = ticket.resolve.handle();
@@ -1097,7 +1162,8 @@ struct SharedBundle(Rc<RefCell<OfflineBundle>>);
 impl Transport for SharedBundle {
     fn send(&mut self, spec: &RequestSpec) -> Result<Response, NetworkError> {
         self.0
-            .borrow()
+            .try_borrow()
+            .map_err(|_| NetworkError::not_found(&spec.url))?
             .resolve(&spec.url)
             .ok_or_else(|| NetworkError::not_found(&spec.url))
     }
@@ -1374,11 +1440,23 @@ impl TaskExecutor for PageExec<'_> {
                 return Ok(TaskVerdict::Done);
             }
             let index = usize::try_from(raw & !DEFER_TOKEN_TAG).unwrap_or(usize::MAX);
-            let spec = self.shared.deferred.borrow().get(index).copied();
+            let spec = self
+                .shared
+                .deferred
+                .try_borrow()
+                .ok()
+                .and_then(|scripts| scripts.get(index).copied());
             if let Some(spec) = spec {
-                let text = self.shared.tree.borrow().text_content(spec.node);
+                let text = self.shared.tree.try_borrow().map_or_else(
+                    |_| String::new(),
+                    |tree_ref| tree_ref.text_content(spec.node),
+                );
                 let deadline = self.shared.script_deadline.get();
-                let base = self.shared.deferred_base_url.borrow().clone();
+                let base = self
+                    .shared
+                    .deferred_base_url
+                    .try_borrow()
+                    .map_or_else(|_| String::new(), |url| url.clone());
                 let plane = &mut *self.plane;
                 if spec.module {
                     if contains_top_level_await(&text) {
@@ -1428,8 +1506,16 @@ impl TaskExecutor for PageExec<'_> {
 
     fn has_pending_io(&self) -> bool {
         !self.shared.network.pending().is_empty()
-            || !self.shared.fetch_queue.borrow().is_empty()
-            || !self.shared.fetch_table.borrow().is_empty()
+            || self
+                .shared
+                .fetch_queue
+                .try_borrow()
+                .map_or(true, |queue| !queue.is_empty())
+            || self
+                .shared
+                .fetch_table
+                .try_borrow()
+                .map_or(true, |table| !table.is_empty())
             || self.shared.pending_external.get()
     }
 }

@@ -29,7 +29,13 @@ impl DomSink {
     /// 以共享节点树建 sink（文档根 = 树的根）。
     #[must_use]
     pub fn new(tree: Rc<RefCell<NodeTree>>) -> Self {
-        let document = tree.borrow().root();
+        // `G3X-S3c1`（⑥，(β) 口径）：**不 panic** —— 借用冲突 ⇒ `debug_assert!` 可见 + 保守默认（根）。
+        let document = if let Ok(tree_ref) = tree.try_borrow() {
+            tree_ref.root()
+        } else {
+            debug_assert!(false, "DomSink::new：NodeTree 借用冲突（宿主重入）");
+            NodeId::new(0, 0)
+        };
         Self {
             tree,
             qual_names: HashMap::new(),
@@ -52,11 +58,12 @@ impl DomSink {
 
     /// 把 `NodeOrText::AppendText` 落到树上（相邻文本节点合并）。
     fn append_text(&mut self, parent: NodeId, text: &StrTendril) {
-        let last = self
-            .tree
-            .borrow()
-            .get(parent)
-            .and_then(|node| node.last_child);
+        let last = if let Ok(tree_ref) = self.tree.try_borrow() {
+            tree_ref.get(parent).and_then(|node| node.last_child)
+        } else {
+            debug_assert!(false, "DomSink::append_text：NodeTree 借用冲突（宿主重入）");
+            None
+        };
         let merged = last.is_some_and(|last| {
             let mut tree = self.tree.borrow_mut();
             if tree.get(last).map(|node| node.kind) != Some(NodeKind::Text) {
@@ -144,7 +151,16 @@ impl TreeSink for DomSink {
         prev_element: &NodeId,
         child: NodeOrText<NodeId>,
     ) {
-        let has_parent = self.tree.borrow().parent(*element).is_some();
+        let has_parent = self.tree.try_borrow().map_or_else(
+            |_| {
+                debug_assert!(
+                    false,
+                    "DomSink::append_based_on_parent_node：NodeTree 借用冲突"
+                );
+                false
+            },
+            |tree_ref| tree_ref.parent(*element).is_some(),
+        );
         if has_parent {
             self.append_before_sibling(prev_element, child);
         } else {
@@ -181,7 +197,11 @@ impl TreeSink for DomSink {
     }
 
     fn append_before_sibling(&mut self, sibling: &NodeId, new_node: NodeOrText<NodeId>) {
-        let parent = self.tree.borrow().parent(*sibling);
+        let parent = self
+            .tree
+            .try_borrow()
+            .ok()
+            .and_then(|tree_ref| tree_ref.parent(*sibling));
         let Some(parent) = parent else {
             return;
         };
@@ -203,7 +223,15 @@ impl TreeSink for DomSink {
     fn add_attrs_if_missing(&mut self, target: &NodeId, attrs: Vec<Attribute>) {
         for attr in &attrs {
             let name = attr.name.local.as_ref();
-            if self.tree.borrow().get_attribute(*target, name).is_some() {
+            // 借用冲突 ⇒ 保守**跳过该属性**（不 mutate），避免在冲突态下改树。
+            let already = self.tree.try_borrow().map_or_else(
+                |_| {
+                    debug_assert!(false, "DomSink::add_attrs_if_missing：NodeTree 借用冲突");
+                    true
+                },
+                |tree_ref| tree_ref.get_attribute(*target, name).is_some(),
+            );
+            if already {
                 continue;
             }
             self.tree
@@ -221,14 +249,24 @@ impl TreeSink for DomSink {
     }
 
     fn remove_from_parent(&mut self, target: &NodeId) {
-        let parent = self.tree.borrow().parent(*target);
+        let parent = self
+            .tree
+            .try_borrow()
+            .ok()
+            .and_then(|tree_ref| tree_ref.parent(*target));
         if let Some(parent) = parent {
             self.tree.borrow_mut().remove_child(parent, *target);
         }
     }
 
     fn reparent_children(&mut self, node: &NodeId, new_parent: &NodeId) {
-        let children: Vec<NodeId> = self.tree.borrow().children(*node).collect();
+        let children: Vec<NodeId> = self.tree.try_borrow().map_or_else(
+            |_| {
+                debug_assert!(false, "DomSink::reparent_children：NodeTree 借用冲突");
+                Vec::new()
+            },
+            |tree_ref| tree_ref.children(*node).collect(),
+        );
         for child in children {
             self.tree.borrow_mut().remove_child(*node, child);
             self.tree.borrow_mut().append_child(*new_parent, child);
