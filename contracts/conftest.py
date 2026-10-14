@@ -30,7 +30,8 @@ import pytest
 #:       2026-10-16 = 103（**G4-S0b / U-6**：逐源锁文件落点 + 无源拒绝负对照，2 条）。
 #:       2026-10-16 = 106（**G4-S0b ③**：跨源消歧三举措 —— 唯一性门禁（静默去重专防）/ 共享前缀报告 /
 #:       条目来源族承载，3 条）。
-COLLECTION_FLOOR = 106
+#:       2026-10-16 = 109（**G4-S0b ②**：descriptor 修真 —— 四类齐 / CDP 映射 / 分母不变，3 条）。
+COLLECTION_FLOOR = 109
 
 
 def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:

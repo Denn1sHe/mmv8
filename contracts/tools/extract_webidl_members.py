@@ -78,6 +78,8 @@ class Extraction:
     members: tuple[str, ...]
     source_sha256: str
     files: tuple[str, ...]
+    #: 成员 ⇒ descriptor（`attribute`/`operation`/`constant`/`event`；`G4-S0b` ②）。
+    descriptors: dict[str, str]
 
 
 def _strip_comments(text: str) -> str:
@@ -143,6 +145,35 @@ def _interface_bodies(text: str) -> dict[str, str]:
     return merged
 
 
+def extract_descriptors(
+    idl_text: str, interfaces: frozenset[str] | None = None
+) -> dict[str, str]:
+    """抽出 **成员 ⇒ descriptor**（`G4-S0b` ②：`attribute`/`operation`/`constant`/`event`）。
+
+    - `const …` ⇒ ``constant``；
+    - `attribute`（名以 `on` 起头，如 `onclick`）⇒ ``event``；其余 ⇒ ``attribute``；
+    - 有名方法 ⇒ ``operation``。
+    """
+    found: dict[str, str] = {}
+    cleaned = _strip_comments(idl_text)
+    mixins = {name for name in _MIXIN_HEAD.findall(cleaned)}
+    for iface, body in _interface_bodies(cleaned).items():
+        if iface in mixins:
+            continue
+        if interfaces is not None and iface not in interfaces:
+            continue
+        for match in _ATTRIBUTE.finditer(body):
+            name = match.group(1)
+            found[f"{iface}.{name}"] = "event" if name.startswith("on") else "attribute"
+        for match in _CONST.finditer(body):
+            found[f"{iface}.{match.group(1)}"] = "constant"
+        for match in _METHOD.finditer(body):
+            name = match.group(1)
+            if name not in {"constructor", "attribute", "const"}:
+                found[f"{iface}.{name}"] = "operation"
+    return found
+
+
 def extract_members(
     idl_text: str, interfaces: frozenset[str] | None = None
 ) -> tuple[str, ...]:
@@ -184,20 +215,26 @@ def extract_path(path: Path, interfaces: frozenset[str] | None = None) -> Extrac
         raise SystemExit(f"[extract] 未找到 IDL 输入：{path}")
     digest = hashlib.sha256()
     members: set[str] = set()
+    descriptors: dict[str, str] = {}
     names: list[str] = []
     for file in files:
         payload = file.read_bytes()
         digest.update(file.name.encode("utf-8"))
         digest.update(payload)
-        members.update(extract_members(payload.decode("utf-8"), interfaces))
+        text = payload.decode("utf-8")
+        members.update(extract_members(text, interfaces))
+        descriptors.update(extract_descriptors(text, interfaces))
         names.append(str(file))
-    return Extraction(tuple(sorted(members)), digest.hexdigest(), tuple(names))
+    return Extraction(
+        tuple(sorted(members)), digest.hexdigest(), tuple(names), descriptors
+    )
 
 
 def build_payload(extraction: Extraction, source_version: str) -> dict[str, object]:
     """按计划 `§4` 造产出（**必带** `needs_community_review: true`）。"""
     return {
         "members": list(extraction.members),
+        "member_descriptors": extraction.descriptors,
         "source": "spec-webidl",
         "method": " ".join(sys.argv),
         "extracted_at": date.today().isoformat(),

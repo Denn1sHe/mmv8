@@ -51,6 +51,20 @@ CDP_DOMAINS: frozenset[str] = frozenset(
 )
 
 
+def extract_descriptors(payload: dict[str, object]) -> dict[str, str]:
+    """抽 **成员 ⇒ descriptor**（CDP 映射：`command → operation`、`event → event`）。"""
+    found: dict[str, str] = {}
+    for domain in payload.get("domains", []):  # type: ignore[union-attr]
+        name = str(domain.get("domain", ""))
+        if name not in CDP_DOMAINS:
+            continue
+        for item in domain.get("commands", []) or []:
+            found[f"{name}.{item.get('name', '')}"] = "operation"
+        for item in domain.get("events", []) or []:
+            found[f"{name}.{item.get('name', '')}"] = "event"
+    return {k: v for k, v in found.items() if not k.endswith(".")}
+
+
 def extract_members(payload: dict[str, object]) -> set[str]:
     """从一份 CDP 协议 JSON 抽 **域成员**（`<Domain>.<command|event>`）；域按:data:`CDP_DOMAINS` 收窄。"""
     members: set[str] = set()
@@ -67,7 +81,10 @@ def extract_members(payload: dict[str, object]) -> set[str]:
 
 
 def build_payload(
-    members: set[str], files: list[Path], source_version: str
+    members: set[str],
+    files: list[Path],
+    source_version: str,
+    descriptors: dict[str, str] | None = None,
 ) -> dict[str, object]:
     """造产出（计划 `§4` 格式；`members` 非空校验在 `main`）。"""
     digest = hashlib.sha256()
@@ -76,6 +93,7 @@ def build_payload(
         digest.update(file.read_bytes())
     return {
         "members": sorted(members),
+        "member_descriptors": descriptors or {},
         "source": "cdp-protocol",
         "method": " ".join(sys.argv),
         "extracted_at": date.today().isoformat(),
@@ -94,12 +112,15 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     members: set[str] = set()
+    descriptors: dict[str, str] = {}
     for file in args.json_files:
-        members |= extract_members(json.loads(file.read_text(encoding="utf-8")))
+        payload = json.loads(file.read_text(encoding="utf-8"))
+        members |= extract_members(payload)
+        descriptors.update(extract_descriptors(payload))
     if not members:
         raise SystemExit("[cdp] 未抽到任何成员 ⇒ 拒绝产出（防空清单假通过）")
 
-    payload = build_payload(members, list(args.json_files), args.source_version)
+    payload = build_payload(members, list(args.json_files), args.source_version, descriptors)
     args.out.write_text(
         json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
     )

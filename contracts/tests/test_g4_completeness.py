@@ -206,3 +206,67 @@ def test_entries_carry_source_family_in_category() -> None:
     for entry in manifest:
         if entry.id.startswith("Storage."):
             assert entry.category in {"spec-webidl", "cdp-protocol"}, "前缀共享者须有来源族标注"
+
+
+# --------------------------------------------- descriptor 修真（G4-S0b ②）
+
+
+def test_descriptors_are_real_not_defaulted() -> None:
+    """② `descriptor` 修真：**四类齐**且**非全 `attribute`**（此前默认值是"善意的谎"）。
+
+    判别性：若 `descriptor` 退回"全 `attribute`"缺省 ⇒ 本测红。
+    """
+    manifest = load(MANIFEST)
+    kinds = {e.descriptor for e in manifest}
+    assert kinds == {"attribute", "operation", "constant", "event"}, (
+        f"descriptor 应含四类（实得 {kinds}）"
+    )
+    assert sum(1 for e in manifest if e.descriptor == "attribute") < len(manifest), (
+        "不得全为 attribute（缺省化 = 未修真）"
+    )
+
+
+def test_cdp_descriptor_mapping_is_command_operation_event_event() -> None:
+    """② CDP 映射口径：`command → operation`、`event → event`（抽样钉值）。"""
+    manifest = {e.id: e for e in load(MANIFEST)}
+    assert manifest["Runtime.evaluate"].descriptor == "operation", "CDP command 应为 operation"
+    assert manifest["Runtime.consoleAPICalled"].descriptor == "event", "CDP event 应为 event"
+
+
+def test_descriptor_truth_does_not_change_denominator() -> None:
+    """② **分母 id 集合不变**（`descriptor` 属元数据修正，冻结位不受影响）。"""
+    payload = json.loads(MEMBERS.read_text(encoding="utf-8"))
+    manifest_ids = {e.id for e in load(MANIFEST)}
+    assert manifest_ids == set(payload["members"]), "修 descriptor 不得改 id 集合"
+
+
+# --------------------------------------------- descriptor 修真（G4-S0b ②）
+
+
+def test_descriptors_are_real_not_defaulted() -> None:
+    """② `descriptor` 修真：**四类齐**且**非全 `attribute`**（此前默认值是"善意的谎"）。
+
+    判别性：若 `descriptor` 退回"全 `attribute`"缺省 ⇒ 本测红。
+    """
+    manifest = load(MANIFEST)
+    kinds = {e.descriptor for e in manifest}
+    assert kinds == {"attribute", "operation", "constant", "event"}, (
+        f"descriptor 应含四类（实得 {kinds}）"
+    )
+    assert sum(1 for e in manifest if e.descriptor == "attribute") < len(manifest), (
+        "不得全为 attribute（缺省化 = 未修真）"
+    )
+
+
+def test_cdp_descriptor_mapping_is_command_operation_event_event() -> None:
+    """② CDP 映射口径：`command → operation`、`event → event`（抽样钉值）。"""
+    manifest = {e.id: e for e in load(MANIFEST)}
+    assert manifest["Runtime.evaluate"].descriptor == "operation", "CDP command 应为 operation"
+    assert manifest["Runtime.consoleAPICalled"].descriptor == "event", "CDP event 应为 event"
+
+
+def test_descriptor_truth_does_not_change_denominator() -> None:
+    """② **分母 id 集合不变**（`descriptor` 属元数据修正，冻结位不受影响）。"""
+    payload = json.loads(MEMBERS.read_text(encoding="utf-8"))
+    manifest_ids = {e.id for e in load(MANIFEST)}
+    assert manifest_ids == set(payload["members"]), "修 descriptor 不得改 id 集合"

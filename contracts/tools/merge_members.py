@@ -33,6 +33,7 @@ def main(argv: list[str] | None = None) -> int:
 
     members: set[str] = set()
     provenance: dict[str, str] = {}
+    descriptors: dict[str, str] = {}
     sources: list[dict[str, object]] = []
     for path in args.inputs:
         payload = json.loads(path.read_text(encoding="utf-8"))
@@ -52,6 +53,7 @@ def main(argv: list[str] | None = None) -> int:
                     "（**不得静默去重**——先裁决命名）"
                 )
             provenance[member] = slug
+        descriptors.update(payload.get("member_descriptors") or {})
         members.update(source_members)
         # **续接已有 `sources`**（输入本身可能是已合并文件）——否则 provenance 被**展平**（源数静默减少）。
         if payload.get("sources"):
@@ -71,6 +73,7 @@ def main(argv: list[str] | None = None) -> int:
     merged = {
         "members": sorted(members),
         "member_sources": provenance,
+        "member_descriptors": descriptors,
         "source": "spec-webidl+cdp-protocol",
         "sources": sources,
         "extracted_at": date.today().isoformat(),

@@ -65,13 +65,13 @@ def descriptor_for(member: str) -> str:
     # 注：`method` 与 `attribute` 的细分需**行为证据**（属 `behaviour`），故起步不冒充。
 
 
-def build_entry(member: str, source_slug: str) -> dict[str, object]:
+def build_entry(member: str, source_slug: str, descriptor: str | None = None) -> dict[str, object]:
     """造一条**九字段齐**的种子条目（`status=missing`，`behavior_level=stub`）。"""
     return {
         "target_version": TARGET_VERSION,
         "id": member,
         "realm": "main",
-        "descriptor": descriptor_for(member),
+        "descriptor": descriptor or descriptor_for(member),
         "behavior_level": "stub",
         "test_ids": [SEED_TEST_ID],
         "status": "missing",
@@ -96,12 +96,18 @@ def main(argv: list[str] | None = None) -> int:
         raise SystemExit("[seed] 成员集为空 ⇒ 拒绝生成（防空表假通过）")
 
     provenance = payload.get("member_sources") or {}
+    descriptors = payload.get("member_descriptors") or {}
     manifest = {
         "version": args.version,
         # `M0c`（`denominator_fixed: true`）**须经核可**后另笔设置（本生成器不动它）。
         "denominator_fixed": False,
         "entries": [
-            build_entry(member, str(provenance.get(member, "unknown"))) for member in members
+            build_entry(
+                member,
+                str(provenance.get(member, "unknown")),
+                descriptors.get(member),
+            )
+            for member in members
         ],
     }
     args.out.write_text(
