@@ -37,7 +37,7 @@
 | 3.1 | `timer_fires_after_n_rounds` | **第 N 轮**触发（N 钉死；**预算 `16`/轮 · 冲刷 ≤ `64`**，§6-1） | 同步实现 ⇒ 轮次不符 |
 | 3.2 | `timer_does_not_block_load` | `load` 期间**轮不抢**（预算生效） | 阻塞 ⇒ `load` 延后 |
 | 3.3 | `task_queue_ordering` | **严格按序** + 微任务边界 | 乱序 ⇒ 红 |
-| 3.4 | `no_host_try_borrow_panic` | **5 路径（+ 建议第 6 = `sink.rs` 7 处）** 无 panic + 期望值 | 保留 `borrow` ⇒ panic |
+| 3.4 | `no_host_try_borrow_panic` | **7 路径 + 伴生族（`borrow_mut` 35 处）** 无 panic + 期望值 | 保留 `borrow` / `borrow_mut` ⇒ panic |
 
 ## §4 风险
 
@@ -54,7 +54,7 @@
 
 1. **`§6-1` timer 预算 / 轮上限** = **「每轮任务数上限」**（确定性优先）：**初值 `16` 任务/轮 + 单次冲刷 ≤ `64` 轮**；**校准一次**、**测试钉值收口**（**钉后仅升须显式**）。
 2. **`§6-2` 任务化粒度 / 接入点** = **每 `<script>` = 一宏任务**；微任务接入点 = **每宏任务边界的 V8 checkpoint**（G1 面）。
-3. **`§6-3` 五路径清单**（工程师源级枚举 `8af1a5a` + **架构师源级核可**，2026-10-14）：**产品码 `.borrow()` = 13 处 / 5 路径**（`page.rs` **12** + `sdk-python/convert.rs` **1**）—— **① 导航绑定** `page.rs:264`；**② 输入派发**（**可重入**）`:399`/`:448`；**③ 解析 sink 驱动**（**可重入**：阻塞脚本就地执行）`:632`/`:637`/`:651`/`:661`；**④ fetch 泵** `:721`/`:802`/`:935`/`:1193`/`:1194`；**⑤ Python 边界** `convert.rs:181`。**替代形态**：**①–④ `try_borrow → Internal`**；**⑤ `try_borrow → reentrant_pyerr`**。**产品码 0 处的文件**：`binding.rs` / `parser.rs`（其 `.borrow()` **皆在 `#[cfg(test)]` 之后** —— 架构师已核）。
+3. **`§6-3` 七路径清单**（工程师枚举 `8af1a5a` → 修正 `7498f92` + **架构师源级核可**）：**初版 13 处 / 5 路径 ⇒ 修正后 产品码 `.borrow()` = 22 处 / 7 路径 + 伴生族 `.borrow_mut()` = 35 处**（**全仓扫查**；**完整表 + 可复现命令见下 `### §6-3`**）（`page.rs` **12** + `sdk-python/convert.rs` **1**）—— **① 导航绑定** `page.rs:264`；**② 输入派发**（**可重入**）`:399`/`:448`；**③ 解析 sink 驱动**（**可重入**：阻塞脚本就地执行）`:632`/`:637`/`:651`/`:661`；**④ fetch 泵** `:721`/`:802`/`:935`/`:1193`/`:1194`；**⑤ Python 边界** `convert.rs:181`。**替代形态**：**①–④ `try_borrow → Internal`**；**⑤ `try_borrow → reentrant_pyerr`**。**产品码 0 处的文件**：`binding.rs` / `parser.rs`（其 `.borrow()` **皆在 `#[cfg(test)]` 之后** —— 架构师已核）。
    - **⚠️ 架构师核可分歧（+7 处，建议第 6 路径）**：**`navigation/sink.rs` 7 处**（`:32`/`:57`/`:147`/`:184`/`:206`/`:224`/`:231`）**全产品码**（该文件**无 `#[cfg(test)]`**）⇒ 属 **`html5ever::TreeSink` 回调面**（`DomSink` 持 `Rc<RefCell<NodeTree>>`），与 ③ **同属「解析期可重入面」** ⇒ **建议纳入第 6 路径**（`try_borrow → Internal`）；**若不纳入，须给「回调期无并存 mut 借」的理由**（**举证责任在排除方**）。
    - **可复现 grep**（产品码，按各文件 `#[cfg(test)]` 行号截断）：
      ```
@@ -86,12 +86,12 @@
 | 5 | Python 边界 | `sdk-python/src/convert.rs:181` | 是（Python↔JS 值转换在宿主调用内） | `try_borrow().map_err(reentrant_pyerr())` |
 
 | 6 | **解析期 `TreeSink` 回调**（**架构师抓出，我初版遗漏**） | `sink.rs:32`、`57`、`147`、`184`、`206`、`224`、`231` | 是（`DomSink` 持 `Rc<RefCell<NodeTree>>`；**阻塞脚本在解析内就地执行 ⇒ 回调可重入**，与 ③ 同族） | `try_borrow().map_err(→ Internal("NodeTree 借用冲突"))` |
-| 7 | **stylo 桥 `ElementData` 借用**（**我本轮补扫发现**） | `layout-backend/src/stylo_host/mod.rs:312`、`319`（`ElementSlot::{borrow_data,has_styles}`） | 桥内回调面（stylo 回调期可能叠借；**跨 crate** ⇒ 是否纳入 `S3c` 范围**请架构师定**） | `try_borrow().map_err(→ Internal("ElementData 借用冲突"))` |
+| 7 | **stylo 桥 `ElementData` 借用**（**我本轮补扫发现**） | `layout-backend/src/stylo_host/mod.rs:312`、`319`（`ElementSlot::{borrow_data,has_styles}`） | 桥内回调面（stylo 回调期可能叠借；**跨 crate** ⇒ ✅ **架构师定：纳入 `S3c`**（**同 `RefCell<ElementDataWrapper>`**：`:312`/`:319` `borrow()` 与 `ensure_data` 的 `borrow_mut()` **叠加 = panic 面同源**） | `try_borrow().map_err(→ Internal("ElementData 借用冲突"))` |
 
 **计数（修正后）**：产品码 `.borrow()` = **22 处** —— `page.rs` 12 + `sink.rs` **7** + `convert.rs` 1 + `stylo_host/mod.rs` **2**；`binding.rs`/`parser.rs` 产品码 **0 处**（全在 `#[cfg(test)]` 内）。按 7 路径：**① 1 / ② 2 / ③ 4 / ④ 5 / ⑤ 1 / ⑥ 7 / ⑦ 2 = 22**。
 
 **伴生族（`.borrow_mut()`，同属决策 3「任何 `Rc<RefCell>` 一律 `try_borrow`」）**：产品码 = **35 处** —— `page.rs` 14 + `sink.rs` **16** + `input.rs` 1 + `layout-backend/src/opaque.rs` 2 + `stylo_host/mod.rs` **2**（含 `ensure_data` 的 `self.data.borrow_mut()`）。**初版清单只枚举 `.borrow()`，本表补齐**（`borrow_mut` 与 `borrow` 叠加 = panic 面同源）。
-**与测试对账**：`§3.4 no_host_try_borrow_panic`（5 路径无 panic + 期望值）即按上表逐路径覆盖。
+**与测试对账（✅ 架构师定）**：`§3.4 no_host_try_borrow_panic` **由「5 路径」扩为「7 路径 + 伴生族（`borrow_mut` 35 处）」**（**`borrow` / `borrow_mut` 叠加 = panic 面同源**），按上表逐路径覆盖。
 **诚实边界**：站点为**源级枚举**（`grep` 可复现）；「是否宿主驱动」为**分类判断**（依据调用链与重入可能，非机器可判定）；如与架构师口径不符，**以架构师核可为准**。
 
 4. **`§6-4` 与 `S1b` 先后** = **无依赖，`S3` 不等**（**正交**；「持久槽存储」绑增量 restyle 立项）—— §4 风险行已按此改写。
