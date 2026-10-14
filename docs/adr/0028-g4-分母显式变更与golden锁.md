@@ -48,7 +48,7 @@ idl = "interface Foo { readonly attribute (DOMString or ArrayBuffer)? unionAttr;
 
 ---
 
-## §2 变更二：分母 `1669 → 1676 + Credentials`（`D-1` + `D-S2-1`）
+## §2 变更二：分母 `1669 → 1698`（`D-1` + `D-S2-1` + §2.4 执行实录）
 
 ### 2.1 `Credentials` 家族扩源（`D-S2-1` = 补）
 
@@ -62,17 +62,30 @@ idl = "interface Foo { readonly attribute (DOMString or ArrayBuffer)? unionAttr;
 ### 2.2 分母变更的最终口径
 
 - 变更**后**分母 = `1669` + `7` + `Credentials` 族实测条数 ⇒ **以执行后实测为准，回填本 ADR**（见 `§2.3`）。
+- **实测构成（`1dfa5fb`）**：`1669 + 7（§1 联合类型）+ 8（§2.4 khronos 扩面）+ 14（§2.1 Credentials）= 1698` —— 详见 §2.3 回填表。
 - 变更**须同步**：`contracts/community-v0.1.4-members.json` → `contracts/compat-manifest.json` → **`FROZEN_DENOMINATOR` 常量** → **`docs/refs/denominator-golden.txt`** → **本 ADR 的 ADR 号回填**。
 
-### 2.3 待回填（**禁止预先编造**）
+### 2.3 回填（**执行后实测**，2026-10-16 · `1dfa5fb`）
 
-| 项 | 变更前 | 变更后 |
+| 项 | 变更前 | 变更后（实测） |
 |---|---|---|
-| 分母条目数 `n` | `1669` | **待执行后回填** |
-| sorted-members `sha256` | `74f06d62b0ca4dcc…`（前 16 位） | **待执行后回填** |
-| `Credentials` 族条数 | `0` | **待执行后回填** |
+| 分母条目数 `n` | `1669` | **`1698`** |
+| sorted-members `sha256` | `74f06d62b0ca4dcc…`（前 16 位） | **`9590659638e99c03…`（前 16 位；全值见 `docs/refs/denominator-golden.txt`）** |
+| `Credentials` 族条数 | `0` | **`14`**（`Credential` 3 / `CredentialsContainer` 4 / `FederatedCredential` 4 / `PasswordCredential` 3） |
+| 三源成员数 | webref 419 / cdp 443 / khronos 807 | webref **439** / cdp **443** / khronos-webgl **816** |
 
-> 回填者须**同时**更新 `docs/refs/denominator-golden.txt` 与本 ADR 的「变更记录」小节（`§9`）。
+> **构成（实测逐条对账，合计 +29）**：`+7` 联合类型漏列（§1，正则修复）｜`+8` khronos 抽取范围扩大（§2.4，本 ADR 执行实录补正）｜`+14` Credentials 扩源（§2.1）。
+> **注意**：`1dfa5fb` commit message 所载「Credentials +22」为**误合**（22 = 14 Credentials + 8 khronos 扩面）—— 归因偏差已由本节与 §2.4 显名更正；golden 锁文件注释行同步更正。**机器三层保的是总数与哈希，保不了归因叙事** ⇒ 回填纪律：按实物逐条数写（教训族新增条，见台账 §4）。
+
+---
+
+### 2.4 执行实录：khronos 抽取范围扩大（`+8`，本 ADR 授权范围内的执行补正）
+
+- **事实**（`docs/refs/webgl-hash.txt` `method` 行如实记录）：khronos 侧重跑时**去除了 `--interfaces` 允许清单**（此前仅 `WebGLRenderingContext,WebGL2RenderingContext` 两接口，807 条）⇒ 扩为**全量接口**（816 条）。
+- **新增 8 条**（均属 WebGL 辅助接口族，`S4` 图形面自然组成部分）：`WebGLActiveInfo.name/size/type`（3）、`WebGLContextEvent.statusMessage`（1）、`WebGLObject.label`（1）、`WebGLShaderPrecisionFormat.precision/rangeMax/rangeMin`（3）。
+- **为何计入本 ADR 授权范围**：§1.3 硬约束要求「修正则 + 重跑三源」**同批一次完成**；khronos 重跑时执行者顺势补全该源接口族（`spec-webidl` 侧 webref 早已按全接口清单抽取，khronos 侧 2 接口清单是 `S0b` 期的**临时裁剪**，非裁定口径）⇒ 属**执行口径补正**，非新范围发明。最终总数（1698）与哈希已由 golden 锁锁定 ⇒ **无静默空间**。
+- **补正性质**：本 §2.4 由架构师在 Accept 时补写 —— ADR 原文 §1/§2 只列了「7 条联合类型 + Credentials」，未预见 khronos 扩面的 +8；按「不臆造、按实物回填」原则在此显名，**不改动已锁定的 n/sha256**。
+- **连带**：`test_entries_carry_source_family_in_category` 的「恰两族」断言已按 §4.2 改为三族（`1dfa5fb` 同批落）。
 
 ---
 
@@ -204,9 +217,10 @@ updated_at         = 2026-10-16
 | 次序 | ADR | 变更 | 变更前 n | 变更后 n | 变更前 sha256(前16) | 变更后 sha256(前16) |
 |---|---|---|---|---|---|---|
 | 0 | — | `S0` 封口（`5a005a6`） | — | `1669` | — | `74f06d62b0ca4dcc` |
-| 1 | **ADR-0028** | 补 7 条联合类型 + Credentials 扩源 | `1669` | **待回填** | `74f06d62b0ca4dcc` | **待回填** |
+| 1 | **ADR-0028** | 联合类型漏列 +7（`F3`，正则修复）｜khronos 扩面 +8（§2.4）｜Credentials 扩源 +14（`D-S2-1`） | `1669` | **`1698`** | `74f06d62b0ca4dcc` | **`9590659638e99c03`** |
 
 > **回填纪律**：执行者在落笔 3 后**立即**回填本表与 golden 文件；**未回填即视为变更未完成**。
+> **本表已回填**（架构师 2026-10-16，Accept 时）：`1dfa5fb` 执行、§2.3/§2.4 逐条对账；golden 文件 `docs/refs/denominator-golden.txt` 同步（注释行归因已更正）。
 
 ---
 
@@ -215,5 +229,5 @@ updated_at         = 2026-10-16
 - **`ADR-0027 §3`**（分母冻结 / 冻结时点 / 双向核）—— 本 ADR 是其所要求的「**显式 ADR**」。
 - **`ADR-0027 §9.2`** 第 3 点已按 `F5` 修订为「`category`（来源族）承载」；本 ADR `§4` 使其**从两族到三族**。
 - **`U-8`/`U-9`/`U-10`/`U-12`/`U-13`/`U-14`** —— 见活台账 `docs/g4-台账-2026-10-16.md §2`。
-- **遗留（不在本 ADR 范围）**：`F2` merge 层判据改 `source_version`（属工具修，非分母变更）；
-  `F7`/`U-11` manifest 真实流转（属流程，非分母变更）。
+- **遗留（不在本 ADR 范围）**：`F2` merge 层判据改 `source_version`（属工具修，非分母变更）—— **✅ 已落 `72cecc3`（笔 2）**；
+  `F7`/`U-11` manifest 真实流转（属流程，非分母变更）—— **第 0 次流转 ✅ 已落 `ab1e25d`**（`Storage.*` 六条 verified + promote 拒假流转 + seed 结转）；**全量流转随 `S1`~`S5` 各笔继续**。
