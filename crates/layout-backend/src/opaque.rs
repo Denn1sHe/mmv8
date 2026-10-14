@@ -82,13 +82,24 @@ thread_local! {
 }
 
 /// 在本线程侧表上执行闭包。
+///
+/// **`G3X-S3c2`（⑦ 同族 · 泛型返回值约束）**：返回类型 `R` **无默认值可造** ⇒ 无法"可判定错误"化
+/// （同 `ElementDataWrapper` 的情形）。**不叠加借**由本模块设计保证：侧表**仅在** `with_side` 内被借，
+/// 且 `with_side` **不得嵌套**（嵌套 = 编程错误；本模块不提供嵌套用法）。
 pub fn with_side<R>(f: impl FnOnce(&mut OpaqueSideTable) -> R) -> R {
     SIDE.with(|side| f(&mut side.borrow_mut()))
 }
 
 /// 清空本线程侧表（`reset()`）。
 pub fn reset() {
-    SIDE.with(|side| side.borrow_mut().clear());
+    // `G3X-S3c2`（非 Result，(β)）：**不 panic** —— 冲突 ⇒ `debug_assert!` 可见 + 跳过清理。
+    SIDE.with(|side| {
+        if let Ok(mut table) = side.try_borrow_mut() {
+            table.clear();
+        } else {
+            debug_assert!(false, "opaque::reset：侧表借用冲突（宿主重入）");
+        }
+    });
 }
 
 #[cfg(test)]
