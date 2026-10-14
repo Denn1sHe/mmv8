@@ -191,6 +191,10 @@ pub struct PageShared {
     pub timers_fired: Rc<Cell<u64>>,
     /// **定时器回调错误登记**（`G3X-S3b`：`eval` 的 `Err(JsError)` 显式捕获、不致命）。
     pub timer_errors: Rc<RefCell<Vec<String>>>,
+    /// 脚本 watchdog 墙钟上限（镜像 `BrowsingContext::script_deadline`，供 `PageExec` 任务化执行）。
+    pub script_deadline: Rc<Cell<Duration>>,
+    /// defer/module 脚本的 base URL（供任务化执行拼模块 URL）。
+    pub deferred_base_url: RefCell<String>,
     /// `document.write` 缓冲（**单一真相源**）。
     pub writes: Rc<RefCell<Vec<String>>>,
     /// `res`/`rej` 表（`__iv8_fetch` 关闭捕获）。
@@ -835,31 +839,55 @@ impl BrowsingContext {
         Ok(())
     }
 
-    /// 解析完成后、`DOMContentLoaded` 前，按文档序执行 defer/module 脚本（S9b）。
+    /// 解析完成后、`DOMContentLoaded` 前，把 defer/module 脚本**入宏任务队列并按文档序泵完**（`G3X-S3b`）。
+    ///
+    /// **任务化对象 = defer / module**（§6-2 精化）；**classic 阻塞脚本不走此路径**（红线）。
+    /// **load 内只泵 defer 段**（`TaskSource::Message` 源过滤 ⇒ **timer 不参与**，保 S3a 硬门禁）。
+    ///
+    /// # Errors
+    /// 模块顶层 await / 求值失败 ⇒ [`PageError`]。
     fn run_deferred_scripts(&mut self, base_url: &str) -> Result<(), PageError> {
-        let deadline = self.script_deadline;
-        let deferred: Vec<DeferredScript> = self.shared.deferred.borrow_mut().drain(..).collect();
-        for (index, script) in deferred.into_iter().enumerate() {
-            let text = self.shared.tree.borrow().text_content(script.node);
-            if script.module {
-                if contains_top_level_await(&text) {
-                    return Err(PageError::new(
-                        PageErrorKind::ModuleTopLevelAwaitUnsupported,
-                        "G2 不支持模块顶层 await（ADR-0017 模块条款 ④）",
-                    ));
+        self.shared.script_deadline.set(self.script_deadline);
+        self.shared.deferred_base_url.replace(base_url.to_owned());
+        // 先**预扫**模块顶层 await（保 `ModuleTopLevelAwaitUnsupported` 具名错误不被调度器错误面吞掉）。
+        {
+            let specs: Vec<DeferredScript> = self.shared.deferred.borrow().clone();
+            for spec in &specs {
+                if spec.module {
+                    let text = self.shared.tree.borrow().text_content(spec.node);
+                    if contains_top_level_await(&text) {
+                        return Err(PageError::new(
+                            PageErrorKind::ModuleTopLevelAwaitUnsupported,
+                            "G2 不支持模块顶层 await（ADR-0017 模块条款 ④）",
+                        ));
+                    }
                 }
-                let url = format!("{base_url}#module-{index}");
-                self.plane
-                    .with_page_script(|plane| {
-                        plane
-                            .realm_mut()
-                            .eval_module_with_deadline(&text, &url, deadline)
-                    })
-                    .map_err(map_js)?;
-            } else {
-                self.eval_page_script(&text)?;
             }
-            self.flush_writes();
+        }
+        let count = self.shared.deferred.borrow().len();
+        for index in 0..count {
+            self.runloop
+                .schedule(TaskSource::Message, navigation_task_token(index as u64));
+        }
+        // 泵 defer 段至空（**只 Message 源**；`BudgetExhausted` 则续轮）。
+        loop {
+            let Self {
+                runloop,
+                shared,
+                plane,
+                ..
+            } = self;
+            let mut exec = PageExec { shared, plane };
+            let outcome = runloop
+                .run_until_sources(
+                    RunBudget::tasks(TIMER_TASKS_PER_ROUND),
+                    &[TaskSource::Message],
+                    &mut exec,
+                )
+                .map_err(PageError::from)?;
+            if !matches!(outcome, RunOutcome::BudgetExhausted) {
+                break;
+            }
         }
         Ok(())
     }
@@ -1040,6 +1068,8 @@ impl PageShared {
             next_timer_id: Rc::new(Cell::new(0)),
             timers_fired: Rc::new(Cell::new(0)),
             timer_errors: Rc::new(RefCell::new(Vec::new())),
+            script_deadline: Rc::new(Cell::new(Duration::from_millis(2000))),
+            deferred_base_url: RefCell::new(String::new()),
             writes: Rc::new(RefCell::new(Vec::new())),
             fetch_table: Rc::new(RefCell::new(FetchTable::new())),
             fetch_queue: Rc::new(RefCell::new(VecDeque::new())),
@@ -1291,6 +1321,18 @@ fn page_refcell_conflict(what: &str) -> PageError {
 
 /// 把 `JsError` 映射为 [`PageError`]（ADR-0017·D11 映射表）。
 #[allow(clippy::needless_pass_by_value)] // 作为 `.map_err(map_js)` 适配器，须按值接住错误。
+/// `JsError` ⇒ `SchedulerError`（`G3X-S3b` 任务化执行面的错误面；**保重入 kind**）。
+fn page_err_to_sched(err: JsError) -> SchedulerError {
+    let page = map_js(err);
+    SchedulerError::new(
+        match page.kind() {
+            PageErrorKind::Reentrancy => SchedulerErrorKind::Reentrancy,
+            _ => SchedulerErrorKind::Internal,
+        },
+        format!("defer/module 任务执行失败: {page:?}"),
+    )
+}
+
 fn map_js(err: JsError) -> PageError {
     let kind = match err.kind() {
         JsErrorKind::Terminated => PageErrorKind::Terminated,
@@ -1313,6 +1355,39 @@ impl TaskExecutor for PageExec<'_> {
         source: TaskSource,
         token: TaskToken,
     ) -> Result<TaskVerdict, SchedulerError> {
+        if source == TaskSource::Message {
+            // `G3X-S3b`：**defer/module 脚本 = 一宏任务**（token 携文档序下标）。
+            // **借用纪律**：先把脚本**克隆取出**（借用收束），再求值（不得跨 eval 持 `deferred.borrow()`）。
+            let index = usize::try_from(token.raw()).unwrap_or(usize::MAX);
+            let spec = self.shared.deferred.borrow().get(index).cloned();
+            if let Some(spec) = spec {
+                let text = self.shared.tree.borrow().text_content(spec.node);
+                let deadline = self.shared.script_deadline.get();
+                let base = self.shared.deferred_base_url.borrow().clone();
+                let plane = &mut *self.plane;
+                if spec.module {
+                    if contains_top_level_await(&text) {
+                        return Err(SchedulerError::new(
+                            SchedulerErrorKind::Internal,
+                            "G2 不支持模块顶层 await（ADR-0017 模块条款 ④）",
+                        ));
+                    }
+                    let url = format!("{base}#module-{index}");
+                    plane
+                        .with_page_script(|p| {
+                            p.realm_mut()
+                                .eval_module_with_deadline(&text, &url, deadline)
+                        })
+                        .map_err(page_err_to_sched)?;
+                } else {
+                    plane
+                        .with_page_script(|p| p.realm_mut().eval_with_deadline(&text, deadline))
+                        .map_err(page_err_to_sched)?;
+                }
+                // 逐脚本冲刷 `document.write` 缓冲（保 S13 顺序语义）。
+                let _ = self.shared.writes.borrow_mut().drain(..).count();
+            }
+        }
         if source == TaskSource::Timer {
             // `G3X-S3a`：定时器到点 ⇒ 出表 + 计数；`G3X-S3b`：**有回调则在宏任务边界真跑**。
             // **借用纪律（ADR-0016）**：`remove` 的借用收束在**同语句内**（不得跨 eval 持 `timers.borrow_mut()`）。
@@ -2011,6 +2086,60 @@ mod tests {
         let report = page.pump_timer_rounds(4).expect("pump");
         assert_eq!(report.fired, 3, "三个都应触发");
         assert_eq!(report.rounds, 1, "3 ≤ 16 ⇒ 一轮内收束");
+    }
+
+    #[test]
+    fn defer_script_runs_as_task() {
+        // T1（G3X-S3b）：defer 脚本**作为宏任务**执行，且 `load` **内部泵完**（对外语义不变）。
+        let mut page = BrowsingContext::new("https://a.example/").expect("new");
+        page.load(&snapshot(
+            "https://a.example/d",
+            "<body><script defer>globalThis.__d = 1;</script></body>",
+        ))
+        .expect("load");
+        let d = page.control_eval("globalThis.__d").expect("read");
+        assert!(
+            matches!(d, HostValue::Number(value) if (value - 1.0).abs() < 1e-9),
+            "defer 应在 `load` 返回前经任务泵执行（实得 {d:?}）"
+        );
+    }
+
+    #[test]
+    fn deferred_and_timer_ordering() {
+        // T3：defer 段（文档序）先于 timer；且 **timer 不参与 load 内泵**（S3a 硬门禁）。
+        let mut page = BrowsingContext::new("https://a.example/").expect("new");
+        page.load(&snapshot(
+            "https://a.example/o",
+            "<body><script defer>globalThis.__o = ['d0'];</script>\n<script defer>globalThis.__o.push('d1');</script></body>",
+        ))
+        .expect("load");
+        // timer 在 load 之后由宿主调度 ⇒ 未泵前不得触发。
+        page.control_eval("globalThis.__o.push('t0')")
+            .expect("mark");
+        assert_eq!(page.timers_fired(), 0, "timer 不参与 load 内泵");
+        let order = page
+            .control_eval("globalThis.__o.join(',')")
+            .expect("read order");
+        assert!(
+            matches!(&order, HostValue::Str(text) if text == "d0,d1,t0"),
+            "defer（文档序）应先于 timer 位次（实得 {order:?}）"
+        );
+    }
+
+    #[test]
+    fn classic_blocking_inline_unchanged() {
+        // T6（**红线锚**）：classic 阻塞脚本**仍就地执行**（§6-2 精化）；其 `document.write` 在解析内即时生效。
+        let mut page = BrowsingContext::new("https://a.example/").expect("new");
+        page.load(&snapshot(
+            "https://a.example/c",
+            "<body><script>document.write('<div id=\"made\"></div>');</script><script defer>globalThis.__saw = document.getElementById('made') !== null;</script></body>",
+        ))
+        .expect("load");
+        let saw = page.control_eval("globalThis.__saw").expect("read");
+        assert!(
+            matches!(saw, HostValue::Bool(true)),
+            "classic 就地写的节点应被后续 defer 看到（classic 未被任务化）"
+        );
     }
 
     #[test]

@@ -134,6 +134,76 @@ impl RunLoop {
         outcome
     }
 
+    /// **仅源过滤**的 `run_until`（`G3X-S3b`：`load` 内部**只泵 defer 段** ⇒ **timer 不参与**）。
+    ///
+    /// 语义同 [`Self::run_until`]，但**只**从 `sources` 取任务；**不做逻辑虚拟跳转**
+    /// （保证 `load` 内泵**不推进逻辑时钟** ⇒ 不惊动 timer 面）。
+    ///
+    /// # Errors
+    /// 同 [`Self::run_until`]。
+    pub fn run_until_sources(
+        &mut self,
+        budget: RunBudget,
+        sources: &[TaskSource],
+        exec: &mut dyn TaskExecutor,
+    ) -> Result<RunOutcome, SchedulerError> {
+        if self.closed {
+            return Ok(RunOutcome::Closed);
+        }
+        if self.in_run {
+            return Err(SchedulerError::reentrancy());
+        }
+        self.in_run = true;
+        let outcome = self.run_inner_filtered(budget, sources, exec);
+        self.in_run = false;
+        outcome
+    }
+
+    fn pick_runnable_filtered(&self, sources: &[TaskSource]) -> Pick {
+        let now = self.clock.logical_now_ms();
+        for source in sources {
+            let Some(token) = self.queues.front(*source) else {
+                continue;
+            };
+            if *source == TaskSource::Timer && self.timer_due(token) > now {
+                // 过滤泵不虚拟跳转：未到点的 timer 视为「不可运行」。
+                return Pick::None;
+            }
+            return Pick::Task(*source, token);
+        }
+        Pick::None
+    }
+
+    fn run_inner_filtered(
+        &mut self,
+        budget: RunBudget,
+        sources: &[TaskSource],
+        exec: &mut dyn TaskExecutor,
+    ) -> Result<RunOutcome, SchedulerError> {
+        let start = self.clock.monotonic_now();
+        let deadline = budget.deadline.map(|delta| start + delta);
+        let mut ran: u64 = 0;
+        loop {
+            if budget.max_tasks != 0 && ran >= budget.max_tasks {
+                return Ok(RunOutcome::BudgetExhausted);
+            }
+            if let Some(limit) = deadline
+                && self.clock.monotonic_now() >= limit
+            {
+                return Ok(RunOutcome::DeadlineExceeded);
+            }
+            match self.pick_runnable_filtered(sources) {
+                Pick::Task(source, token) => {
+                    let _ = self.queues.pop_front(source);
+                    let verdict = exec.run_task(source, token)?;
+                    ran += 1;
+                    self.apply_verdict(source, token, verdict);
+                }
+                Pick::JumpTo(_) | Pick::None => return Ok(self.classify_idle(exec)),
+            }
+        }
+    }
+
     fn run_inner(
         &mut self,
         budget: RunBudget,
