@@ -189,6 +189,8 @@ pub struct PageShared {
     pub next_timer_id: Rc<Cell<u64>>,
     /// **已触发定时器计数**（观测位）。
     pub timers_fired: Rc<Cell<u64>>,
+    /// **定时器回调错误登记**（`G3X-S3b`：`eval` 的 `Err(JsError)` 显式捕获、不致命）。
+    pub timer_errors: Rc<RefCell<Vec<String>>>,
     /// `document.write` 缓冲（**单一真相源**）。
     pub writes: Rc<RefCell<Vec<String>>>,
     /// `res`/`rej` 表（`__iv8_fetch` 关闭捕获）。
@@ -409,6 +411,12 @@ impl BrowsingContext {
     #[must_use]
     pub fn timers_fired(&self) -> u64 {
         self.shared.timers_fired.get()
+    }
+
+    /// **定时器回调错误登记**（`G3X-S3b`；空 = 无错误）。
+    #[must_use]
+    pub fn timer_errors(&self) -> Vec<String> {
+        self.shared.timer_errors.borrow().clone()
     }
 
     /// **轮冲刷**（`G3X-S3a`）：`≤ min(max_rounds, 64)` 轮、**每轮 `RunBudget::tasks(16)`**。
@@ -1031,6 +1039,7 @@ impl PageShared {
             timers: Rc::new(RefCell::new(std::collections::BTreeMap::new())),
             next_timer_id: Rc::new(Cell::new(0)),
             timers_fired: Rc::new(Cell::new(0)),
+            timer_errors: Rc::new(RefCell::new(Vec::new())),
             writes: Rc::new(RefCell::new(Vec::new())),
             fetch_table: Rc::new(RefCell::new(FetchTable::new())),
             fetch_queue: Rc::new(RefCell::new(VecDeque::new())),
@@ -1295,10 +1304,6 @@ fn map_js(err: JsError) -> PageError {
 struct PageExec<'a> {
     shared: &'a PageShared,
     /// 控制面（`G3X-S3b`：定时器回调经 realm 在**宏任务边界**执行）。
-    ///
-    /// **WIP（2026-10-14）**：回调执行面已接线但**未闭合**（`timer_callback_true_run` 标 `#[ignore]`；
-    /// 副作用未落地，根因未隔离 ⇒ 已停报待裁）；在闭合前此字段**仅经该路径读取**。
-    #[allow(dead_code)]
     plane: &'a mut ControlPlane,
 }
 
@@ -1309,17 +1314,24 @@ impl TaskExecutor for PageExec<'_> {
         token: TaskToken,
     ) -> Result<TaskVerdict, SchedulerError> {
         if source == TaskSource::Timer {
-            // `G3X-S3a`：定时器到点 ⇒ 出表 + 计数（回调执行面留待 S3b 任务化）。
-            let removed = self
-                .shared
-                .timers
-                .borrow_mut()
-                .remove(&token.raw())
-                .is_some();
-            if removed {
+            // `G3X-S3a`：定时器到点 ⇒ 出表 + 计数；`G3X-S3b`：**有回调则在宏任务边界真跑**。
+            // **借用纪律（ADR-0016）**：`remove` 的借用收束在**同语句内**（不得跨 eval 持 `timers.borrow_mut()`）。
+            let entry = self.shared.timers.borrow_mut().remove(&token.raw());
+            if let Some(entry) = entry {
                 self.shared
                     .timers_fired
                     .set(self.shared.timers_fired.get() + 1);
+                if let Some(expr) = entry.expr {
+                    // 错误面：`eval` 的 `Err(JsError)` **显式捕获、登记、不致命**（`catch_unwind` 只管 panic）；
+                    // 重入由 `runloop` 既有守卫处理；无论成败 verdict 取 `Done`（任务不重排）。
+                    let plane = &mut *self.plane;
+                    if let Err(err) = plane.with_page_script(|p| p.realm_mut().eval(&expr)) {
+                        self.shared
+                            .timer_errors
+                            .borrow_mut()
+                            .push(format!("timer callback eval failed: {err:?}"));
+                    }
+                }
             }
         }
         Ok(TaskVerdict::Done)
@@ -2025,7 +2037,58 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "S3b 片1 未闭合：回调副作用未落地（__fired 恒 0），已停报待裁（eval 路径经复核看似正确）"]
+    fn timer_without_expr_counts_only() {
+        // 片1 补测①：**无 expr 的纯计数定时器**仍 +1（S3a 行为不被 S3b 改坏）。
+        let mut page = BrowsingContext::new("https://a.example/").expect("new");
+        page.load(&snapshot("https://a.example/n", "<body></body>"))
+            .expect("load");
+        page.schedule_timer(0.0);
+        assert_eq!(page.timers_fired(), 0);
+        let report = page.pump_timer_rounds(2).expect("pump");
+        assert_eq!(report.fired, 1, "纯计数定时器应触发");
+        assert!(page.timer_errors().is_empty(), "不应有错误登记");
+    }
+
+    #[test]
+    fn timer_callback_error_is_non_fatal() {
+        // 片1 补测②：回调**抛异常不致命**（`Err(JsError)` 显式捕获登记）；**后续轮继续**。
+        let mut page = BrowsingContext::new("https://a.example/").expect("new");
+        page.load(&snapshot("https://a.example/e", "<body></body>"))
+            .expect("load");
+        page.control_eval("globalThis.__after = 0").expect("init");
+        page.schedule_timer_expr(0.0, "throw new Error('boom')");
+        page.schedule_timer_expr(0.0, "globalThis.__after = 1");
+        let report = page.pump_timer_rounds(4).expect("抛异常不应使 pump 失败");
+        assert_eq!(report.fired, 2, "两个都应触发（错误不阻塞后续）");
+        assert_eq!(page.timer_errors().len(), 1, "错误应被登记一次");
+        let after = page.control_eval("globalThis.__after").expect("read");
+        assert!(
+            matches!(after, HostValue::Number(value) if (value - 1.0).abs() < 1e-9),
+            "错误后的回调仍应执行（实得 {after:?}）"
+        );
+    }
+
+    #[test]
+    fn timer_callbacks_do_not_conflict_across_rounds() {
+        // 片1 补测③：**借用在 eval 前收束** —— 多个回调定时器连续触发不冲突（不 panic、不丢触发）。
+        let mut page = BrowsingContext::new("https://a.example/").expect("new");
+        page.load(&snapshot("https://a.example/r", "<body></body>"))
+            .expect("load");
+        page.control_eval("globalThis.__n = 0").expect("init");
+        for _ in 0..3 {
+            page.schedule_timer_expr(0.0, "globalThis.__n = globalThis.__n + 1");
+        }
+        let report = page.pump_timer_rounds(4).expect("pump");
+        assert_eq!(report.fired, 3, "三个都应触发");
+        let n = page.control_eval("globalThis.__n").expect("read");
+        assert!(
+            matches!(n, HostValue::Number(value) if (value - 3.0).abs() < 1e-9),
+            "三个回调都应真跑（实得 {n:?}）"
+        );
+        assert!(page.timer_errors().is_empty(), "不应有借用冲突/错误");
+    }
+
+    #[test]
     fn timer_callback_true_run() {
         // G3X-S3b：`setTimeout(fn)` 到点**真跑函数**（宏任务边界；副作用在 realm 可见）。
         // 判别性：仅计数不执行 ⇒ `__fired` 恒 0（负对照）。
