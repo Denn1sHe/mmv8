@@ -35,7 +35,9 @@ import pytest
 #:       契约侧新增 `test_storage_quota_matches_rust_const`（读 Rust 源文本对撞，1 条）。
 #:       2026-10-16 = 113（**`F1` 修复（P0）**：分母冻结位被 seed 静默打回 ——
 #:       发货态实物断言 + seed 保留冻结位 + 冻结期禁缩水，3 条）。
-COLLECTION_FLOOR = 113
+#:       2026-10-16 = 114（**`F12`**：JS 面具名错误的**契约侧**锚定 ——
+#:       `contracts/tests/test_storage.py`：具名直抛成对断言 + 哨兵绕行零残留，1 条）。
+COLLECTION_FLOOR = 114
 
 
 def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
