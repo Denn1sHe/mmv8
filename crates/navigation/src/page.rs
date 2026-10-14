@@ -1741,6 +1741,10 @@ mod tests {
             caps.input_user_activation, "sticky_only",
             "input_user_activation"
         );
+        assert!(
+            caps.single_realm_navigation,
+            "single_realm_navigation（S8 对称化：与 Python 侧同 10 字段同集）"
+        );
     }
 
     #[test]
