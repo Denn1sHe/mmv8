@@ -56,6 +56,29 @@ impl DomSink {
         self.tree
     }
 
+    /// `G3X-S3c2`（⑥，(β)）：**不 panic** —— 可变借用冲突 ⇒ `debug_assert!` + `None`。
+    /// **纪律（ADR-0016）**：析构前不得再做其他借用；helper 自身即 `try_borrow_mut`，
+    /// 故调用方一律"取得即用、即刻释放"。
+    fn tree_mut(&self) -> Option<std::cell::RefMut<'_, NodeTree>> {
+        if let Ok(guard) = self.tree.try_borrow_mut() {
+            Some(guard)
+        } else {
+            debug_assert!(false, "DomSink：NodeTree 可变借用冲突（宿主重入）");
+            None
+        }
+    }
+
+    /// 取值型（(β)）：冲突 ⇒ `debug_assert` + `default`（**默认值语义由各调用点自定，不合并**）。
+    fn with_tree_mut<T>(&self, default: T, f: impl FnOnce(&mut NodeTree) -> T) -> T {
+        self.tree_mut().map_or_else(
+            || {
+                debug_assert!(false, "DomSink：NodeTree 可变借用冲突（宿主重入，取默认）");
+                default
+            },
+            |mut guard| f(&mut guard),
+        )
+    }
+
     /// 把 `NodeOrText::AppendText` 落到树上（相邻文本节点合并）。
     fn append_text(&mut self, parent: NodeId, text: &StrTendril) {
         let last = if let Ok(tree_ref) = self.tree.try_borrow() {
@@ -65,7 +88,9 @@ impl DomSink {
             None
         };
         let merged = last.is_some_and(|last| {
-            let mut tree = self.tree.borrow_mut();
+            let Some(mut tree) = self.tree_mut() else {
+                return false;
+            };
             if tree.get(last).map(|node| node.kind) != Some(NodeKind::Text) {
                 return false;
             }
@@ -78,8 +103,10 @@ impl DomSink {
             false
         });
         if !merged {
-            let id = self.tree.borrow_mut().create_text(text.as_ref());
-            self.tree.borrow_mut().append_child(parent, id);
+            let id = self.with_tree_mut(NodeId::new(0, 0), |__t| __t.create_text(text.as_ref()));
+            if let Some(mut __t) = self.tree_mut() {
+                __t.append_child(parent, id);
+            }
         }
     }
 }
@@ -117,29 +144,30 @@ impl TreeSink for DomSink {
             .iter()
             .map(|attr| (attr.name.local.as_ref().to_owned(), attr.value.to_string()))
             .collect();
-        let id = self
-            .tree
-            .borrow_mut()
-            .create_element(&local, &namespace, pairs);
+        let id = self.with_tree_mut(NodeId::new(0, 0), |__t| {
+            __t.create_element(&local, &namespace, pairs)
+        });
         self.qual_names.insert(id, name);
         id
     }
 
     fn create_comment(&mut self, text: StrTendril) -> NodeId {
-        self.tree.borrow_mut().create_comment(&text)
+        self.with_tree_mut(NodeId::new(0, 0), |__t| __t.create_comment(&text))
     }
 
     fn create_pi(&mut self, target: StrTendril, data: StrTendril) -> NodeId {
         // G2 无 PI 节点：以注释近似（登记最小面）。
-        self.tree
-            .borrow_mut()
-            .create_comment(&format!("?{target} {data}?"))
+        self.with_tree_mut(NodeId::new(0, 0), |__t| {
+            __t.create_comment(&format!("?{target} {data}?"))
+        })
     }
 
     fn append(&mut self, parent: &NodeId, child: NodeOrText<NodeId>) {
         match child {
             NodeOrText::AppendNode(node) => {
-                self.tree.borrow_mut().append_child(*parent, node);
+                if let Some(mut __t) = self.tree_mut() {
+                    __t.append_child(*parent, node);
+                }
             }
             NodeOrText::AppendText(text) => self.append_text(*parent, &text),
         }
@@ -175,8 +203,10 @@ impl TreeSink for DomSink {
         system_id: StrTendril,
     ) {
         let data = format!("{name} {public_id} {system_id}");
-        let id = self.tree.borrow_mut().create_doctype(data.trim());
-        self.tree.borrow_mut().append_child(self.document, id);
+        let id = self.with_tree_mut(NodeId::new(0, 0), |__t| __t.create_doctype(data.trim()));
+        if let Some(mut __t) = self.tree_mut() {
+            __t.append_child(self.document, id);
+        }
     }
 
     fn mark_script_already_started(&mut self, _node: &NodeId) {}
@@ -207,15 +237,16 @@ impl TreeSink for DomSink {
         };
         match new_node {
             NodeOrText::AppendNode(node) => {
-                self.tree
-                    .borrow_mut()
-                    .insert_before(parent, node, Some(*sibling));
+                if let Some(mut __t) = self.tree_mut() {
+                    __t.insert_before(parent, node, Some(*sibling));
+                }
             }
             NodeOrText::AppendText(text) => {
-                let id = self.tree.borrow_mut().create_text(text.as_ref());
-                self.tree
-                    .borrow_mut()
-                    .insert_before(parent, id, Some(*sibling));
+                let id =
+                    self.with_tree_mut(NodeId::new(0, 0), |__t| __t.create_text(text.as_ref()));
+                if let Some(mut __t) = self.tree_mut() {
+                    __t.insert_before(parent, id, Some(*sibling));
+                }
             }
         }
     }
@@ -234,9 +265,9 @@ impl TreeSink for DomSink {
             if already {
                 continue;
             }
-            self.tree
-                .borrow_mut()
-                .set_attribute(*target, name, attr.value.as_ref());
+            if let Some(mut __t) = self.tree_mut() {
+                __t.set_attribute(*target, name, attr.value.as_ref());
+            }
         }
     }
 
@@ -254,8 +285,10 @@ impl TreeSink for DomSink {
             .try_borrow()
             .ok()
             .and_then(|tree_ref| tree_ref.parent(*target));
-        if let Some(parent) = parent {
-            self.tree.borrow_mut().remove_child(parent, *target);
+        if let Some(parent) = parent
+            && let Some(mut __t) = self.tree_mut()
+        {
+            __t.remove_child(parent, *target);
         }
     }
 
@@ -268,8 +301,10 @@ impl TreeSink for DomSink {
             |tree_ref| tree_ref.children(*node).collect(),
         );
         for child in children {
-            self.tree.borrow_mut().remove_child(*node, child);
-            self.tree.borrow_mut().append_child(*new_parent, child);
+            if let Some(mut __t) = self.tree_mut() {
+                __t.remove_child(*node, child);
+                __t.append_child(*new_parent, child);
+            }
         }
     }
 
