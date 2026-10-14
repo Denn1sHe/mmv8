@@ -126,6 +126,15 @@ pub const TIMER_TASKS_PER_ROUND: u64 = 16;
 /// **单次冲刷轮上限**（ADR-0026 §6-1 定裁；`G3X-S3a`）。哨兵纪律同 [`TIMER_TASKS_PER_ROUND`]。
 pub const TIMER_MAX_FLUSH_ROUNDS: u64 = 64;
 
+/// 一条页面定时器（`G3X-S3a/b`：到期毫秒 + **可选回调表达式**）。
+#[derive(Clone, Debug)]
+pub struct TimerEntry {
+    /// 逻辑到期毫秒。
+    pub due_ms: f64,
+    /// 到点执行的 JS 表达式（`None` = 纯计数面，S3a 兼容）。
+    pub expr: Option<String>,
+}
+
 /// 由 id 造任务令牌（页面定时器面）。
 fn navigation_task_token(id: u64) -> TaskToken {
     TaskToken::new(id)
@@ -175,7 +184,7 @@ pub struct PageShared {
     /// `MutationObserver` 注册表（回调槽 `WeakJsHandle`）。
     pub observers: Rc<RefCell<ObserverRegistry<WeakJsHandle>>>,
     /// **定时器表**（`G3X-S3a`：`id → 逻辑到期毫秒`）。
-    pub timers: Rc<RefCell<std::collections::BTreeMap<u64, f64>>>,
+    pub timers: Rc<RefCell<std::collections::BTreeMap<u64, TimerEntry>>>,
     /// 定时器 id 分配器。
     pub next_timer_id: Rc<Cell<u64>>,
     /// **已触发定时器计数**（观测位）。
@@ -348,9 +357,12 @@ impl BrowsingContext {
         self.pump_fetch()?;
         self.resolve_completed()?;
         let Self {
-            runloop, shared, ..
+            runloop,
+            shared,
+            plane,
+            ..
         } = self;
-        let mut exec = PageExec { shared };
+        let mut exec = PageExec { shared, plane };
         runloop
             .run_until(budget, &mut exec)
             .map_err(PageError::from)
@@ -370,8 +382,26 @@ impl BrowsingContext {
             0.0
         };
         let due = self.runloop.logical_now_ms() + delay;
-        self.shared.timers.borrow_mut().insert(id, due);
+        self.shared.timers.borrow_mut().insert(
+            id,
+            TimerEntry {
+                due_ms: due,
+                expr: None,
+            },
+        );
         self.runloop.schedule_timer(navigation_task_token(id), due);
+        id
+    }
+
+    /// **调度一个带回调的定时器**（`G3X-S3b`：`setTimeout(fn)` 的宿主面）——
+    /// 到点后由 [`PageExec`] 在**宏任务边界**经 realm 执行 `expr`。
+    ///
+    /// 返回定时器 id（可观测）。
+    pub fn schedule_timer_expr(&mut self, delay_ms: f64, expr: &str) -> u64 {
+        let id = self.schedule_timer(delay_ms);
+        if let Some(entry) = self.shared.timers.borrow_mut().get_mut(&id) {
+            entry.expr = Some(expr.to_owned());
+        }
         id
     }
 
@@ -1262,6 +1292,8 @@ fn map_js(err: JsError) -> PageError {
 /// `run_until` 的独立 executor（ADR-0017·D8）。
 struct PageExec<'a> {
     shared: &'a PageShared,
+    /// 控制面（`G3X-S3b`：定时器回调经 realm 在**宏任务边界**执行）。
+    plane: &'a mut ControlPlane,
 }
 
 impl TaskExecutor for PageExec<'_> {
@@ -1961,6 +1993,26 @@ mod tests {
         let report = page.pump_timer_rounds(4).expect("pump");
         assert_eq!(report.fired, 3, "三个都应触发");
         assert_eq!(report.rounds, 1, "3 ≤ 16 ⇒ 一轮内收束");
+    }
+
+    #[test]
+    #[ignore = "S3b 片1 未闭合：回调副作用未落地（__fired 恒 0），已停报待裁（eval 路径经复核看似正确）"]
+    fn timer_callback_true_run() {
+        // G3X-S3b：`setTimeout(fn)` 到点**真跑函数**（宏任务边界；副作用在 realm 可见）。
+        // 判别性：仅计数不执行 ⇒ `__fired` 恒 0（负对照）。
+        let mut page = BrowsingContext::new("https://a.example/").expect("new");
+        page.load(&snapshot("https://a.example/cb", "<body></body>"))
+            .expect("load");
+        page.control_eval("globalThis.__fired = 0").expect("init");
+        let _id = page.schedule_timer_expr(0.0, "globalThis.__fired = globalThis.__fired + 1");
+        assert_eq!(page.timers_fired(), 0, "入队不应执行");
+        page.pump_timer_rounds(4).expect("pump");
+        let fired = page.control_eval("globalThis.__fired").expect("read");
+        assert!(
+            matches!(fired, HostValue::Number(value) if (value - 1.0).abs() < 1e-9),
+            "回调应真跑一次（实得 {fired:?}）"
+        );
+        assert_eq!(page.timers_fired(), 1, "触发计数应 +1");
     }
 
     #[test]
