@@ -79,7 +79,16 @@ pub fn dispatch_trusted(
     kind: InputKind,
 ) -> Result<(), JsError> {
     if kind.is_activation() {
-        deps.activation.borrow_mut().activate();
+        // `G3X-S3c2`（②，Result 语境）：可判定错误（不 panic）。
+        deps.activation
+            .try_borrow_mut()
+            .map_err(|_| {
+                JsError::new(
+                    engine_v8::error::JsErrorKind::ReentrantEval,
+                    "user activation 借用冲突（宿主重入）⇒ 可判定错误",
+                )
+            })?
+            .activate();
     }
     dispatch_named(realm, deps, target, kind.event_type(), true)?;
     if matches!(kind, InputKind::Click) {
