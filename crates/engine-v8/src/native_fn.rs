@@ -98,7 +98,7 @@ pub(crate) fn native_trampoline(
     let _guard = match crate::realm::enter_callback(realm_ptr) {
         Ok(guard) => guard,
         Err(err) => {
-            throw_message(scope, err.message());
+            throw_named(scope, err.name(), err.message());
             return;
         }
     };
@@ -116,7 +116,7 @@ pub(crate) fn native_trampoline(
         match host_from_value!(scope, realm.handles_mut(), realm_id, value) {
             Ok(host) => host_args.push(host),
             Err(err) => {
-                throw_message(scope, err.message());
+                throw_named(scope, err.name(), err.message());
                 return;
             }
         }
@@ -135,21 +135,38 @@ pub(crate) fn native_trampoline(
     match outcome {
         Ok(host) => match value_from_host!(scope, realm.handles_mut(), host) {
             Ok(local) => rv.set(local),
-            Err(err) => throw_message(scope, err.message()),
+            Err(err) => throw_named(scope, err.name(), err.message()),
         },
-        Err(err) => throw_message(scope, err.message()),
+        Err(err) => throw_named(scope, err.name(), err.message()),
     }
 }
 
-/// 抛出一个带 `message` 属性的对象（JS 侧 `catch(e){ e.message }` 可取回）。
+/// 抛出一个**真 `Error` 实例**（`D4-M`：不再是「只带 `message` 的裸对象」）。
+///
+/// - `message` 由 V8 的 `Error` 构造器设为**自有属性**（JS 侧 `e.message` 可取回）；
+/// - `name` 为 `Some(..)` 时写入 `name` **自有属性** ⇒ `e.name` 为具名、
+///   `String(e)` 呈 `"<name>: <message>"`（`Error.prototype.toString` 语义）。
+///
+/// **为什么必须造 `Error` 实例**（既有缺陷的记录）：旧实现用 `v8::Object::new` 造裸对象，
+/// 于是 JS 侧 `String(e) === "[object Object]"`、`e instanceof Error === false`，Rust 侧
+/// [`JsError::message`] 经 `TryCatch` 亦退化成 `[object Object]`（ADR-0017·D4 同族）。
 fn throw_message(scope: &mut v8::PinScope<'_, '_>, message: &str) {
-    if let Some(text) = v8::String::new(scope, message) {
-        let error = v8::Object::new(scope);
-        if let Some(key) = v8::String::new(scope, "message") {
-            error.set(scope, key.into(), text.into());
-        }
-        scope.throw_exception(error.into());
-    } else {
+    throw_named(scope, None, message);
+}
+
+/// 抛出一个**具名** `Error` 实例（`name` 写入 `name` 属性）。
+fn throw_named(scope: &mut v8::PinScope<'_, '_>, name: Option<&str>, message: &str) {
+    let Some(text) = v8::String::new(scope, message) else {
         scope.throw_exception(v8::undefined(scope).into());
+        return;
+    };
+    let error = v8::Exception::error(scope, text);
+    if let (Some(name), Some(object)) = (name, error.to_object(scope)) {
+        if let (Some(key), Some(value)) =
+            (v8::String::new(scope, "name"), v8::String::new(scope, name))
+        {
+            object.set(scope, key.into(), value.into());
+        }
     }
+    scope.throw_exception(error);
 }

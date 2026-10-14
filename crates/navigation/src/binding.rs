@@ -607,14 +607,18 @@ impl PageBinding {
                     let mut service = storage
                         .try_borrow_mut()
                         .map_err(|_| refcell_conflict("StorageService"))?;
-                    // **超配额 ⇒ 返回哨兵串**：由 **shim 抛具名 `Error`**（`name = QuotaExceededError`）
-                    // —— 因引擎面 `JsError.message` 会退化为 `[object Object]`（既有现象），
-                    // 直接 `Err` 会让 JS 侧**看不到具名**（契约面要求 JS 可见名）。
+                    // **超配额 ⇒ 具名错误直抛**（`D4-M` 已修）：`JsError::named` 使 JS 面
+                    // `e.name === 'QuotaExceededError'`、`String(e)` 与 Rust 面 `message` **均具名**
+                    // ⇒ 原「哨兵串 + shim 重抛」绕行**已撤销**（宿主不再返回哨兵串）。
                     match service.storage(&origin, kind).set_item(&key, &value) {
                         Ok(()) => Ok(HostValue::Str("ok".to_owned())),
-                        Err(storage::StorageError::QuotaExceeded { quota, attempted }) => Ok(
-                            HostValue::Str(format!("QuotaExceededError:{quota}:{attempted}")),
-                        ),
+                        Err(storage::StorageError::QuotaExceeded { quota, attempted }) => {
+                            Err(JsError::named(
+                                JsErrorKind::Exception,
+                                "QuotaExceededError",
+                                format!("超出存储配额（quota={quota}, attempted={attempted}）"),
+                            ))
+                        }
                     }
                 }),
             )?;
@@ -889,13 +893,9 @@ const SHIM: &str = r"
     Object.defineProperty(s, 'length', { get: function () { return sLength(kind); } });
     s.getItem = function (k) { return sGet(kind, String(k)); };
     s.setItem = function (k, v) {
-      var r = sSet(kind, String(k), String(v));
-      if (typeof r === 'string' && r.indexOf('QuotaExceededError:') === 0) {
-        var parts = r.split(':');
-        var e = new Error('QuotaExceededError: 超出存储配额（quota=' + parts[1] + ', attempted=' + parts[2] + '）');
-        e.name = 'QuotaExceededError';
-        throw e;
-      }
+      // `D4-M` 修后：宿主具名错误**原生可达**（`e.name` = 'QuotaExceededError'）⇒
+      // 不再需要「哨兵串 + shim 重抛」绕行；超配额由 `sSet` **直接抛出**并传播给 JS。
+      sSet(kind, String(k), String(v));
       return undefined;
     };
     s.removeItem = function (k) { return sRemove(kind, String(k)); };

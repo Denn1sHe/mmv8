@@ -33,20 +33,41 @@ pub enum JsErrorKind {
     Internal,
 }
 
-/// 携带失败类别与人类可读消息的错误值。
+/// 携带失败类别、人类可读消息与**可选具名**的错误值。
+///
+/// ## 具名（`D4-M`）
+///
+/// `name` = **JS 面可见的错误名**（如 `QuotaExceededError`、`NotSupportedError`；
+/// `WebIDL` 的 DOM 异常名）。宿主原生函数返回 `Err` 时，该名会被写进抛出的 **`Error` 实例的
+/// `name` 属性**（见 [`crate::native_fn`]），于是 JS 侧 `e.name` / `String(e)` 与 Rust 侧
+/// [`JsError::message`] 均**原生可见具名** —— 无需「哨兵串 + shim 重抛」绕行。
+///
+/// `None` ⇒ 抛通用 `Error`（`name` 属性取原型默认值 `"Error"`）。
 #[derive(Clone, Debug)]
 pub struct JsError {
     kind: JsErrorKind,
     message: String,
+    name: Option<&'static str>,
 }
 
 impl JsError {
-    /// 由失败类别与消息构造。
+    /// 由失败类别与消息构造（**不具名** ⇒ JS 面 `e.name === "Error"`）。
     #[must_use]
     pub fn new(kind: JsErrorKind, message: impl Into<String>) -> Self {
         Self {
             kind,
             message: message.into(),
+            name: None,
+        }
+    }
+
+    /// 由失败类别、**具名**与消息构造（`name` 应为 WebIDL/DOM 异常名常量）。
+    #[must_use]
+    pub fn named(kind: JsErrorKind, name: &'static str, message: impl Into<String>) -> Self {
+        Self {
+            kind,
+            message: message.into(),
+            name: Some(name),
         }
     }
 
@@ -60,6 +81,12 @@ impl JsError {
     #[must_use]
     pub fn message(&self) -> &str {
         &self.message
+    }
+
+    /// 取 JS 面可见的**具名**（`None` ⇒ 通用 `Error`）。
+    #[must_use]
+    pub fn name(&self) -> Option<&'static str> {
+        self.name
     }
 }
 
@@ -114,10 +141,22 @@ mod tests {
             let err = JsError::new(kind, format!("probe {kind:?}"));
             assert_eq!(err.kind(), kind, "kind() 往返失败：{kind:?}");
             assert!(!err.message().is_empty(), "message() 不应为空");
+            assert_eq!(err.name(), None, "new() 应不具名");
         }
         // 所有槽位互不相同（无重复变体被登记两次）。
         let slots: std::collections::BTreeSet<usize> =
             ALL_KINDS.iter().copied().map(kind_slot).collect();
         assert_eq!(slots.len(), ALL_KINDS.len(), "ALL_KINDS 中不得有重复变体");
+    }
+
+    #[test]
+    fn named_error_roundtrips() {
+        // `D4-M`：**具名槽**往返（`name()` 原样取回；`new()` 仍为 `None` ⇒ 无静默默认名）。
+        let err = JsError::named(JsErrorKind::Exception, "QuotaExceededError", "超出存储配额");
+        assert_eq!(err.name(), Some("QuotaExceededError"));
+        assert_eq!(err.message(), "超出存储配额");
+        assert_eq!(err.kind(), JsErrorKind::Exception);
+        let plain = JsError::new(JsErrorKind::Internal, "内部");
+        assert_eq!(plain.name(), None, "不具名 ⇒ None（JS 面取原型名 Error）");
     }
 }

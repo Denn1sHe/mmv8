@@ -2356,17 +2356,31 @@ mod tests {
             matches!(session_len, HostValue::Number(value) if value == 0.0),
             "sessionStorage 不应看到 localStorage（实得 {session_len:?}）"
         );
-        // 配额：巨型值 ⇒ 具名 `QuotaExceededError` —— **在 JS 侧捕获**（契约面 = JS 可见名）。
-        // 注：Rust 侧 `JsError.message` 呈 `[object Object]`（**既有现象**，与 ADR-0017·D4 同族）；
-        // 故本测以 JS `catch` 取 `String(e)` 为准（契约关心的正是 JS 面）。
+        // 配额：巨型值 ⇒ **具名 `QuotaExceededError` 原生可达**（`D4-M` 已修：宿主直抛具名
+        // `Error`，shim 不再需要「哨兵串 + 重抛」绕行）。
+        // JS 面：`e.name` 与 `String(e)`（契约面 = JS 可见名）。
         page.control_eval(
-            "try { localStorage.setItem('big', 'x'.repeat(6 * 1024 * 1024)); globalThis.__quota = 'no-throw'; } catch (e) { globalThis.__quota = String(e); }",
+            "try { localStorage.setItem('big', 'x'.repeat(6 * 1024 * 1024)); globalThis.__quota = 'no-throw'; } catch (e) { globalThis.__quota = e.name + '|' + String(e); }",
         )
         .expect("quota probe");
         let quota = page.control_eval("globalThis.__quota").expect("read quota");
         assert!(
-            matches!(&quota, HostValue::Str(text) if text.contains("QuotaExceededError")),
-            "JS 面应见具名 QuotaExceededError（实得 {quota:?}）"
+            matches!(&quota, HostValue::Str(text) if text.starts_with("QuotaExceededError|QuotaExceededError:")),
+            "JS 面应原生见具名 QuotaExceededError（实得 {quota:?}）"
+        );
+        // **Rust 面**（`D4-M` 本体观测）：`JsError.message` 亦应具名，**不再**退化为 `[object Object]`。
+        let err = page
+            .control_eval("localStorage.setItem('big2', 'y'.repeat(6 * 1024 * 1024))")
+            .expect_err("超配额应抛错");
+        assert!(
+            err.message().contains("QuotaExceededError"),
+            "Rust 侧 message 应含具名（实得 {}）",
+            err.message()
+        );
+        assert!(
+            !err.message().contains("[object Object]"),
+            "Rust 侧 message 不得再退化为 [object Object]（实得 {}）",
+            err.message()
         );
         // **无半态**：超配额的那次写不得留下键
         let leftover = page

@@ -1317,6 +1317,71 @@ mod tests {
     }
 
     #[test]
+    fn native_throw_is_named_error_in_js() {
+        // `D4-M`：**具名错误原生可达** —— 宿主 `Err(JsError::named(..))` ⇒ JS 面
+        // `e instanceof Error` / `e.name` / `String(e)` 三者皆具名（**非 `[object Object]`**）。
+        //
+        // **负对照**：把 `throw_named` 退回旧实现（`v8::Object::new` + 只设 `message`）⇒
+        // 三条断言**全红**（`instanceof` false / `e.name` undefined / `String(e)` = `[object Object]`）。
+        let mut realm = new_realm();
+        let boom: NativeFn = Box::new(|_realm: &mut Realm, _args: &[HostValue]| {
+            Err(JsError::named(
+                JsErrorKind::Exception,
+                "QuotaExceededError",
+                "超出存储配额（quota=5242880）",
+            ))
+        });
+        let handle = realm
+            .new_function("quotaBoom", 0, boom)
+            .expect("new quotaBoom");
+        let _lease = realm.root(handle).expect("root quotaBoom");
+        realm
+            .set_global(
+                "quotaBoom",
+                HostValue::Function {
+                    realm: realm.id(),
+                    handle,
+                },
+            )
+            .expect("set_global quotaBoom");
+
+        assert_eq!(
+            realm
+                .eval("try { quotaBoom(); 'no' } catch (e) { e instanceof Error }")
+                .unwrap(),
+            HostValue::Bool(true),
+            "宿主具名错误应是 Error 实例（旧实现是裸对象 ⇒ false）"
+        );
+        assert_eq!(
+            realm
+                .eval("try { quotaBoom() } catch (e) { e.name }")
+                .unwrap(),
+            HostValue::Str("QuotaExceededError".to_owned()),
+            "JS 面应**原生**可见具名（无需 shim 重抛）"
+        );
+        assert_eq!(
+            realm
+                .eval("try { quotaBoom() } catch (e) { String(e) }")
+                .unwrap(),
+            HostValue::Str("QuotaExceededError: 超出存储配额（quota=5242880）".to_owned()),
+            "String(e) 应为 '<name>: <message>'（旧实现为 [object Object]）"
+        );
+        // Rust 侧 `JsError.message` 亦应原生可见具名（不再退化为 `[object Object]`）。
+        let err = realm.eval("quotaBoom()").expect_err("宿主应抛错");
+        assert_eq!(err.kind(), JsErrorKind::Exception);
+        assert!(
+            err.message().contains("QuotaExceededError"),
+            "Rust 侧 message 应含具名（实得 {}）",
+            err.message()
+        );
+        assert!(
+            !err.message().contains("[object Object]"),
+            "Rust 侧 message 不得再退化为 [object Object]（实得 {}）",
+            err.message()
+        );
+    }
+
+    #[test]
     fn object_identity_stable_within_realm() {
         // 同一 JS 对象两次取回 ⇒ 经任一 wrapper 的修改对另一 wrapper 可见（同一对象身份稳定）。
         //
